@@ -9,6 +9,8 @@ import { QuickActions } from '@/components/dashboard/business-quick-actions'
 import { UpcomingTasks } from '@/components/dashboard/upcoming-tasks'
 import { FinancialSummary } from '@/components/dashboard/financial-summary'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import DashboardWithCFO from '@/components/dashboard/dashboard-with-cfo'
+import DashboardContent from '@/components/dashboard/dashboard-content'
 
 async function getDashboardData(userId: string) {
   const [
@@ -113,92 +115,81 @@ export default async function DashboardPage() {
   const dashboardData = await getDashboardData(session.user.id)
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">
-          Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {dashboardData.user?.firstName || 'there'}!
-        </h1>
-        <p className="text-gray-600 mt-1">
-          {dashboardData.user?.companyName ? `Here's what's happening at ${dashboardData.user.companyName}` : "Here's what's happening with your business"} today
-        </p>
-      </div>
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Revenue</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              ${dashboardData.businessMetrics.totalRevenue.toLocaleString()}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">All time</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Outstanding Invoices</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">
-              ${dashboardData.businessMetrics.pendingInvoices.toLocaleString()}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              {dashboardData.businessMetrics.totalInvoices} total invoices
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Monthly Expenses</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              ${dashboardData.businessMetrics.monthlyExpenses.toLocaleString()}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">This month</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Active Projects</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {dashboardData.businessMetrics.activeProjects}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              {dashboardData.businessMetrics.totalCustomers} customers, {dashboardData.businessMetrics.totalVendors} vendors
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-8">
-          <QuickActions />
-          <BusinessOverview metrics={dashboardData.businessMetrics} />
-          <RecentActivity 
-            invoices={dashboardData.recentInvoices}
-            transactions={dashboardData.recentTransactions}
-          />
+    <DashboardWithCFO>
+      <div className="p-6 max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">
+            Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {dashboardData.user?.firstName || 'there'}!
+          </h1>
+          <p className="text-gray-600 mt-1">
+            {dashboardData.user?.companyName ? `Here's what's happening at ${dashboardData.user.companyName}` : "Here's what's happening with your business"} today
+          </p>
         </div>
 
-        {/* Sidebar */}
-        <div className="lg:col-span-1 space-y-8">
-          <UpcomingTasks tasks={dashboardData.upcomingTasks} />
-          <FinancialSummary 
-            bills={dashboardData.bills}
-            metrics={dashboardData.businessMetrics}
-          />
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Total Revenue</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">
+                ${dashboardData.businessMetrics.totalRevenue.toLocaleString()}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">All time</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Outstanding Invoices</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-600">
+                ${dashboardData.businessMetrics.pendingInvoices.toLocaleString()}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {dashboardData.businessMetrics.totalInvoices} total invoices
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Monthly Expenses</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">
+                ${dashboardData.businessMetrics.monthlyExpenses.toLocaleString()}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">This month</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Active Projects</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">
+                {dashboardData.businessMetrics.activeProjects}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {dashboardData.businessMetrics.totalCustomers} customers, {dashboardData.businessMetrics.totalVendors} vendors
+              </p>
+            </CardContent>
+          </Card>
         </div>
+
+        <DashboardContent
+          businessMetrics={dashboardData.businessMetrics}
+          recentInvoices={dashboardData.recentInvoices}
+          recentTransactions={dashboardData.recentTransactions}
+          upcomingTasks={dashboardData.upcomingTasks}
+          bills={dashboardData.bills}
+        />
       </div>
-    </div>
+    </DashboardWithCFO>
   )
 }
