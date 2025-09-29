@@ -2,10 +2,25 @@
 import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/db'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Plus, CheckSquare, Clock, AlertCircle } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Plus, CheckSquare, Clock, AlertCircle, Calendar, User, Tag } from 'lucide-react'
+import { format } from 'date-fns'
 import Link from 'next/link'
+
+async function getTasksData(userId: string) {
+  const [tasks, taskStats] = await Promise.all([
+    Promise.resolve([]),
+    Promise.resolve([])
+  ])
+
+  const overdueTasks: any[] = []
+
+  return { tasks, taskStats, overdueTasks }
+}
 
 export default async function TasksPage() {
   const session = await getServerSession(authOptions)
@@ -14,12 +29,119 @@ export default async function TasksPage() {
     redirect('/auth/signin')
   }
 
+  const { tasks, taskStats, overdueTasks } = await getTasksData(session.user.id)
+
+  // Mock data for demonstration
+  const mockTasks = [
+    {
+      id: '1',
+      title: 'Review monthly financial statements',
+      description: 'Analyze P&L, balance sheet, and cash flow statements for October',
+      status: 'IN_PROGRESS',
+      priority: 'HIGH',
+      dueDate: new Date('2024-12-05'),
+      createdAt: new Date('2024-11-20'),
+      tags: ['Finance', 'Monthly Review'],
+      project: { name: 'Q4 Financial Close' },
+      assignedUser: { name: 'John Doe', email: 'john@company.com' },
+      progress: 60
+    },
+    {
+      id: '2',
+      title: 'Prepare budget for Q1 2025',
+      description: 'Create detailed budget projections for the first quarter including operational expenses and revenue forecasts',
+      status: 'TODO',
+      priority: 'HIGH',
+      dueDate: new Date('2024-12-15'),
+      createdAt: new Date('2024-11-18'),
+      tags: ['Budget', 'Planning'],
+      project: { name: '2025 Budget Planning' },
+      assignedUser: null,
+      progress: 0
+    },
+    {
+      id: '3',
+      title: 'Update vendor payment terms',
+      description: 'Negotiate and document new payment terms with key vendors',
+      status: 'TODO',
+      priority: 'MEDIUM',
+      dueDate: new Date('2024-11-30'),
+      createdAt: new Date('2024-11-15'),
+      tags: ['Vendors', 'Contracts'],
+      project: null,
+      assignedUser: { name: 'Jane Smith', email: 'jane@company.com' },
+      progress: 0
+    },
+    {
+      id: '4',
+      title: 'Reconcile bank statements',
+      description: 'Complete bank reconciliation for all business accounts',
+      status: 'COMPLETED',
+      priority: 'HIGH',
+      dueDate: new Date('2024-11-25'),
+      createdAt: new Date('2024-11-22'),
+      tags: ['Banking', 'Reconciliation'],
+      project: { name: 'Monthly Accounting' },
+      assignedUser: { name: 'Mike Johnson', email: 'mike@company.com' },
+      progress: 100,
+      completedAt: new Date('2024-11-24')
+    },
+    {
+      id: '5',
+      title: 'File quarterly tax returns',
+      description: 'Prepare and submit Q3 tax returns to relevant authorities',
+      status: 'OVERDUE',
+      priority: 'URGENT',
+      dueDate: new Date('2024-11-15'),
+      createdAt: new Date('2024-10-30'),
+      tags: ['Tax', 'Compliance'],
+      project: { name: 'Tax Compliance' },
+      assignedUser: { name: 'Sarah Wilson', email: 'sarah@company.com' },
+      progress: 25
+    }
+  ]
+
+  const todoTasks = mockTasks.filter(t => t.status === 'TODO').length
+  const inProgressTasks = mockTasks.filter(t => t.status === 'IN_PROGRESS').length
+  const overdueMockTasks = mockTasks.filter(t => t.status === 'OVERDUE').length
+  const completedTasks = mockTasks.filter(t => t.status === 'COMPLETED').length
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'URGENT': return 'bg-red-100 text-red-800 border-red-200'
+      case 'HIGH': return 'bg-orange-100 text-orange-800 border-orange-200'
+      case 'MEDIUM': return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'LOW': return 'bg-gray-100 text-gray-800 border-gray-200'
+      default: return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'TODO': return 'secondary'
+      case 'IN_PROGRESS': return 'outline'
+      case 'COMPLETED': return 'default'
+      case 'OVERDUE': return 'destructive'
+      default: return 'secondary'
+    }
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'TODO': return <Clock className="h-4 w-4" />
+      case 'IN_PROGRESS': return <AlertCircle className="h-4 w-4" />
+      case 'COMPLETED': return <CheckSquare className="h-4 w-4" />
+      case 'OVERDUE': return <AlertCircle className="h-4 w-4" />
+      default: return <Clock className="h-4 w-4" />
+    }
+  }
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Tasks</h1>
-          <p className="text-gray-600 mt-1">Manage your work and to-dos</p>
+          <h1 className="text-3xl font-bold text-gray-900">Task Management</h1>
+          <p className="text-gray-600 mt-1">Organize and track your financial tasks and deadlines</p>
         </div>
         <Link href="/dashboard/tasks/new">
           <Button>
@@ -29,13 +151,15 @@ export default async function TasksPage() {
         </Link>
       </div>
 
+      {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">To Do</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">0</div>
+            <div className="text-2xl font-bold text-blue-600">{todoTasks}</div>
+            <p className="text-xs text-gray-500 mt-1">Ready to start</p>
           </CardContent>
         </Card>
 
@@ -44,7 +168,8 @@ export default async function TasksPage() {
             <CardTitle className="text-sm font-medium text-gray-600">In Progress</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">0</div>
+            <div className="text-2xl font-bold text-orange-600">{inProgressTasks}</div>
+            <p className="text-xs text-gray-500 mt-1">Currently working</p>
           </CardContent>
         </Card>
 
@@ -53,7 +178,11 @@ export default async function TasksPage() {
             <CardTitle className="text-sm font-medium text-gray-600">Overdue</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">0</div>
+            <div className="flex items-center">
+              <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
+              <div className="text-2xl font-bold text-red-600">{overdueMockTasks}</div>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Needs attention</p>
           </CardContent>
         </Card>
 
@@ -62,24 +191,232 @@ export default async function TasksPage() {
             <CardTitle className="text-sm font-medium text-gray-600">Completed</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">0</div>
+            <div className="text-2xl font-bold text-green-600">{completedTasks}</div>
+            <p className="text-xs text-gray-500 mt-1">This month</p>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardContent className="text-center py-12">
-          <CheckSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No tasks yet</h3>
-          <p className="text-gray-600 mb-4">Create your first task to start organizing your work</p>
-          <Link href="/dashboard/tasks/new">
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Task
-            </Button>
-          </Link>
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="active" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="active">Active Tasks</TabsTrigger>
+          <TabsTrigger value="completed">Completed</TabsTrigger>
+          <TabsTrigger value="overdue">Overdue</TabsTrigger>
+          <TabsTrigger value="all">All Tasks</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="active">
+          <Card>
+            <CardHeader>
+              <CardTitle>Active Tasks</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {mockTasks.filter(task => task.status !== 'COMPLETED' && task.status !== 'OVERDUE').map((task) => (
+                  <div key={task.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          {getStatusIcon(task.status)}
+                          <h3 className="text-lg font-semibold text-gray-900">{task.title}</h3>
+                          <Badge variant={getStatusColor(task.status)}>
+                            {task.status.replace('_', ' ')}
+                          </Badge>
+                          <Badge className={getPriorityColor(task.priority)}>
+                            {task.priority}
+                          </Badge>
+                        </div>
+
+                        <p className="text-gray-600 text-sm mb-3">{task.description}</p>
+
+                        <div className="flex items-center space-x-6 text-sm text-gray-500 mb-3">
+                          {task.dueDate && (
+                            <div className="flex items-center">
+                              <Calendar className="h-4 w-4 mr-1" />
+                              Due: {format(task.dueDate, 'MMM d, yyyy')}
+                            </div>
+                          )}
+                          {task.assignedUser && (
+                            <div className="flex items-center">
+                              <User className="h-4 w-4 mr-1" />
+                              {task.assignedUser.name}
+                            </div>
+                          )}
+                          {task.project && (
+                            <div className="flex items-center">
+                              <Tag className="h-4 w-4 mr-1" />
+                              {task.project.name}
+                            </div>
+                          )}
+                        </div>
+
+                        {task.tags && task.tags.length > 0 && (
+                          <div className="flex items-center space-x-2 mb-3">
+                            {task.tags.map((tag, index) => (
+                              <Badge key={index} variant="outline" className="text-xs">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+
+                        {task.status === 'IN_PROGRESS' && (
+                          <div className="mb-3">
+                            <div className="flex items-center justify-between text-sm mb-1">
+                              <span className="text-gray-600">Progress</span>
+                              <span className="font-medium">{task.progress}%</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div 
+                                className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                                style={{ width: `${task.progress}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col space-y-2 ml-4">
+                        <Button variant="outline" size="sm">
+                          Edit
+                        </Button>
+                        {task.status === 'TODO' && (
+                          <Button size="sm">
+                            Start
+                          </Button>
+                        )}
+                        {task.status === 'IN_PROGRESS' && (
+                          <Button size="sm" className="bg-green-600 hover:bg-green-700">
+                            Complete
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="completed">
+          <Card>
+            <CardHeader>
+              <CardTitle>Completed Tasks</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {mockTasks.filter(task => task.status === 'COMPLETED').map((task) => (
+                  <div key={task.id} className="border border-gray-200 rounded-lg p-6 bg-green-50 border-green-200">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <CheckSquare className="h-5 w-5 text-green-500" />
+                          <h3 className="text-lg font-semibold text-gray-900">{task.title}</h3>
+                          <Badge className="bg-green-100 text-green-800">Completed</Badge>
+                        </div>
+
+                        <p className="text-gray-600 text-sm mb-3">{task.description}</p>
+
+                        <div className="flex items-center space-x-6 text-sm text-gray-500">
+                          <span>Completed: {format(task.completedAt || new Date(), 'MMM d, yyyy')}</span>
+                          {task.assignedUser && <span>By: {task.assignedUser.name}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="overdue">
+          <Card>
+            <CardHeader>
+              <CardTitle>Overdue Tasks</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {mockTasks.filter(task => task.status === 'OVERDUE').map((task) => (
+                  <div key={task.id} className="border border-red-200 rounded-lg p-6 bg-red-50">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <AlertCircle className="h-5 w-5 text-red-500" />
+                          <h3 className="text-lg font-semibold text-gray-900">{task.title}</h3>
+                          <Badge variant="destructive">Overdue</Badge>
+                          <Badge className={getPriorityColor(task.priority)}>
+                            {task.priority}
+                          </Badge>
+                        </div>
+
+                        <p className="text-gray-600 text-sm mb-3">{task.description}</p>
+
+                        <div className="flex items-center space-x-6 text-sm text-red-600 font-medium">
+                          <Calendar className="h-4 w-4 mr-1" />
+                          Was due: {format(task.dueDate, 'MMM d, yyyy')}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col space-y-2 ml-4">
+                        <Button variant="destructive" size="sm">
+                          Mark Complete
+                        </Button>
+                        <Button variant="outline" size="sm">
+                          Extend Deadline
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="all">
+          <Card>
+            <CardHeader>
+              <CardTitle>All Tasks</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {mockTasks.map((task) => (
+                  <div key={task.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        {getStatusIcon(task.status)}
+                        <div>
+                          <h4 className="font-semibold text-gray-900">{task.title}</h4>
+                          <p className="text-sm text-gray-600">{task.description.substring(0, 80)}...</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-3">
+                        <Badge variant={getStatusColor(task.status)}>
+                          {task.status.replace('_', ' ')}
+                        </Badge>
+                        <Badge className={getPriorityColor(task.priority)} style={{ fontSize: '0.75rem' }}>
+                          {task.priority}
+                        </Badge>
+                        {task.dueDate && (
+                          <span className="text-sm text-gray-500">
+                            {format(task.dueDate, 'MMM d')}
+                          </span>
+                        )}
+                        <Button variant="outline" size="sm">
+                          View
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

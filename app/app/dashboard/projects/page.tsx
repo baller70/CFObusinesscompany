@@ -2,11 +2,25 @@
 import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/db'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Plus, FolderOpen, Calendar, DollarSign } from 'lucide-react'
+import { Progress } from '@/components/ui/progress'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Plus, FolderOpen, Calendar, DollarSign, Users, BarChart3, Clock, CheckCircle, AlertTriangle } from 'lucide-react'
+import { format, differenceInDays } from 'date-fns'
 import Link from 'next/link'
+
+async function getProjectsData(userId: string) {
+  const [projects, projectStats] = await Promise.all([
+    Promise.resolve([]),
+    Promise.resolve([])
+  ])
+
+  return { projects, projectStats }
+}
 
 export default async function ProjectsPage() {
   const session = await getServerSession(authOptions)
@@ -15,12 +29,155 @@ export default async function ProjectsPage() {
     redirect('/auth/signin')
   }
 
+  const { projects, projectStats } = await getProjectsData(session.user.id)
+
+  // Mock data for demonstration
+  const mockProjects = [
+    {
+      id: '1',
+      name: 'Q4 Financial Audit Preparation',
+      description: 'Comprehensive preparation for year-end audit including documentation review, reconciliations, and compliance checks',
+      status: 'IN_PROGRESS',
+      priority: 'HIGH',
+      budget: 50000,
+      spent: 32500,
+      startDate: new Date('2024-11-01'),
+      endDate: new Date('2024-12-15'),
+      customer: { name: 'Internal Audit Team' },
+      progress: 65,
+      tasks: [
+        { status: 'COMPLETED' },
+        { status: 'COMPLETED' },
+        { status: 'IN_PROGRESS' },
+        { status: 'TODO' },
+        { status: 'TODO' }
+      ],
+      teamMembers: [
+        { name: 'Sarah Chen', role: 'Lead Auditor', avatar: '' },
+        { name: 'Mike Rodriguez', role: 'Financial Analyst', avatar: '' },
+        { name: 'Lisa Wang', role: 'Compliance Officer', avatar: '' }
+      ],
+      invoices: [{ total: 15000 }, { total: 12500 }, { total: 5000 }]
+    },
+    {
+      id: '2',
+      name: 'ERP System Implementation',
+      description: 'Implementation of new Enterprise Resource Planning system to streamline financial processes and reporting',
+      status: 'IN_PROGRESS',
+      priority: 'HIGH',
+      budget: 150000,
+      spent: 85000,
+      startDate: new Date('2024-09-01'),
+      endDate: new Date('2025-02-28'),
+      customer: { name: 'IT Department' },
+      progress: 45,
+      tasks: [
+        { status: 'COMPLETED' },
+        { status: 'COMPLETED' },
+        { status: 'COMPLETED' },
+        { status: 'IN_PROGRESS' },
+        { status: 'IN_PROGRESS' },
+        { status: 'TODO' },
+        { status: 'TODO' }
+      ],
+      teamMembers: [
+        { name: 'David Kim', role: 'Project Manager', avatar: '' },
+        { name: 'Anna Johnson', role: 'Systems Analyst', avatar: '' },
+        { name: 'Robert Taylor', role: 'Implementation Specialist', avatar: '' }
+      ],
+      invoices: [{ total: 25000 }, { total: 35000 }, { total: 25000 }]
+    },
+    {
+      id: '3',
+      name: 'Tax Compliance Automation',
+      description: 'Automate tax filing processes and ensure compliance across multiple jurisdictions',
+      status: 'PLANNING',
+      priority: 'MEDIUM',
+      budget: 75000,
+      spent: 5000,
+      startDate: new Date('2025-01-15'),
+      endDate: new Date('2025-04-30'),
+      customer: { name: 'Tax Department' },
+      progress: 10,
+      tasks: [
+        { status: 'IN_PROGRESS' },
+        { status: 'TODO' },
+        { status: 'TODO' },
+        { status: 'TODO' }
+      ],
+      teamMembers: [
+        { name: 'Jennifer Lee', role: 'Tax Manager', avatar: '' },
+        { name: 'Carlos Martinez', role: 'Automation Specialist', avatar: '' }
+      ],
+      invoices: [{ total: 5000 }]
+    },
+    {
+      id: '4',
+      name: 'Cost Reduction Initiative',
+      description: 'Analyze and implement cost reduction strategies across all departments to improve profitability',
+      status: 'COMPLETED',
+      priority: 'HIGH',
+      budget: 25000,
+      spent: 23500,
+      startDate: new Date('2024-08-01'),
+      endDate: new Date('2024-10-31'),
+      customer: { name: 'Executive Team' },
+      progress: 100,
+      tasks: [
+        { status: 'COMPLETED' },
+        { status: 'COMPLETED' },
+        { status: 'COMPLETED' },
+        { status: 'COMPLETED' }
+      ],
+      teamMembers: [
+        { name: 'Patricia Davis', role: 'Cost Analyst', avatar: '' },
+        { name: 'Thomas Brown', role: 'Operations Manager', avatar: '' }
+      ],
+      invoices: [{ total: 10000 }, { total: 13500 }],
+      completedAt: new Date('2024-10-25')
+    }
+  ]
+
+  const activeProjects = mockProjects.filter(p => p.status === 'IN_PROGRESS').length
+  const completedProjects = mockProjects.filter(p => p.status === 'COMPLETED').length
+  const onHoldProjects = mockProjects.filter(p => p.status === 'ON_HOLD' || p.status === 'PLANNING').length
+  const totalBudget = mockProjects.reduce((sum, p) => sum + p.budget, 0)
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'PLANNING': return 'secondary'
+      case 'IN_PROGRESS': return 'outline'
+      case 'ON_HOLD': return 'destructive'
+      case 'COMPLETED': return 'default'
+      default: return 'secondary'
+    }
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'PLANNING': return <Clock className="h-4 w-4" />
+      case 'IN_PROGRESS': return <BarChart3 className="h-4 w-4" />
+      case 'ON_HOLD': return <AlertTriangle className="h-4 w-4" />
+      case 'COMPLETED': return <CheckCircle className="h-4 w-4" />
+      default: return <Clock className="h-4 w-4" />
+    }
+  }
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'HIGH': return 'bg-red-100 text-red-800 border-red-200'
+      case 'MEDIUM': return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'LOW': return 'bg-gray-100 text-gray-800 border-gray-200'
+      default: return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Projects</h1>
-          <p className="text-gray-600 mt-1">Track and manage your projects</p>
+          <h1 className="text-3xl font-bold text-gray-900">Project Management</h1>
+          <p className="text-gray-600 mt-1">Track financial projects, budgets, and team collaboration</p>
         </div>
         <Link href="/dashboard/projects/new">
           <Button>
@@ -30,13 +187,15 @@ export default async function ProjectsPage() {
         </Link>
       </div>
 
+      {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">Active Projects</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">0</div>
+            <div className="text-2xl font-bold text-blue-600">{activeProjects}</div>
+            <p className="text-xs text-gray-500 mt-1">Currently running</p>
           </CardContent>
         </Card>
 
@@ -45,16 +204,18 @@ export default async function ProjectsPage() {
             <CardTitle className="text-sm font-medium text-gray-600">Completed</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">0</div>
+            <div className="text-2xl font-bold text-green-600">{completedProjects}</div>
+            <p className="text-xs text-gray-500 mt-1">Successfully finished</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">On Hold</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600">Planning/On Hold</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">0</div>
+            <div className="text-2xl font-bold text-orange-600">{onHoldProjects}</div>
+            <p className="text-xs text-gray-500 mt-1">Not started/paused</p>
           </CardContent>
         </Card>
 
@@ -63,24 +224,303 @@ export default async function ProjectsPage() {
             <CardTitle className="text-sm font-medium text-gray-600">Total Budget</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">$0</div>
+            <div className="text-2xl font-bold text-purple-600">
+              ${totalBudget.toLocaleString()}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Allocated funds</p>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardContent className="text-center py-12">
-          <FolderOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No projects yet</h3>
-          <p className="text-gray-600 mb-4">Create your first project to start tracking work</p>
-          <Link href="/dashboard/projects/new">
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Project
-            </Button>
-          </Link>
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="active" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="active">Active Projects</TabsTrigger>
+          <TabsTrigger value="completed">Completed</TabsTrigger>
+          <TabsTrigger value="planning">Planning</TabsTrigger>
+          <TabsTrigger value="all">All Projects</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="active">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {mockProjects.filter(project => project.status === 'IN_PROGRESS').map((project) => (
+              <Card key={project.id} className="hover:shadow-lg transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-2">
+                        {getStatusIcon(project.status)}
+                        <h3 className="text-lg font-semibold text-gray-900">{project.name}</h3>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant={getStatusColor(project.status)}>
+                          {project.status.replace('_', ' ')}
+                        </Badge>
+                        <Badge className={getPriorityColor(project.priority)}>
+                          {project.priority}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent>
+                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">{project.description}</p>
+
+                  {/* Progress */}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between text-sm mb-2">
+                      <span className="text-gray-600">Progress</span>
+                      <span className="font-semibold">{project.progress}%</span>
+                    </div>
+                    <Progress value={project.progress} className="h-2" />
+                  </div>
+
+                  {/* Budget */}
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <div className="text-sm text-gray-600">Budget</div>
+                      <div className="font-semibold text-gray-900">
+                        ${project.budget.toLocaleString()}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-gray-600">Spent</div>
+                      <div className="font-semibold text-orange-600">
+                        ${project.spent.toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tasks Summary */}
+                  <div className="mb-4">
+                    <div className="text-sm text-gray-600 mb-2">Tasks</div>
+                    <div className="flex items-center space-x-4 text-sm">
+                      <span className="text-green-600">
+                        ✓ {project.tasks.filter(t => t.status === 'COMPLETED').length} completed
+                      </span>
+                      <span className="text-blue-600">
+                        ◉ {project.tasks.filter(t => t.status === 'IN_PROGRESS').length} in progress
+                      </span>
+                      <span className="text-gray-600">
+                        ○ {project.tasks.filter(t => t.status === 'TODO').length} todo
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Team Members */}
+                  <div className="mb-4">
+                    <div className="text-sm text-gray-600 mb-2">Team</div>
+                    <div className="flex items-center space-x-2">
+                      {project.teamMembers.slice(0, 3).map((member, index) => (
+                        <Avatar key={index} className="h-6 w-6">
+                          <AvatarImage src={member.avatar} alt={member.name} />
+                          <AvatarFallback className="text-xs">
+                            {member.name.split(' ').map(n => n[0]).join('')}
+                          </AvatarFallback>
+                        </Avatar>
+                      ))}
+                      {project.teamMembers.length > 3 && (
+                        <div className="text-xs text-gray-500">
+                          +{project.teamMembers.length - 3} more
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Timeline */}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between text-sm text-gray-600">
+                      <div className="flex items-center">
+                        <Calendar className="h-4 w-4 mr-1" />
+                        {format(project.startDate, 'MMM d')} - {format(project.endDate, 'MMM d, yyyy')}
+                      </div>
+                      <div>
+                        {differenceInDays(project.endDate, new Date())} days left
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between">
+                    <Button variant="outline" size="sm">
+                      View Details
+                    </Button>
+                    <div className="space-x-2">
+                      <Button variant="outline" size="sm">
+                        Edit
+                      </Button>
+                      <Button size="sm">
+                        Update Progress
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="completed">
+          <div className="space-y-4">
+            {mockProjects.filter(project => project.status === 'COMPLETED').map((project) => (
+              <Card key={project.id} className="bg-green-50 border-green-200">
+                <CardContent className="pt-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                        <h3 className="text-lg font-semibold text-gray-900">{project.name}</h3>
+                        <Badge className="bg-green-100 text-green-800">Completed</Badge>
+                      </div>
+
+                      <p className="text-gray-600 text-sm mb-3">{project.description}</p>
+
+                      <div className="grid grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-600">Budget:</span>
+                          <div className="font-semibold">${project.budget.toLocaleString()}</div>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Spent:</span>
+                          <div className="font-semibold">${project.spent.toLocaleString()}</div>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Completed:</span>
+                          <div className="font-semibold">
+                            {project.completedAt ? format(project.completedAt, 'MMM d, yyyy') : 'N/A'}
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Tasks:</span>
+                          <div className="font-semibold">{project.tasks.length} total</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button variant="outline" size="sm">
+                      View Report
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="planning">
+          <div className="space-y-4">
+            {mockProjects.filter(project => project.status === 'PLANNING').map((project) => (
+              <Card key={project.id} className="bg-blue-50 border-blue-200">
+                <CardContent className="pt-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <Clock className="h-5 w-5 text-blue-500" />
+                        <h3 className="text-lg font-semibold text-gray-900">{project.name}</h3>
+                        <Badge variant="secondary">Planning</Badge>
+                      </div>
+
+                      <p className="text-gray-600 text-sm mb-3">{project.description}</p>
+
+                      <div className="grid grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-600">Planned Start:</span>
+                          <div className="font-semibold">{format(project.startDate, 'MMM d, yyyy')}</div>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Budget:</span>
+                          <div className="font-semibold">${project.budget.toLocaleString()}</div>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Team Size:</span>
+                          <div className="font-semibold">{project.teamMembers.length} members</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-x-2">
+                      <Button variant="outline" size="sm">
+                        Edit Plan
+                      </Button>
+                      <Button size="sm">
+                        Start Project
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="all">
+          <Card>
+            <CardHeader>
+              <CardTitle>All Projects</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-3 px-4 font-medium text-gray-600">Project</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-600">Progress</th>
+                      <th className="text-right py-3 px-4 font-medium text-gray-600">Budget</th>
+                      <th className="text-right py-3 px-4 font-medium text-gray-600">Spent</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-600">Due Date</th>
+                      <th className="text-right py-3 px-4 font-medium text-gray-600">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {mockProjects.map((project) => (
+                      <tr key={project.id} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="py-3 px-4">
+                          <div>
+                            <div className="font-semibold text-gray-900">{project.name}</div>
+                            <div className="text-sm text-gray-600">{project.customer.name}</div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <Badge variant={getStatusColor(project.status)}>
+                            {project.status.replace('_', ' ')}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-16 bg-gray-200 rounded-full h-2">
+                              <div 
+                                className="bg-blue-600 h-2 rounded-full" 
+                                style={{ width: `${project.progress}%` }}
+                              />
+                            </div>
+                            <span className="text-sm text-gray-600">{project.progress}%</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-right font-semibold">
+                          ${project.budget.toLocaleString()}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <span className={project.spent > project.budget * 0.8 ? 'text-red-600 font-semibold' : 'text-gray-900'}>
+                            ${project.spent.toLocaleString()}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-600">
+                          {format(project.endDate, 'MMM d, yyyy')}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <Button variant="outline" size="sm">
+                            View
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
