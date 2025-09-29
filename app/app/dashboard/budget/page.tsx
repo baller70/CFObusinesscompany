@@ -1,4 +1,7 @@
 
+'use client'
+
+import { useState } from 'react'
 import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
@@ -6,26 +9,30 @@ import { prisma } from '@/lib/db'
 import { DashboardHeader } from '@/components/dashboard/dashboard-header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { PieChart, Plus, TrendingUp } from 'lucide-react'
+import { useSession } from 'next-auth/react'
 
-async function getUserData(userId: string) {
-  return await prisma.user.findUnique({
-    where: { id: userId }
-  })
-}
+function BudgetPageClient() {
+  const { data: session } = useSession() || {}
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
 
-export default async function BudgetPage() {
-  const session = await getServerSession(authOptions)
-  
-  if (!session?.user?.id) {
-    redirect('/auth/signin')
+  const handleCreateBudget = () => {
+    setIsDialogOpen(true)
   }
 
-  const userData = await getUserData(session.user.id)
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    // Handle form submission here
+    console.log('Budget form submitted')
+    setIsDialogOpen(false)
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <DashboardHeader user={userData} />
+      <DashboardHeader user={session?.user} />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
@@ -50,10 +57,38 @@ export default async function BudgetPage() {
                       Your spending vs. budget for this month
                     </CardDescription>
                   </div>
-                  <Button>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Budget
-                  </Button>
+                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button onClick={handleCreateBudget}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Budget
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                        <DialogTitle>Create New Budget</DialogTitle>
+                        <DialogDescription>
+                          Set up your monthly budget categories and spending limits.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <form onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                          <Label htmlFor="budget-name">Budget Name</Label>
+                          <Input id="budget-name" placeholder="e.g., October 2024 Budget" />
+                        </div>
+                        <div>
+                          <Label htmlFor="monthly-income">Monthly Income</Label>
+                          <Input id="monthly-income" type="number" placeholder="0.00" />
+                        </div>
+                        <div className="flex justify-end space-x-2">
+                          <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                            Cancel
+                          </Button>
+                          <Button type="submit">Create Budget</Button>
+                        </div>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </CardHeader>
               <CardContent>
@@ -63,7 +98,7 @@ export default async function BudgetPage() {
                   <p className="text-gray-600 mb-6">
                     Create your first budget to start tracking your spending against your goals.
                   </p>
-                  <Button>
+                  <Button onClick={handleCreateBudget}>
                     <Plus className="h-4 w-4 mr-2" />
                     Create Your First Budget
                   </Button>
@@ -109,4 +144,8 @@ export default async function BudgetPage() {
       </main>
     </div>
   )
+}
+
+export default function BudgetPage() {
+  return <BudgetPageClient />
 }
