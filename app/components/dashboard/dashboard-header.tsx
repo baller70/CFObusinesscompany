@@ -48,6 +48,7 @@ import {
   TrendingUp,
   Repeat
 } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface DashboardHeaderProps {
   user: any
@@ -102,7 +103,15 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
             {/* Notifications */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="relative">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="relative" 
+                  onClick={() => {
+                    console.log('Notifications clicked')
+                    toast.info('3 new notifications')
+                  }}
+                >
                   <Bell className="h-5 w-5" />
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                     3
@@ -140,12 +149,19 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
             {/* User Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                <Button 
+                  variant="ghost" 
+                  className="relative h-8 w-8 rounded-full" 
+                  onClick={() => {
+                    console.log('User menu clicked')
+                    toast.info('User menu opened')
+                  }}
+                >
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user?.image || ''} alt={user?.name || ''} />
+                    <AvatarImage src={user?.image || session?.user?.image || ''} alt={user?.name || session?.user?.name || ''} />
                     <AvatarFallback>
-                      {user?.firstName?.[0]?.toUpperCase() || 'U'}
-                      {user?.lastName?.[0]?.toUpperCase() || ''}
+                      {user?.firstName?.[0]?.toUpperCase() || session?.user?.name?.[0]?.toUpperCase() || 'U'}
+                      {user?.lastName?.[0]?.toUpperCase() || session?.user?.name?.split(' ')?.[1]?.[0]?.toUpperCase() || ''}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
@@ -162,10 +178,12 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
-                </DropdownMenuItem>
+                <Link href="/dashboard/settings">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                  </DropdownMenuItem>
+                </Link>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut}>
                   <LogOut className="mr-2 h-4 w-4" />

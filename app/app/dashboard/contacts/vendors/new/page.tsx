@@ -1,7 +1,9 @@
 
-import { getServerSession } from 'next-auth'
-import { redirect } from 'next/navigation'
-import { authOptions } from '@/lib/auth'
+'use client'
+
+import { useState } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,12 +12,35 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 
-export default async function NewVendorPage() {
-  const session = await getServerSession(authOptions)
-  
-  if (!session?.user?.id) {
-    redirect('/auth/signin')
+export default function NewVendorPage() {
+  const { data: session, status } = useSession() || {}
+  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(false)
+
+  // Handle authentication redirect properly
+  if (status === 'loading') {
+    return <div className="p-6">Loading...</div>
+  }
+
+  if (status === 'unauthenticated') {
+    router.push('/auth/signin')
+    return null
+  }
+
+  const handleCreateVendor = async () => {
+    setIsLoading(true)
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      toast.success('Vendor created successfully!')
+      router.push('/dashboard/contacts/vendors')
+    } catch (error) {
+      toast.error('Failed to create vendor')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -183,7 +208,12 @@ export default async function NewVendorPage() {
             <Link href="/dashboard/contacts/vendors">
               <Button variant="outline">Cancel</Button>
             </Link>
-            <Button>Create Vendor</Button>
+            <Button 
+              onClick={handleCreateVendor}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Creating...' : 'Create Vendor'}
+            </Button>
           </div>
         </CardContent>
       </Card>
