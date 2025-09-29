@@ -1,76 +1,281 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
- 
+
+/* Premium Financial Design System */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Premium Color Palette - Inspired by top financial apps */
+    --background: 250 252 255; /* Ultra clean white with hint of blue */
+    --foreground: 215.3 25% 26.7%; /* Professional dark blue-gray */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
- 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
- 
-    --primary: 222.2 47.4% 11.2%;
+    --card: 255 255 255; /* Pure white cards */
+    --card-foreground: 215.3 25% 26.7%;
+    
+    --popover: 255 255 255;
+    --popover-foreground: 215.3 25% 26.7%;
+    
+    /* Primary: Deep Financial Blue - Trust & Stability */
+    --primary: 220 91% 36%; /* Deep blue #1E3A8A */
     --primary-foreground: 210 40% 98%;
- 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
- 
-    --muted: 210 40% 96.1%;
+    
+    /* Secondary: Subtle Premium Gray */
+    --secondary: 220 14.3% 95.9%; /* Light gray with blue tint */
+    --secondary-foreground: 215.3 25% 26.7%;
+    
+    /* Muted: Premium Gray Tones */
+    --muted: 220 14.3% 95.9%;
     --muted-foreground: 215.4 16.3% 46.9%;
- 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
- 
+    
+    /* Accent: Success Green for Growth */
+    --accent: 142.1 76.2% 36.3%; /* #10B981 */
+    --accent-foreground: 210 40% 98%;
+    
+    /* Success: Financial Growth Green */
+    --success: 142.1 70.6% 45.3%; /* #22C55E */
+    --success-foreground: 210 40% 98%;
+    
+    /* Warning: Premium Amber */
+    --warning: 32.1 94.6% 43.7%; /* #F59E0B */
+    --warning-foreground: 210 40% 98%;
+    
+    /* Destructive: Professional Red */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
- 
-    --radius: 0.5rem;
+    /* Premium Borders & Inputs */
+    --border: 220 13% 91%; /* Subtle blue-gray border */
+    --input: 220 13% 91%;
+    --ring: 220 91% 36%; /* Focus ring matches primary */
+    
+    /* Premium Radius */
+    --radius: 0.75rem; /* Slightly more rounded for premium feel */
+    
+    /* Financial App Specific Colors */
+    --financial-positive: 142.1 70.6% 45.3%; /* Green for gains */
+    --financial-negative: 0 84.2% 60.2%; /* Red for losses */
+    --financial-neutral: 215.4 16.3% 46.9%; /* Gray for neutral */
+    
+    /* Premium Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px 0 rgb(0 0 0 / 0.06);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -1px rgb(0 0 0 / 0.06);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.05);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 10px 10px -5px rgb(0 0 0 / 0.04);
   }
- 
+  
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
- 
+    
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
- 
+    
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
- 
-    --primary: 210 40% 98%;
+    
+    --primary: 217.2 91.2% 59.8%;
     --primary-foreground: 222.2 47.4% 11.2%;
- 
+    
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
- 
+    
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
- 
-    --accent: 217.2 32.6% 17.5%;
+    
+    --accent: 142.1 76.2% 36.3%;
     --accent-foreground: 210 40% 98%;
- 
+    
+    --success: 142.1 70.6% 45.3%;
+    --success-foreground: 210 40% 98%;
+    
+    --warning: 32.1 94.6% 43.7%;
+    --warning-foreground: 210 40% 98%;
+    
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
- 
+    
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --ring: 217.2 91.2% 59.8%;
   }
 }
- 
+
 @layer base {
   * {
     @apply border-border;
   }
+  
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  
+  /* Premium Typography Scale */
+  .text-display {
+    @apply text-4xl md:text-6xl font-bold tracking-tight;
+  }
+  
+  .text-heading {
+    @apply text-2xl md:text-3xl font-semibold tracking-tight;
+  }
+  
+  .text-subheading {
+    @apply text-lg md:text-xl font-medium tracking-tight;
+  }
+  
+  .text-body {
+    @apply text-sm md:text-base leading-relaxed;
+  }
+  
+  .text-small {
+    @apply text-xs md:text-sm;
+  }
+  
+  /* Financial-specific typography */
+  .text-financial-large {
+    @apply text-xl md:text-2xl font-bold tabular-nums;
+  }
+  
+  .text-financial-medium {
+    @apply text-base md:text-lg font-semibold tabular-nums;
+  }
+  
+  .text-financial-small {
+    @apply text-sm font-medium tabular-nums;
+  }
+}
+
+@layer components {
+  /* Premium Card Styles */
+  .card-premium {
+    @apply bg-card text-card-foreground rounded-xl border border-border/50 shadow-sm hover:shadow-md transition-all duration-200;
+  }
+  
+  .card-premium-elevated {
+    @apply bg-card text-card-foreground rounded-xl border-0 shadow-lg hover:shadow-xl transition-all duration-200;
+  }
+  
+  .card-glass {
+    @apply bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl shadow-lg;
+  }
+  
+  /* Premium Button Variants */
+  .btn-premium {
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2 font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+  
+  .btn-primary {
+    @apply btn-premium bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-primary/50 shadow-sm hover:shadow;
+  }
+  
+  .btn-success {
+    @apply btn-premium bg-success text-success-foreground hover:bg-success/90 focus:ring-success/50 shadow-sm hover:shadow;
+  }
+  
+  .btn-warning {
+    @apply btn-premium bg-warning text-warning-foreground hover:bg-warning/90 focus:ring-warning/50 shadow-sm hover:shadow;
+  }
+  
+  /* Financial Status Colors */
+  .status-positive {
+    @apply text-success bg-success/10 border border-success/20;
+  }
+  
+  .status-negative {
+    @apply text-destructive bg-destructive/10 border border-destructive/20;
+  }
+  
+  .status-neutral {
+    @apply text-muted-foreground bg-muted border border-border;
+  }
+  
+  /* Premium Gradients */
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)) 100%);
+  }
+  
+  .gradient-success {
+    background: linear-gradient(135deg, hsl(var(--success)) 0%, hsl(var(--accent)) 100%);
+  }
+  
+  .gradient-background {
+    background: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--muted)) 100%);
+  }
+  
+  /* Premium Animations */
+  @keyframes slideInUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  .animate-slide-in-up {
+    animation: slideInUp 0.3s ease-out;
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-out;
+  }
+  
+  /* Focus states for better accessibility */
+  .focus-premium {
+    @apply focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-200;
+  }
+  
+  /* Premium spacing utilities */
+  .space-premium > * + * {
+    margin-top: 1.5rem;
+  }
+  
+  .space-premium-sm > * + * {
+    margin-top: 1rem;
+  }
+  
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer utilities {
+  /* Financial text colors */
+  .text-financial-positive {
+    color: hsl(var(--financial-positive));
+  }
+  
+  .text-financial-negative {
+    color: hsl(var(--financial-negative));
+  }
+  
+  .text-financial-neutral {
+    color: hsl(var(--financial-neutral));
+  }
+  
+  /* Premium box shadows */
+  .shadow-premium {
+    box-shadow: var(--shadow);
+  }
+  
+  .shadow-premium-md {
+    box-shadow: var(--shadow-md);
+  }
+  
+  .shadow-premium-lg {
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .shadow-premium-xl {
+    box-shadow: var(--shadow-xl);
   }
 }

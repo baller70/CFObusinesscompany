@@ -137,72 +137,106 @@ export function CFOInsightsWidget({ onOpenChat }: CFOInsightsWidgetProps) {
   }
 
   return (
-    <Card className="border-blue-200">
-      <CardHeader>
+    <Card className="card-premium-elevated border-l-4 border-l-primary/50 relative overflow-hidden group">
+      {/* Premium background gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-50 group-hover:opacity-80 transition-opacity duration-500"></div>
+      
+      <CardHeader className="relative z-10">
         <CardTitle className="flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <Brain className="h-5 w-5 text-blue-600" />
-            CFO AI Insights
+          <span className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center shadow-md">
+              <Brain className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-subheading text-foreground">CFO AI Insights</h3>
+              <div className="flex items-center gap-1 mt-1">
+                <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>
+                <span className="text-small text-muted-foreground">Active Analysis</span>
+              </div>
+            </div>
           </span>
           <div className="flex gap-2">
-            <Button onClick={onOpenChat} variant="outline" size="sm">
+            <Button 
+              onClick={onOpenChat} 
+              className="btn-primary shadow-sm hover:shadow-md transition-all duration-200"
+              size="sm"
+            >
               <MessageSquare className="h-4 w-4 mr-2" />
               Ask CFO
             </Button>
-            <Button onClick={loadFinancialHealthAnalysis} variant="outline" size="sm" disabled={isLoading}>
+            <Button 
+              onClick={loadFinancialHealthAnalysis} 
+              variant="outline" 
+              size="sm" 
+              disabled={isLoading}
+              className="hover:bg-primary/5 border-primary/20"
+            >
               <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             </Button>
           </div>
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-body text-muted-foreground">
           AI-powered financial insights and recommendations from your virtual CFO
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      
+      <CardContent className="relative z-10 space-premium-sm">
         {isLoading ? (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Brain className="h-4 w-4 animate-pulse text-blue-500" />
-              <span className="text-sm">Analyzing your financial data...</span>
+          <div className="space-y-6 animate-fade-in">
+            <div className="flex items-center gap-3 p-4 bg-primary/5 rounded-xl border border-primary/10">
+              <Brain className="h-5 w-5 animate-pulse text-primary" />
+              <span className="text-body text-foreground font-medium">Analyzing your financial data...</span>
             </div>
-            <Progress value={66} className="h-2" />
+            <div className="space-y-2">
+              <Progress value={66} className="h-3 bg-muted rounded-full" />
+              <p className="text-small text-muted-foreground text-center">Processing financial patterns...</p>
+            </div>
           </div>
         ) : analysis ? (
-          <div className="space-y-4">
-            {/* Urgency Level & Confidence */}
-            <div className="flex items-center justify-between">
-              <Badge className={`${getUrgencyColor(analysis.urgencyLevel)} text-white`}>
+          <div className="space-y-6">
+            {/* Premium Urgency Level & Confidence */}
+            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-muted/50 to-transparent rounded-xl border border-border/50">
+              <Badge className={`${getUrgencyColor(analysis.urgencyLevel)} text-white shadow-sm px-3 py-1.5 flex items-center gap-2`}>
                 {getUrgencyIcon(analysis.urgencyLevel)}
-                <span className="ml-1">{analysis.urgencyLevel}</span>
+                <span className="font-medium">{analysis.urgencyLevel} PRIORITY</span>
               </Badge>
-              <div className="text-sm text-gray-500">
+              <div className="text-body text-muted-foreground font-medium">
                 Confidence: {Math.round(analysis.confidenceScore * 100)}%
               </div>
             </div>
 
-            {/* Summary */}
-            <div className="p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500">
-              <p className="text-sm font-medium text-blue-900">{analysis.summary}</p>
+            {/* Premium Summary */}
+            <div className="p-5 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent rounded-xl border-l-4 border-l-primary shadow-sm">
+              <p className="text-body font-medium text-foreground leading-relaxed">{analysis.summary}</p>
             </div>
 
-            {/* Top Insights */}
+            {/* Premium Key Insights */}
             <div>
-              <h4 className="font-semibold text-sm text-gray-900 mb-2">Key Insights</h4>
-              <div className="space-y-2">
-                {analysis.insights.slice(0, 3).map((insight) => (
-                  <div key={insight.id} className="flex items-start gap-2 p-2 bg-gray-50 rounded">
+              <h4 className="text-subheading text-foreground mb-4 flex items-center gap-2">
+                <Zap className="h-4 w-4 text-warning" />
+                Key Insights
+              </h4>
+              <div className="space-y-3">
+                {analysis.insights.slice(0, 3).map((insight, index) => (
+                  <div 
+                    key={insight.id} 
+                    className="flex items-start gap-3 p-4 bg-card/50 hover:bg-card border border-border/50 rounded-xl hover:shadow-sm transition-all duration-200 group"
+                    style={{ animationDelay: `${index * 100}ms` }}
+                  >
                     <div className="flex-1">
-                      <p className="text-sm font-medium">{insight.title}</p>
-                      <p className="text-xs text-gray-600">{insight.description}</p>
+                      <p className="text-body font-medium text-foreground group-hover:text-primary transition-colors">{insight.title}</p>
+                      <p className="text-small text-muted-foreground leading-relaxed mt-1">{insight.description}</p>
                       {insight.trend && (
-                        <div className="flex items-center gap-1 mt-1">
+                        <div className="flex items-center gap-2 mt-2">
                           {insight.trend === 'UP' ? (
-                            <TrendingUp className="h-3 w-3 text-green-500" />
+                            <TrendingUp className="h-4 w-4 text-success" />
                           ) : insight.trend === 'DOWN' ? (
-                            <TrendingDown className="h-3 w-3 text-red-500" />
+                            <TrendingDown className="h-4 w-4 text-destructive" />
                           ) : null}
                           {insight.changePercentage && (
-                            <span className="text-xs text-gray-500">
+                            <span className={`text-small font-medium ${
+                              insight.changePercentage > 0 ? 'text-success' : 'text-destructive'
+                            }`}>
                               {insight.changePercentage > 0 ? '+' : ''}{insight.changePercentage}%
                             </span>
                           )}
@@ -214,30 +248,37 @@ export function CFOInsightsWidget({ onOpenChat }: CFOInsightsWidgetProps) {
               </div>
             </div>
 
-            {/* Top Recommendations */}
+            {/* Premium Priority Actions */}
             <div>
-              <h4 className="font-semibold text-sm text-gray-900 mb-2">Priority Actions</h4>
-              <div className="space-y-2">
+              <h4 className="text-subheading text-foreground mb-4 flex items-center gap-2">
+                <Target className="h-4 w-4 text-primary" />
+                Priority Actions
+              </h4>
+              <div className="space-y-3">
                 {analysis.recommendations
                   .sort((a, b) => a.priority - b.priority)
                   .slice(0, 2)
-                  .map((rec) => (
-                  <div key={rec.id} className="flex items-start gap-2 p-2 bg-gray-50 rounded">
+                  .map((rec, index) => (
+                  <div 
+                    key={rec.id} 
+                    className="flex items-start gap-3 p-4 bg-card/50 hover:bg-card border border-border/50 rounded-xl hover:shadow-sm transition-all duration-200 group"
+                    style={{ animationDelay: `${index * 100}ms` }}
+                  >
                     {getImpactIcon(rec.impact)}
                     <div className="flex-1">
-                      <p className="text-sm font-medium">{rec.title}</p>
-                      <p className="text-xs text-gray-600">{rec.description}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="outline" className="text-xs px-1 py-0">
+                      <p className="text-body font-medium text-foreground group-hover:text-primary transition-colors">{rec.title}</p>
+                      <p className="text-small text-muted-foreground leading-relaxed mt-1">{rec.description}</p>
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
+                        <Badge variant="outline" className="text-small px-2 py-1 border-primary/20 text-primary">
                           {rec.timeframe}
                         </Badge>
                         {rec.potentialSavings && (
-                          <span className="text-xs text-green-600 font-medium">
+                          <span className="text-small text-success font-semibold bg-success/10 px-2 py-1 rounded-lg">
                             Save ${rec.potentialSavings.toLocaleString()}
                           </span>
                         )}
                         {rec.potentialRevenue && (
-                          <span className="text-xs text-blue-600 font-medium">
+                          <span className="text-small text-primary font-semibold bg-primary/10 px-2 py-1 rounded-lg">
                             +${rec.potentialRevenue.toLocaleString()}
                           </span>
                         )}
@@ -248,7 +289,10 @@ export function CFOInsightsWidget({ onOpenChat }: CFOInsightsWidgetProps) {
               </div>
             </div>
 
-            <Button onClick={onOpenChat} className="w-full" variant="outline">
+            <Button 
+              onClick={onOpenChat} 
+              className="w-full btn-primary shadow-md hover:shadow-lg transition-all duration-200 py-3"
+            >
               <MessageSquare className="h-4 w-4 mr-2" />
               Discuss with CFO AI
             </Button>

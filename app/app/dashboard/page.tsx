@@ -11,6 +11,7 @@ import { FinancialSummary } from '@/components/dashboard/financial-summary'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import DashboardWithCFO from '@/components/dashboard/dashboard-with-cfo'
 import DashboardContent from '@/components/dashboard/dashboard-content'
+import { TrendingUp, FileText, Calendar, Users } from 'lucide-react'
 
 async function getDashboardData(userId: string) {
   const [
@@ -116,79 +117,101 @@ export default async function DashboardPage() {
 
   return (
     <DashboardWithCFO>
-      <div className="p-6 max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {dashboardData.user?.firstName || 'there'}!
-          </h1>
-          <p className="text-gray-600 mt-1">
-            {dashboardData.user?.companyName ? `Here's what's happening at ${dashboardData.user.companyName}` : "Here's what's happening with your business"} today
-          </p>
+      <div className="min-h-screen bg-gradient-background">
+        <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="mb-10 animate-fade-in">
+            <h1 className="text-heading text-foreground mb-3">
+              Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {dashboardData.user?.firstName || 'there'}!
+            </h1>
+            <p className="text-body text-muted-foreground">
+              {dashboardData.user?.companyName ? `Here's what's happening at ${dashboardData.user.companyName}` : "Here's what's happening with your business"} today
+            </p>
+          </div>
+
+          {/* Premium Financial Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            <Card className="card-premium-elevated animate-slide-in-up group hover:scale-105 transition-all duration-300">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-small text-muted-foreground font-medium flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-success"></div>
+                  Total Revenue
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-financial-large text-financial-positive mb-2">
+                  ${dashboardData.businessMetrics.totalRevenue.toLocaleString()}
+                </div>
+                <p className="text-small text-muted-foreground flex items-center gap-1">
+                  <TrendingUp className="h-3 w-3 text-success" />
+                  All time
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="card-premium-elevated animate-slide-in-up group hover:scale-105 transition-all duration-300" style={{ animationDelay: '100ms' }}>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-small text-muted-foreground font-medium flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-warning"></div>
+                  Outstanding Invoices
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-financial-large text-warning mb-2">
+                  ${dashboardData.businessMetrics.pendingInvoices.toLocaleString()}
+                </div>
+                <p className="text-small text-muted-foreground flex items-center gap-1">
+                  <FileText className="h-3 w-3 text-warning" />
+                  {dashboardData.businessMetrics.totalInvoices} total invoices
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="card-premium-elevated animate-slide-in-up group hover:scale-105 transition-all duration-300" style={{ animationDelay: '200ms' }}>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-small text-muted-foreground font-medium flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-destructive"></div>
+                  Monthly Expenses
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-financial-large text-financial-negative mb-2">
+                  ${dashboardData.businessMetrics.monthlyExpenses.toLocaleString()}
+                </div>
+                <p className="text-small text-muted-foreground flex items-center gap-1">
+                  <Calendar className="h-3 w-3 text-destructive" />
+                  This month
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="card-premium-elevated animate-slide-in-up group hover:scale-105 transition-all duration-300" style={{ animationDelay: '300ms' }}>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-small text-muted-foreground font-medium flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-primary"></div>
+                  Active Projects
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-financial-large text-primary mb-2">
+                  {dashboardData.businessMetrics.activeProjects}
+                </div>
+                <p className="text-small text-muted-foreground flex items-center gap-1">
+                  <Users className="h-3 w-3 text-primary" />
+                  {dashboardData.businessMetrics.totalCustomers} customers, {dashboardData.businessMetrics.totalVendors} vendors
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <DashboardContent
+            businessMetrics={dashboardData.businessMetrics}
+            recentInvoices={dashboardData.recentInvoices}
+            recentTransactions={dashboardData.recentTransactions}
+            upcomingTasks={dashboardData.upcomingTasks}
+            bills={dashboardData.bills}
+          />
         </div>
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Revenue</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                ${dashboardData.businessMetrics.totalRevenue.toLocaleString()}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">All time</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Outstanding Invoices</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">
-                ${dashboardData.businessMetrics.pendingInvoices.toLocaleString()}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {dashboardData.businessMetrics.totalInvoices} total invoices
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Monthly Expenses</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                ${dashboardData.businessMetrics.monthlyExpenses.toLocaleString()}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">This month</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Active Projects</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
-                {dashboardData.businessMetrics.activeProjects}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {dashboardData.businessMetrics.totalCustomers} customers, {dashboardData.businessMetrics.totalVendors} vendors
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <DashboardContent
-          businessMetrics={dashboardData.businessMetrics}
-          recentInvoices={dashboardData.recentInvoices}
-          recentTransactions={dashboardData.recentTransactions}
-          upcomingTasks={dashboardData.upcomingTasks}
-          bills={dashboardData.bills}
-        />
       </div>
     </DashboardWithCFO>
   )

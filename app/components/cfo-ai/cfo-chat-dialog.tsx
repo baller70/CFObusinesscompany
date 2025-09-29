@@ -15,7 +15,8 @@ import {
   DollarSign,
   TrendingDown,
   Target,
-  AlertCircle
+  AlertCircle,
+  Zap
 } from 'lucide-react'
 import { CFOChatMessage } from '@/lib/types'
 import { useToast } from '@/hooks/use-toast'
@@ -198,52 +199,63 @@ What would you like to discuss first?`,
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Brain className="h-5 w-5 text-blue-600" />
-            CFO AI Advisor
-            <Badge variant="secondary" className="text-xs">
-              Debt Reduction Specialist
-            </Badge>
+      <DialogContent className="max-w-5xl h-[85vh] flex flex-col bg-gradient-background border-0 shadow-premium-xl">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/50">
+          <DialogTitle className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center shadow-md">
+              <Brain className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-subheading text-foreground">CFO AI Advisor</h2>
+              <div className="flex items-center gap-2 mt-1">
+                <Badge className="bg-success/10 text-success border-success/20 text-small px-2 py-0.5">
+                  <div className="w-1.5 h-1.5 bg-success rounded-full mr-1.5 animate-pulse"></div>
+                  Debt Reduction Specialist
+                </Badge>
+                <Badge variant="outline" className="text-small px-2 py-0.5 border-primary/20 text-primary">
+                  Always Available
+                </Badge>
+              </div>
+            </div>
           </DialogTitle>
         </DialogHeader>
         
         <div className="flex-1 flex flex-col min-h-0">
-          <ScrollArea className="flex-1 p-4">
-            <div className="space-y-4">
-              {messages.map((message) => (
+          <ScrollArea className="flex-1 px-6 py-4">
+            <div className="space-y-6">
+              {messages.map((message, index) => (
                 <div
                   key={message.id}
-                  className={`flex items-start gap-3 ${
+                  className={`flex items-start gap-4 animate-slide-in-up ${
                     message.role === 'user' ? 'flex-row-reverse' : 'flex-row'
                   }`}
+                  style={{ animationDelay: `${index * 100}ms` }}
                 >
-                  <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                  <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${
                     message.role === 'user' 
-                      ? 'bg-blue-600 text-white' 
-                      : 'bg-gray-100 text-gray-600'
+                      ? 'bg-gradient-to-br from-primary to-blue-600 text-white' 
+                      : 'bg-gradient-to-br from-muted to-muted/50 text-muted-foreground border border-border/50'
                   }`}>
                     {message.role === 'user' ? (
-                      <User className="h-4 w-4" />
+                      <User className="h-5 w-5" />
                     ) : (
-                      <Brain className="h-4 w-4" />
+                      <Brain className="h-5 w-5" />
                     )}
                   </div>
                   
-                  <div className={`flex-1 max-w-[80%] ${
+                  <div className={`flex-1 max-w-[75%] ${
                     message.role === 'user' ? 'text-right' : 'text-left'
                   }`}>
-                    <div className={`inline-block p-3 rounded-lg ${
+                    <div className={`inline-block p-4 rounded-xl shadow-sm ${
                       message.role === 'user'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-900'
+                        ? 'bg-gradient-to-br from-primary to-blue-600 text-white'
+                        : 'bg-card border border-border/50 text-foreground'
                     }`}>
-                      <div className="whitespace-pre-wrap text-sm">
+                      <div className="whitespace-pre-wrap text-body leading-relaxed">
                         {message.content}
                       </div>
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">
+                    <div className="text-small text-muted-foreground mt-2 px-1">
                       {message.timestamp.toLocaleTimeString()}
                     </div>
                   </div>
@@ -251,13 +263,13 @@ What would you like to discuss first?`,
               ))}
               
               {isLoading && (
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-gray-100 text-gray-600">
-                    <Brain className="h-4 w-4" />
+                <div className="flex items-start gap-4 animate-fade-in">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br from-muted to-muted/50 text-muted-foreground border border-border/50 shadow-sm">
+                    <Brain className="h-5 w-5" />
                   </div>
-                  <div className="flex items-center gap-2 p-3 bg-gray-100 rounded-lg">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm text-gray-600">CFO is thinking...</span>
+                  <div className="flex items-center gap-3 p-4 bg-primary/5 rounded-xl border border-primary/10">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    <span className="text-body text-foreground font-medium">CFO is analyzing your question...</span>
                   </div>
                 </div>
               )}
@@ -265,22 +277,26 @@ What would you like to discuss first?`,
             <div ref={messagesEndRef} />
           </ScrollArea>
 
-          {/* Quick Actions */}
+          {/* Premium Quick Actions */}
           {messages.length <= 1 && !isLoading && (
-            <div className="p-4 border-t bg-gray-50">
-              <p className="text-sm text-gray-600 mb-3">Quick questions:</p>
-              <div className="grid grid-cols-2 gap-2">
+            <div className="px-6 py-4 border-t border-border/50 bg-gradient-to-r from-muted/20 to-transparent">
+              <p className="text-body text-foreground font-medium mb-4 flex items-center gap-2">
+                <Zap className="h-4 w-4 text-warning" />
+                Quick questions to get started:
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {quickActions.map((action, index) => (
                   <Button
                     key={index}
-                    variant="outline"
-                    size="sm"
+                    variant="ghost"
                     onClick={() => handleQuickAction(action.message)}
-                    className="justify-start text-left h-auto p-2"
+                    className="justify-start text-left h-auto p-4 group hover:bg-primary/5 hover:shadow-sm border border-border/30 rounded-xl transition-all duration-200"
                   >
-                    <div className="flex items-center gap-2">
-                      {action.icon}
-                      <span className="text-xs">{action.label}</span>
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                        {action.icon}
+                      </div>
+                      <span className="text-small font-medium text-foreground group-hover:text-primary transition-colors">{action.label}</span>
                     </div>
                   </Button>
                 ))}
@@ -288,26 +304,26 @@ What would you like to discuss first?`,
             </div>
           )}
 
-          {/* Message Input */}
-          <div className="p-4 border-t">
-            <div className="flex gap-2">
+          {/* Premium Message Input */}
+          <div className="px-6 py-4 border-t border-border/50 bg-card">
+            <div className="flex gap-3">
               <Input
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Ask your CFO anything about your finances..."
                 disabled={isLoading}
-                className="flex-1"
+                className="flex-1 h-12 focus-premium rounded-xl border-border/50 bg-background/50"
               />
               <Button 
                 onClick={sendMessage} 
                 disabled={!inputMessage.trim() || isLoading}
-                size="icon"
+                className="h-12 px-6 btn-primary shadow-md hover:shadow-lg transition-all duration-200"
               >
                 {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
-                  <Send className="h-4 w-4" />
+                  <Send className="h-5 w-5" />
                 )}
               </Button>
             </div>
