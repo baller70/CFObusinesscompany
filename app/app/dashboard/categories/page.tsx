@@ -1,7 +1,7 @@
-import { getServerSession } from 'next-auth'
+'use client'
+
+import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
-import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/db'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -10,24 +10,16 @@ import { Input } from '@/components/ui/input'
 import { Plus, Tag, TrendingUp, TrendingDown, DollarSign, Percent, Edit, Trash2, Search, Filter } from 'lucide-react'
 import { CategoryActions } from '@/components/categories/category-actions'
 import Link from 'next/link'
+import { toast } from 'sonner'
 
-async function getCategoriesData(userId: string) {
-  const [categories, categoryStats] = await Promise.all([
-    Promise.resolve([]),
-    Promise.resolve([])
-  ])
-
-  return { categories, categoryStats }
-}
-
-export default async function CategoriesPage() {
-  const session = await getServerSession(authOptions)
+export default function CategoriesPage() {
+  const { data: session, status } = useSession() || {}
+  
+  if (status === 'loading') return <div className="p-6">Loading...</div>
   
   if (!session?.user?.id) {
     redirect('/auth/signin')
   }
-
-  const { categories, categoryStats } = await getCategoriesData(session.user.id)
 
   // Mock data for demonstration
   const mockCategories = [
@@ -283,7 +275,12 @@ export default async function CategoriesPage() {
                   className="pl-10"
                 />
               </div>
-              <Button variant="outline">
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  toast.info('Category filters: Type (Income/Expense), Status (Active/Inactive), Budget Status (Over/Under Budget), Tax Deductible status')
+                }}
+              >
                 <Filter className="h-4 w-4 mr-2" />
                 Filter
               </Button>
@@ -421,10 +418,48 @@ export default async function CategoriesPage() {
                     </div>
 
                     <div className="flex justify-between items-center mt-4 pt-4 border-t border-green-200">
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          const newWindow = window.open('', '_blank', 'width=800,height=600')
+                          if (newWindow) {
+                            newWindow.document.write(`
+                              <html>
+                                <head>
+                                  <title>Transactions - ${category.name}</title>
+                                  <style>
+                                    body { font-family: Arial, sans-serif; margin: 20px; }
+                                    .transaction { padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 5px; }
+                                  </style>
+                                </head>
+                                <body>
+                                  <h1>Transactions for ${category.name}</h1>
+                                  <p><strong>Category Type:</strong> ${category.type}</p>
+                                  <p><strong>Total Amount:</strong> +$${totalAmount.toLocaleString()}</p>
+                                  <h3>Recent Transactions (${category._count.transactions})</h3>
+                                  ${category.transactions.map((trans, idx) => 
+                                    `<div class="transaction">Transaction ${idx + 1}: $${trans.amount.toLocaleString()}</div>`
+                                  ).join('')}
+                                  <p style="margin-top: 20px; color: #666;">This shows a sample of transactions for this category.</p>
+                                </body>
+                              </html>
+                            `)
+                            newWindow.document.close()
+                          } else {
+                            toast.info(`Viewing transactions for ${category.name} category`)
+                          }
+                        }}
+                      >
                         View Transactions
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          toast.info(`Opening ${category.name} category for editing - you can modify name, description, color, and budget settings.`)
+                        }}
+                      >
                         Edit Category
                       </Button>
                     </div>
@@ -500,10 +535,60 @@ export default async function CategoriesPage() {
                     </div>
 
                     <div className="flex justify-between items-center mt-4 pt-4 border-t border-red-200">
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          const newWindow = window.open('', '_blank', 'width=800,height=600')
+                          if (newWindow) {
+                            newWindow.document.write(`
+                              <html>
+                                <head>
+                                  <title>Expense Transactions - ${category.name}</title>
+                                  <style>
+                                    body { font-family: Arial, sans-serif; margin: 20px; }
+                                    .transaction { padding: 10px; margin: 5px 0; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 5px; }
+                                    .budget-info { background: #f0f9ff; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+                                  </style>
+                                </head>
+                                <body>
+                                  <div class="budget-info">
+                                    <h1>Expense Transactions - ${category.name}</h1>
+                                    <p><strong>Total Spent:</strong> $${totalAmount.toLocaleString()}</p>
+                                    ${budgetUsage ? `
+                                      <p><strong>Budget:</strong> $${budgetUsage.limit.toLocaleString()}</p>
+                                      <p><strong>Remaining:</strong> $${(budgetUsage.limit - budgetUsage.spent).toLocaleString()}</p>
+                                      <p><strong>Usage:</strong> ${budgetUsage.percentage.toFixed(0)}%</p>
+                                    ` : ''}
+                                  </div>
+                                  <h3>Recent Transactions (${category._count.transactions})</h3>
+                                  ${category.transactions.map((trans, idx) => 
+                                    `<div class="transaction">Expense ${idx + 1}: -$${Math.abs(trans.amount).toLocaleString()}</div>`
+                                  ).join('')}
+                                  <p style="margin-top: 20px; color: #666;">This shows expense transactions for this category.</p>
+                                </body>
+                              </html>
+                            `)
+                            newWindow.document.close()
+                          } else {
+                            toast.info(`Viewing expense transactions for ${category.name}`)
+                          }
+                        }}
+                      >
                         View Transactions
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          const budgetUsage = getBudgetUsage(category)
+                          if (budgetUsage) {
+                            toast.info(`Current budget: $${budgetUsage.limit.toLocaleString()} | Used: ${budgetUsage.percentage.toFixed(0)}% | Remaining: $${(budgetUsage.limit - budgetUsage.spent).toLocaleString()}`)
+                          } else {
+                            toast.info(`Opening budget editor for ${category.name} - set spending limits and alerts.`)
+                          }
+                        }}
+                      >
                         Edit Budget
                       </Button>
                     </div>

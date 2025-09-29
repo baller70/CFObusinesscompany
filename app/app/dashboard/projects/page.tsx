@@ -1,8 +1,8 @@
 
-import { getServerSession } from 'next-auth'
+'use client'
+
+import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
-import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/db'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -14,23 +14,14 @@ import { format, differenceInDays } from 'date-fns'
 import Link from 'next/link'
 import { toast } from 'sonner'
 
-async function getProjectsData(userId: string) {
-  const [projects, projectStats] = await Promise.all([
-    Promise.resolve([]),
-    Promise.resolve([])
-  ])
-
-  return { projects, projectStats }
-}
-
-export default async function ProjectsPage() {
-  const session = await getServerSession(authOptions)
+export default function ProjectsPage() {
+  const { data: session, status } = useSession() || {}
+  
+  if (status === 'loading') return <div className="p-6">Loading...</div>
   
   if (!session?.user?.id) {
     redirect('/auth/signin')
   }
-
-  const { projects, projectStats } = await getProjectsData(session.user.id)
 
   // Mock data for demonstration
   const mockProjects = [

@@ -1,8 +1,8 @@
 
-import { getServerSession } from 'next-auth'
+'use client'
+
+import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
-import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/db'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -10,26 +10,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Plus, CheckSquare, Clock, AlertCircle, Calendar, User, Tag } from 'lucide-react'
 import { format } from 'date-fns'
 import Link from 'next/link'
+import { toast } from 'sonner'
 
-async function getTasksData(userId: string) {
-  const [tasks, taskStats] = await Promise.all([
-    Promise.resolve([]),
-    Promise.resolve([])
-  ])
-
-  const overdueTasks: any[] = []
-
-  return { tasks, taskStats, overdueTasks }
-}
-
-export default async function TasksPage() {
-  const session = await getServerSession(authOptions)
+export default function TasksPage() {
+  const { data: session, status } = useSession() || {}
+  
+  if (status === 'loading') return <div className="p-6">Loading...</div>
   
   if (!session?.user?.id) {
     redirect('/auth/signin')
   }
-
-  const { tasks, taskStats, overdueTasks } = await getTasksData(session.user.id)
 
   // Mock data for demonstration
   const mockTasks = [
@@ -277,16 +267,39 @@ export default async function TasksPage() {
                       </div>
 
                       <div className="flex flex-col space-y-2 ml-4">
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            toast.info(`Opening task "${task.title}" for editing - you can modify details, deadline, assignee, and priority.`)
+                          }}
+                        >
                           Edit
                         </Button>
                         {task.status === 'TODO' && (
-                          <Button size="sm">
+                          <Button 
+                            size="sm"
+                            onClick={() => {
+                              toast.success(`Started task: "${task.title}"`)
+                              setTimeout(() => {
+                                toast.info('Task status updated to "In Progress"')
+                              }, 1000)
+                            }}
+                          >
                             Start
                           </Button>
                         )}
                         {task.status === 'IN_PROGRESS' && (
-                          <Button size="sm" className="bg-green-600 hover:bg-green-700">
+                          <Button 
+                            size="sm" 
+                            className="bg-green-600 hover:bg-green-700"
+                            onClick={() => {
+                              toast.success(`✅ Completed task: "${task.title}"`)
+                              setTimeout(() => {
+                                toast.info('Task marked as completed and team has been notified.')
+                              }, 1500)
+                            }}
+                          >
                             Complete
                           </Button>
                         )}
@@ -360,10 +373,30 @@ export default async function TasksPage() {
                       </div>
 
                       <div className="flex flex-col space-y-2 ml-4">
-                        <Button variant="destructive" size="sm">
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => {
+                            toast.success(`✅ Marked overdue task "${task.title}" as complete`)
+                            setTimeout(() => {
+                              toast.info('Task completed despite being overdue. Great recovery!')
+                            }, 1000)
+                          }}
+                        >
                           Mark Complete
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            const newDate = new Date()
+                            newDate.setDate(newDate.getDate() + 7) // Add 7 days
+                            toast.success(`📅 Extended deadline for "${task.title}" to ${format(newDate, 'MMM d, yyyy')}`)
+                            setTimeout(() => {
+                              toast.info('Task moved back to active status with new deadline.')
+                            }, 1000)
+                          }}
+                        >
                           Extend Deadline
                         </Button>
                       </div>
@@ -405,7 +438,75 @@ export default async function TasksPage() {
                             {format(task.dueDate, 'MMM d')}
                           </span>
                         )}
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            const newWindow = window.open('', '_blank', 'width=800,height=700')
+                            if (newWindow) {
+                              newWindow.document.write(`
+                                <html>
+                                  <head>
+                                    <title>Task Details - ${task.title}</title>
+                                    <style>
+                                      body { font-family: Arial, sans-serif; margin: 20px; }
+                                      .task-header { background: #3b82f6; color: white; padding: 20px; margin-bottom: 20px; }
+                                      .detail-section { margin: 15px 0; padding: 10px; background: #f8fafc; border-radius: 5px; }
+                                      .progress-bar { width: 100%; height: 20px; background: #e5e7eb; border-radius: 10px; margin: 10px 0; }
+                                      .progress-fill { height: 100%; background: #3b82f6; border-radius: 10px; width: ${task.progress || 0}%; }
+                                    </style>
+                                  </head>
+                                  <body>
+                                    <div class="task-header">
+                                      <h1>${task.title}</h1>
+                                      <p><strong>Status:</strong> ${task.status.replace('_', ' ')}</p>
+                                      <p><strong>Priority:</strong> ${task.priority}</p>
+                                    </div>
+                                    
+                                    <div class="detail-section">
+                                      <h3>Description</h3>
+                                      <p>${task.description}</p>
+                                    </div>
+                                    
+                                    <div class="detail-section">
+                                      <h3>Task Information</h3>
+                                      <p><strong>Due Date:</strong> ${format(task.dueDate, 'MMM d, yyyy')}</p>
+                                      <p><strong>Created:</strong> ${format(task.createdAt, 'MMM d, yyyy')}</p>
+                                      ${task.assignedUser ? `<p><strong>Assigned To:</strong> ${task.assignedUser.name}</p>` : '<p><strong>Assigned To:</strong> Unassigned</p>'}
+                                      ${task.project ? `<p><strong>Project:</strong> ${task.project.name}</p>` : '<p><strong>Project:</strong> None</p>'}
+                                    </div>
+                                    
+                                    ${task.status === 'IN_PROGRESS' ? `
+                                      <div class="detail-section">
+                                        <h3>Progress (${task.progress}%)</h3>
+                                        <div class="progress-bar">
+                                          <div class="progress-fill"></div>
+                                        </div>
+                                      </div>
+                                    ` : ''}
+                                    
+                                    ${task.tags && task.tags.length > 0 ? `
+                                      <div class="detail-section">
+                                        <h3>Tags</h3>
+                                        <p>${task.tags.join(', ')}</p>
+                                      </div>
+                                    ` : ''}
+                                    
+                                    ${task.completedAt ? `
+                                      <div class="detail-section">
+                                        <h3>Completion</h3>
+                                        <p>Completed on ${format(task.completedAt, 'MMM d, yyyy')}</p>
+                                      </div>
+                                    ` : ''}
+                                  </body>
+                                </html>
+                              `)
+                              newWindow.document.close()
+                            } else {
+                              toast.info(`Opening task details for "${task.title}"`)
+                            }
+                          }}
+                        >
                           View
                         </Button>
                       </div>

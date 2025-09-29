@@ -93,7 +93,7 @@ export function EstimateActions({ estimate }: EstimateActionsProps) {
                   </div>
                   <div>
                     <h3>Estimate Items</h3>
-                    ${estimate.items.map(item => 
+                    ${estimate.items.map((item: any) => 
                       `<p>${item.description}: ${item.quantity} × $${item.rate} = $${item.amount.toLocaleString()}</p>`
                     ).join('')}
                   </div>
@@ -148,7 +148,7 @@ export function EstimateActions({ estimate }: EstimateActionsProps) {
         size="sm"
         onClick={() => {
           // Generate estimate PDF content
-          const pdfContent = `Estimate ${estimate.estimateNumber}\n\nCustomer: ${estimate.customer.name}\nAmount: $${estimate.total.toLocaleString()}\nValid Until: ${format(estimate.validUntil, 'MMM d, yyyy')}\n\nItems:\n${estimate.items.map(item => `${item.description}: ${item.quantity} × $${item.rate} = $${item.amount.toLocaleString()}`).join('\n')}`
+          const pdfContent = `Estimate ${estimate.estimateNumber}\n\nCustomer: ${estimate.customer.name}\nAmount: $${estimate.total.toLocaleString()}\nValid Until: ${format(estimate.validUntil, 'MMM d, yyyy')}\n\nItems:\n${estimate.items.map((item: any) => `${item.description}: ${item.quantity} × $${item.rate} = $${item.amount.toLocaleString()}`).join('\n')}`
           
           const blob = new Blob([pdfContent], { type: 'text/plain' })
           const url = URL.createObjectURL(blob)

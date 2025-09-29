@@ -1,7 +1,7 @@
-import { getServerSession } from 'next-auth'
+'use client'
+
+import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
-import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/db'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -13,23 +13,14 @@ import { GoalActionButtons } from '@/components/goals/goals-client'
 import Link from 'next/link'
 import { toast } from 'sonner'
 
-async function getGoalsData(userId: string) {
-  const [goals, goalStats] = await Promise.all([
-    Promise.resolve([]),
-    Promise.resolve([])
-  ])
-
-  return { goals, goalStats }
-}
-
-export default async function GoalsPage() {
-  const session = await getServerSession(authOptions)
+export default function GoalsPage() {
+  const { data: session, status } = useSession() || {}
+  
+  if (status === 'loading') return <div className="p-6">Loading...</div>
   
   if (!session?.user?.id) {
     redirect('/auth/signin')
   }
-
-  const { goals, goalStats } = await getGoalsData(session.user.id)
 
   // Mock data for demonstration
   const mockGoals = [
