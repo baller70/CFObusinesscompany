@@ -19,6 +19,9 @@ async function main() {
       firstName: 'John',
       lastName: 'Doe',
       name: 'John Doe',
+      companyName: 'Acme Corporation',
+      jobTitle: 'CEO',
+      businessType: 'SMALL_BUSINESS',
     }
   });
 

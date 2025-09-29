@@ -6,8 +6,8 @@ import { Providers } from '@/components/providers'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: "CFO Budgeting - Take Control of Your Finances",
-  description: "Comprehensive budgeting application for individuals in debt who need help creating their first budget",
+  title: "CFO Business - Comprehensive Business Accounting",
+  description: "Complete business accounting solution for invoicing, payroll, project management, and financial reporting",
 };
 
 export default function RootLayout({

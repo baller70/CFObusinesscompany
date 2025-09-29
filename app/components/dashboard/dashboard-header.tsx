@@ -25,7 +25,28 @@ import {
   LogOut,
   Bell,
   Menu,
-  X
+  X,
+  CheckSquare,
+  ArrowUpDown,
+  FileText,
+  Receipt,
+  Users,
+  FolderOpen,
+  FileBarChart,
+  DollarSign as AccountingIcon,
+  UserCheck,
+  Zap,
+  BarChart3,
+  ChevronRight,
+  Building2,
+  ShoppingCart,
+  Calculator,
+  Clock,
+  File,
+  Briefcase,
+  BookOpen,
+  TrendingUp,
+  Repeat
 } from 'lucide-react'
 
 interface DashboardHeaderProps {
