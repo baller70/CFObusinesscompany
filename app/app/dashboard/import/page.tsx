@@ -1,31 +1,49 @@
 
-import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
-import { authOptions } from "../../../lib/auth";
-import { DashboardLayout } from "../_components/dashboard-layout";
+import { getServerSession } from 'next-auth'
+import { redirect } from 'next/navigation'
+import { authOptions } from '@/lib/auth'
+import { DashboardHeader } from '@/components/dashboard/dashboard-header'
+import { CsvImportWizard } from '@/components/import/csv-import-wizard'
+import { prisma } from '@/lib/db'
+
+async function getUserData(userId: string) {
+  return await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      csvUploads: {
+        orderBy: { createdAt: 'desc' },
+        take: 10
+      }
+    }
+  })
+}
 
 export default async function ImportPage() {
-  const session = await getServerSession(authOptions);
-
-  if (!session) {
-    redirect('/auth/signin');
+  const session = await getServerSession(authOptions)
+  
+  if (!session?.user?.id) {
+    redirect('/auth/signin')
   }
 
+  const userData = await getUserData(session.user.id)
+
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Import CSV</h1>
-          <p className="text-gray-600">Upload your bank statements and transaction data</p>
-        </div>
-        
-        <div className="bg-white rounded-lg shadow p-8 text-center">
-          <h2 className="text-xl font-semibold mb-4">Coming Soon</h2>
-          <p className="text-gray-600">
-            CSV import functionality is being developed and will be available soon.
+    <div className="min-h-screen bg-gray-50">
+      <DashboardHeader user={userData} />
+      
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">Import Financial Data</h1>
+          <p className="text-gray-600 mt-1">
+            Upload CSV files from your bank, credit cards, or other financial institutions
           </p>
         </div>
-      </div>
-    </DashboardLayout>
-  );
+
+        <CsvImportWizard 
+          userId={session.user.id}
+          recentUploads={userData?.csvUploads || []}
+        />
+      </main>
+    </div>
+  )
 }

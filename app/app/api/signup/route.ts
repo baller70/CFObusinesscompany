@@ -1,95 +1,101 @@
 
-import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
-import { prisma } from "../../../lib/db";
+import { NextResponse } from 'next/server'
+import bcrypt from 'bcryptjs'
+import { prisma } from '@/lib/db'
+import { z } from 'zod'
 
-export async function POST(request: NextRequest) {
+const signupSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+  firstName: z.string().min(1),
+  lastName: z.string().optional()
+})
+
+export async function POST(request: Request) {
   try {
-    const { email, password, firstName, lastName } = await request.json();
-
-    if (!email || !password) {
-      return NextResponse.json(
-        { error: "Email and password are required" },
-        { status: 400 }
-      );
-    }
+    const body = await request.json()
+    const { email, password, firstName, lastName } = signupSchema.parse(body)
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
       where: { email }
-    });
+    })
 
     if (existingUser) {
       return NextResponse.json(
-        { error: "User already exists with this email" },
+        { error: 'User already exists with this email' },
         { status: 400 }
-      );
+      )
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12);
+    const hashedPassword = await bcrypt.hash(password, 12)
 
     // Create user
     const user = await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
-        firstName: firstName || null,
-        lastName: lastName || null,
-        name: `${firstName || ''} ${lastName || ''}`.trim() || null,
+        firstName,
+        lastName,
+        name: `${firstName} ${lastName || ''}`.trim()
       }
-    });
+    })
 
-    // Create default categories for the user
+    // Create default categories
     const defaultCategories = [
-      { name: "Food & Dining", color: "#FF6B6B", icon: "utensils", type: "EXPENSE" as const },
-      { name: "Transportation", color: "#4ECDC4", icon: "car", type: "EXPENSE" as const },
-      { name: "Shopping", color: "#45B7D1", icon: "shopping-bag", type: "EXPENSE" as const },
-      { name: "Entertainment", color: "#96CEB4", icon: "music", type: "EXPENSE" as const },
-      { name: "Bills & Utilities", color: "#FECA57", icon: "zap", type: "EXPENSE" as const },
-      { name: "Healthcare", color: "#FF9FF3", icon: "heart", type: "EXPENSE" as const },
-      { name: "Education", color: "#54A0FF", icon: "book", type: "EXPENSE" as const },
-      { name: "Personal Care", color: "#5F27CD", icon: "user", type: "EXPENSE" as const },
-      { name: "Gifts & Donations", color: "#00D2D3", icon: "gift", type: "EXPENSE" as const },
-      { name: "Other Expenses", color: "#FF9F43", icon: "more-horizontal", type: "EXPENSE" as const },
-      { name: "Salary", color: "#2ED573", icon: "dollar-sign", type: "INCOME" as const },
-      { name: "Freelance", color: "#3742FA", icon: "briefcase", type: "INCOME" as const },
-      { name: "Other Income", color: "#2F3542", icon: "trending-up", type: "INCOME" as const },
-    ];
+      { name: 'Housing', type: 'EXPENSE', color: '#3B82F6', icon: 'home' },
+      { name: 'Transportation', type: 'EXPENSE', color: '#10B981', icon: 'car' },
+      { name: 'Food & Dining', type: 'EXPENSE', color: '#F59E0B', icon: 'utensils' },
+      { name: 'Shopping', type: 'EXPENSE', color: '#EF4444', icon: 'shopping-bag' },
+      { name: 'Healthcare', type: 'EXPENSE', color: '#8B5CF6', icon: 'heart' },
+      { name: 'Entertainment', type: 'EXPENSE', color: '#F97316', icon: 'play' },
+      { name: 'Bills & Utilities', type: 'EXPENSE', color: '#6366F1', icon: 'file-text' },
+      { name: 'Salary', type: 'INCOME', color: '#059669', icon: 'dollar-sign' },
+      { name: 'Other Income', type: 'INCOME', color: '#0D9488', icon: 'plus' },
+      { name: 'Other Expenses', type: 'EXPENSE', color: '#64748B', icon: 'more-horizontal' }
+    ]
 
-    await prisma.category.createMany({
-      data: defaultCategories.map(cat => ({
-        ...cat,
-        userId: user.id,
-        isDefault: true
-      }))
-    });
+    for (const category of defaultCategories) {
+      await prisma.category.create({
+        data: {
+          userId: user.id,
+          name: category.name,
+          type: category.type as 'EXPENSE' | 'INCOME',
+          color: category.color,
+          icon: category.icon,
+          isDefault: true
+        }
+      })
+    }
 
-    // Initialize financial metrics
+    // Create initial financial metrics
     await prisma.financialMetrics.create({
       data: {
         userId: user.id,
         monthlyIncome: 0,
         monthlyExpenses: 0,
-        monthlyBurnRate: 0,
         totalDebt: 0,
         totalAssets: 0,
-        netWorth: 0,
-        emergencyFundGoal: 1000, // Default emergency fund goal
-        debtToIncomeRatio: 0,
+        netWorth: 0
       }
-    });
+    })
 
-    return NextResponse.json(
-      { message: "User created successfully", userId: user.id },
-      { status: 201 }
-    );
-
+    return NextResponse.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName
+      }
+    })
   } catch (error) {
-    console.error("Signup error:", error);
+    console.error('Signup error:', error)
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: 'Internal server error' },
       { status: 500 }
-    );
+    )
   }
 }

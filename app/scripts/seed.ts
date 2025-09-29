@@ -135,8 +135,10 @@ async function main() {
   console.log('💳 Created sample debt');
 
   // Create financial metrics
-  await prisma.financialMetrics.create({
-    data: {
+  await prisma.financialMetrics.upsert({
+    where: { userId: testUser.id },
+    update: {},
+    create: {
       userId: testUser.id,
       monthlyIncome: 3500,
       monthlyExpenses: 1343.49,

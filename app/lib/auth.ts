@@ -1,36 +1,36 @@
 
-import { NextAuthOptions } from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
-import { prisma } from "./db";
-import bcrypt from "bcryptjs";
+import { NextAuthOptions } from 'next-auth'
+import CredentialsProvider from 'next-auth/providers/credentials'
+import { PrismaAdapter } from '@next-auth/prisma-adapter'
+import { prisma } from './db'
+import bcrypt from 'bcryptjs'
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
     CredentialsProvider({
-      name: "credentials",
+      name: 'credentials',
       credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          throw new Error("Missing credentials");
+          return null
         }
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email }
-        });
+        })
 
-        if (!user?.password) {
-          throw new Error("Invalid credentials");
+        if (!user || !user.password) {
+          return null
         }
 
-        const isValid = await bcrypt.compare(credentials.password, user.password);
-        
+        const isValid = await bcrypt.compare(credentials.password, user.password)
+
         if (!isValid) {
-          throw new Error("Invalid credentials");
+          return null
         }
 
         return {
@@ -38,34 +38,33 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
           firstName: user.firstName,
-          lastName: user.lastName,
-        };
+          lastName: user.lastName
+        }
       }
     })
   ],
   session: {
-    strategy: "jwt",
+    strategy: 'jwt'
   },
   pages: {
-    signIn: "/auth/signin",
+    signIn: '/auth/signin',
+    signOut: '/auth/signout'
   },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
-        token.firstName = (user as any).firstName;
-        token.lastName = (user as any).lastName;
+        token.firstName = user.firstName
+        token.lastName = user.lastName
       }
-      return token;
+      return token
     },
     async session({ session, token }) {
       if (token) {
-        session.user.id = token.id as string;
-        session.user.firstName = token.firstName as string;
-        session.user.lastName = token.lastName as string;
+        session.user.id = token.sub!
+        session.user.firstName = token.firstName
+        session.user.lastName = token.lastName
       }
-      return session;
+      return session
     }
-  },
-  secret: process.env.NEXTAUTH_SECRET,
-};
+  }
+}
