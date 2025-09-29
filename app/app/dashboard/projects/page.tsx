@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Plus, FolderOpen, Calendar, DollarSign, Users, BarChart3, Clock, CheckCircle, AlertTriangle } from 'lucide-react'
 import { format, differenceInDays } from 'date-fns'
 import Link from 'next/link'
+import { toast } from 'sonner'
 
 async function getProjectsData(userId: string) {
   const [projects, projectStats] = await Promise.all([
@@ -341,14 +342,89 @@ export default async function ProjectsPage() {
                   </div>
 
                   <div className="flex justify-between">
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        const newWindow = window.open('', '_blank', 'width=900,height=700')
+                        if (newWindow) {
+                          newWindow.document.write(`
+                            <html>
+                              <head>
+                                <title>Project Details - ${project.name}</title>
+                                <style>
+                                  body { font-family: Arial, sans-serif; margin: 20px; }
+                                  .project-header { border-bottom: 2px solid #ccc; padding-bottom: 20px; margin-bottom: 20px; }
+                                  .section { margin: 20px 0; }
+                                  .task-item { padding: 10px; margin: 5px 0; background: #f5f5f5; border-radius: 5px; }
+                                </style>
+                              </head>
+                              <body>
+                                <div class="project-header">
+                                  <h1>${project.name}</h1>
+                                  <p><strong>Status:</strong> ${project.status}</p>
+                                  <p><strong>Priority:</strong> ${project.priority}</p>
+                                  <p><strong>Progress:</strong> ${project.progress}%</p>
+                                </div>
+                                <div class="section">
+                                  <h3>Description</h3>
+                                  <p>${project.description}</p>
+                                </div>
+                                <div class="section">
+                                  <h3>Budget Information</h3>
+                                  <p><strong>Total Budget:</strong> $${project.budget.toLocaleString()}</p>
+                                  <p><strong>Spent:</strong> $${project.spent.toLocaleString()}</p>
+                                  <p><strong>Remaining:</strong> $${(project.budget - project.spent).toLocaleString()}</p>
+                                </div>
+                                <div class="section">
+                                  <h3>Timeline</h3>
+                                  <p><strong>Start Date:</strong> ${format(project.startDate, 'MMM d, yyyy')}</p>
+                                  <p><strong>End Date:</strong> ${format(project.endDate, 'MMM d, yyyy')}</p>
+                                  <p><strong>Days Remaining:</strong> ${differenceInDays(project.endDate, new Date())}</p>
+                                </div>
+                                <div class="section">
+                                  <h3>Team Members</h3>
+                                  ${project.teamMembers.map(member => `<p>${member.name} - ${member.role}</p>`).join('')}
+                                </div>
+                                <div class="section">
+                                  <h3>Tasks (${project.tasks.length} total)</h3>
+                                  <div class="task-item">✓ Completed: ${project.tasks.filter(t => t.status === 'COMPLETED').length}</div>
+                                  <div class="task-item">◉ In Progress: ${project.tasks.filter(t => t.status === 'IN_PROGRESS').length}</div>
+                                  <div class="task-item">○ To Do: ${project.tasks.filter(t => t.status === 'TODO').length}</div>
+                                </div>
+                              </body>
+                            </html>
+                          `)
+                          newWindow.document.close()
+                        } else {
+                          toast.info(`Opening detailed view for ${project.name}...`)
+                        }
+                      }}
+                    >
                       View Details
                     </Button>
                     <div className="space-x-2">
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          toast.info(`Opening ${project.name} for editing - you can modify budget, timeline, team members, and tasks.`)
+                        }}
+                      >
                         Edit
                       </Button>
-                      <Button size="sm">
+                      <Button 
+                        size="sm"
+                        onClick={() => {
+                          const newProgress = Math.min(project.progress + 10, 100)
+                          toast.success(`Project progress updated from ${project.progress}% to ${newProgress}%`)
+                          setTimeout(() => {
+                            if (newProgress === 100) {
+                              toast.success(`🎉 Project ${project.name} completed!`)
+                            }
+                          }, 1500)
+                        }}
+                      >
                         Update Progress
                       </Button>
                     </div>
@@ -396,7 +472,62 @@ export default async function ProjectsPage() {
                       </div>
                     </div>
 
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        const newWindow = window.open('', '_blank', 'width=800,height=600')
+                        if (newWindow) {
+                          newWindow.document.write(`
+                            <html>
+                              <head>
+                                <title>Project Report - ${project.name}</title>
+                                <style>
+                                  body { font-family: Arial, sans-serif; margin: 20px; }
+                                  .report-header { background: #4CAF50; color: white; padding: 20px; margin-bottom: 20px; }
+                                  .metric { display: inline-block; margin: 10px; padding: 15px; background: #f5f5f5; border-radius: 5px; text-align: center; }
+                                </style>
+                              </head>
+                              <body>
+                                <div class="report-header">
+                                  <h1>Project Completion Report</h1>
+                                  <h2>${project.name}</h2>
+                                  <p>Status: COMPLETED ✓</p>
+                                </div>
+                                <h3>Final Project Metrics</h3>
+                                <div class="metric">
+                                  <h4>Budget Performance</h4>
+                                  <p>Budget: $${project.budget.toLocaleString()}</p>
+                                  <p>Spent: $${project.spent.toLocaleString()}</p>
+                                  <p>Variance: $${(project.budget - project.spent).toLocaleString()}</p>
+                                </div>
+                                <div class="metric">
+                                  <h4>Timeline</h4>
+                                  <p>Planned: ${format(project.startDate, 'MMM d')} - ${format(project.endDate, 'MMM d, yyyy')}</p>
+                                  <p>Completed: ${project.completedAt ? format(project.completedAt, 'MMM d, yyyy') : 'N/A'}</p>
+                                </div>
+                                <div class="metric">
+                                  <h4>Tasks</h4>
+                                  <p>Total Tasks: ${project.tasks.length}</p>
+                                  <p>Completion Rate: 100%</p>
+                                </div>
+                                <div class="metric">
+                                  <h4>Team</h4>
+                                  <p>Team Size: ${project.teamMembers.length}</p>
+                                  <p>Customer: ${project.customer.name}</p>
+                                </div>
+                                <h3>Summary</h3>
+                                <p>Project successfully completed ${project.completedAt ? 'on ' + format(project.completedAt, 'MMM d, yyyy') : ''}</p>
+                                <p>${project.description}</p>
+                              </body>
+                            </html>
+                          `)
+                          newWindow.document.close()
+                        } else {
+                          toast.info(`Generating completion report for ${project.name}...`)
+                        }
+                      }}
+                    >
                       View Report
                     </Button>
                   </div>
@@ -438,10 +569,27 @@ export default async function ProjectsPage() {
                     </div>
 
                     <div className="space-x-2">
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          toast.info(`Opening project plan editor for ${project.name} - modify timeline, budget, team assignments, and task breakdown.`)
+                        }}
+                      >
                         Edit Plan
                       </Button>
-                      <Button size="sm">
+                      <Button 
+                        size="sm"
+                        onClick={() => {
+                          toast.success(`🚀 Starting project: ${project.name}`)
+                          setTimeout(() => {
+                            toast.info('Project status updated to "IN PROGRESS" and team members have been notified.')
+                          }, 1500)
+                          setTimeout(() => {
+                            toast.success('Project kickoff meeting scheduled!')
+                          }, 3000)
+                        }}
+                      >
                         Start Project
                       </Button>
                     </div>
@@ -508,7 +656,33 @@ export default async function ProjectsPage() {
                           {format(project.endDate, 'MMM d, yyyy')}
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              toast.info(`Opening project overview for ${project.name}`)
+                              setTimeout(() => {
+                                const newWindow = window.open('', '_blank', 'width=600,height=400')
+                                if (newWindow) {
+                                  newWindow.document.write(`
+                                    <html>
+                                      <head><title>${project.name} - Overview</title></head>
+                                      <body style="font-family: Arial; margin: 20px;">
+                                        <h2>${project.name}</h2>
+                                        <p><strong>Status:</strong> ${project.status}</p>
+                                        <p><strong>Progress:</strong> ${project.progress}%</p>
+                                        <p><strong>Budget:</strong> $${project.budget.toLocaleString()} (Spent: $${project.spent.toLocaleString()})</p>
+                                        <p><strong>Timeline:</strong> ${format(project.startDate, 'MMM d')} - ${format(project.endDate, 'MMM d, yyyy')}</p>
+                                        <p><strong>Team:</strong> ${project.teamMembers.length} members</p>
+                                        <p>${project.description}</p>
+                                      </body>
+                                    </html>
+                                  `)
+                                  newWindow.document.close()
+                                }
+                              }, 500)
+                            }}
+                          >
                             View
                           </Button>
                         </td>

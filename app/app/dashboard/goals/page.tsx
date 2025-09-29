@@ -11,6 +11,7 @@ import { Plus, Target, TrendingUp, TrendingDown, Calendar, DollarSign, CheckCirc
 import { format, differenceInDays } from 'date-fns'
 import { GoalActionButtons } from '@/components/goals/goals-client'
 import Link from 'next/link'
+import { toast } from 'sonner'
 
 async function getGoalsData(userId: string) {
   const [goals, goalStats] = await Promise.all([
@@ -531,7 +532,62 @@ export default async function GoalsPage() {
                         <div className="w-20">
                           <Progress value={progressPercentage} className="h-2" />
                         </div>
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            const progressPercentage = getProgressPercentage(goal.currentAmount, goal.targetAmount)
+                            const newWindow = window.open('', '_blank', 'width=700,height=600')
+                            if (newWindow) {
+                              newWindow.document.write(`
+                                <html>
+                                  <head>
+                                    <title>Goal Details - ${goal.title}</title>
+                                    <style>
+                                      body { font-family: Arial, sans-serif; margin: 20px; }
+                                      .goal-header { background: #2563eb; color: white; padding: 20px; margin-bottom: 20px; }
+                                      .progress-bar { width: 100%; height: 20px; background: #e5e7eb; border-radius: 10px; margin: 10px 0; }
+                                      .progress-fill { height: 100%; background: #10b981; border-radius: 10px; width: ${progressPercentage}%; }
+                                      .milestone { padding: 10px; margin: 5px 0; border-radius: 5px; }
+                                      .milestone-completed { background: #dcfce7; border-left: 4px solid #22c55e; }
+                                      .milestone-pending { background: #f3f4f6; border-left: 4px solid #9ca3af; }
+                                    </style>
+                                  </head>
+                                  <body>
+                                    <div class="goal-header">
+                                      <h1>${goal.title}</h1>
+                                      <p>${goal.description}</p>
+                                      <p><strong>Type:</strong> ${goal.type.replace('_', ' ')}</p>
+                                      <p><strong>Category:</strong> ${goal.category}</p>
+                                      <p><strong>Priority:</strong> ${goal.priority}</p>
+                                    </div>
+                                    
+                                    <h3>Progress Overview</h3>
+                                    <p><strong>Progress:</strong> ${progressPercentage.toFixed(1)}%</p>
+                                    <div class="progress-bar">
+                                      <div class="progress-fill"></div>
+                                    </div>
+                                    <p><strong>Current:</strong> ${goal.type === 'CASH_FLOW' ? goal.currentAmount + ' months' : '$' + goal.currentAmount.toLocaleString()}</p>
+                                    <p><strong>Target:</strong> ${goal.type === 'CASH_FLOW' ? goal.targetAmount + ' months' : '$' + goal.targetAmount.toLocaleString()}</p>
+                                    <p><strong>Remaining:</strong> ${goal.type === 'CASH_FLOW' ? (goal.targetAmount - goal.currentAmount) + ' months' : '$' + (goal.targetAmount - goal.currentAmount).toLocaleString()}</p>
+                                    <p><strong>Target Date:</strong> ${format(goal.targetDate, 'MMM d, yyyy')}</p>
+                                    
+                                    <h3>Milestones (${goal.milestones.filter(m => m.completed).length}/${goal.milestones.length} completed)</h3>
+                                    ${goal.milestones.map(milestone => `
+                                      <div class="milestone ${milestone.completed ? 'milestone-completed' : 'milestone-pending'}">
+                                        <strong>${milestone.name}:</strong> ${goal.type === 'CASH_FLOW' ? milestone.amount + ' months' : '$' + milestone.amount.toLocaleString()}
+                                        ${milestone.completed && milestone.date ? ` - Completed on ${format(milestone.date, 'MMM d, yyyy')}` : ''}
+                                      </div>
+                                    `).join('')}
+                                  </body>
+                                </html>
+                              `)
+                              newWindow.document.close()
+                            } else {
+                              toast.info(`Opening detailed view for goal: ${goal.title}`)
+                            }
+                          }}
+                        >
                           View
                         </Button>
                       </div>

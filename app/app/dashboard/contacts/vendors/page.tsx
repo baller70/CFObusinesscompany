@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Plus, Building2, Phone, Mail, MapPin, CreditCard, FileText, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 
 async function getVendorsData(userId: string) {
   const [vendors, vendorStats, recentTransactions] = await Promise.all([
@@ -244,10 +245,70 @@ export default async function VendorsPage() {
                       </div>
 
                       <div className="flex flex-col space-y-2 ml-4">
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            const newWindow = window.open('', '_blank', 'width=800,height=600')
+                            if (newWindow) {
+                              newWindow.document.write(`
+                                <html>
+                                  <head>
+                                    <title>Vendor Scorecard - ${vendor.name}</title>
+                                    <style>
+                                      body { font-family: Arial, sans-serif; margin: 20px; }
+                                      .scorecard-header { border-bottom: 2px solid #ccc; padding-bottom: 20px; margin-bottom: 20px; }
+                                      .metric { margin: 15px 0; padding: 10px; background-color: #f5f5f5; border-radius: 5px; }
+                                    </style>
+                                  </head>
+                                  <body>
+                                    <div class="scorecard-header">
+                                      <h1>Vendor Scorecard</h1>
+                                      <h2>${vendor.name}</h2>
+                                    </div>
+                                    <div class="metric">
+                                      <strong>Total Spend:</strong> $${totalSpend.toLocaleString()}
+                                    </div>
+                                    <div class="metric">
+                                      <strong>Pending Bills:</strong> ${vendor.bills.length} bills ($${pendingAmount.toLocaleString()})
+                                    </div>
+                                    <div class="metric">
+                                      <strong>Recent Transactions:</strong> ${recentExpenses.length}
+                                    </div>
+                                    <div class="metric">
+                                      <strong>Payment Terms:</strong> ${vendor.paymentTerms || 'Standard'}
+                                    </div>
+                                    <div class="metric">
+                                      <strong>Status:</strong> ${vendor.isActive ? 'Active' : 'Inactive'}
+                                    </div>
+                                    <div class="metric">
+                                      <strong>Contact:</strong> ${vendor.email || 'N/A'} | ${vendor.phone || 'N/A'}
+                                    </div>
+                                  </body>
+                                </html>
+                              `)
+                              newWindow.document.close()
+                            } else {
+                              toast.info(`Opening scorecard for ${vendor.name}...`)
+                            }
+                          }}
+                        >
                           View Scorecard
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            if (vendor.bills.length > 0) {
+                              toast.success(`Initiating payment for ${vendor.bills.length} pending bills for ${vendor.name}`)
+                              setTimeout(() => {
+                                toast.info(`Payment queue: $${pendingAmount.toLocaleString()} total pending`)
+                              }, 1500)
+                            } else {
+                              toast.info(`No pending bills for ${vendor.name}`)
+                            }
+                          }}
+                        >
                           Pay Bills
                         </Button>
                         {vendor.bills.length > 0 && (

@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Plus, FileText, Eye, Send, DollarSign, Calendar, Search, Filter, Download, Mail, Phone, AlertCircle } from 'lucide-react'
 import { format, differenceInDays } from 'date-fns'
 import { InvoiceActions } from '@/components/invoices/invoice-actions'
+import { ExportFilterButtons, EstimateActions, DraftInvoiceActions, OverdueInvoiceActions } from '@/components/invoices/invoice-page-client'
 import Link from 'next/link'
 
 async function getInvoicesData(userId: string) {
@@ -272,14 +273,7 @@ export default async function InvoicesPage() {
                     className="pl-10"
                   />
                 </div>
-                <Button variant="outline">
-                  <Filter className="h-4 w-4 mr-2" />
-                  Filter
-                </Button>
-                <Button variant="outline">
-                  <Download className="h-4 w-4 mr-2" />
-                  Export
-                </Button>
+                <ExportFilterButtons mockInvoices={mockInvoices} />
               </div>
             </CardContent>
           </Card>
@@ -378,7 +372,15 @@ export default async function InvoicesPage() {
                       )}
                     </div>
 
-                    <InvoiceActions invoice={{ id: invoice.id, invoiceNumber: invoice.invoiceNumber, status: invoice.status }} />
+                    <InvoiceActions 
+                      invoice={{ 
+                        id: invoice.id, 
+                        invoiceNumber: invoice.invoiceNumber, 
+                        status: invoice.status,
+                        customer: invoice.customer,
+                        total: invoice.total
+                      }} 
+                    />
                   </div>
                 </CardContent>
               </Card>
@@ -454,35 +456,7 @@ export default async function InvoicesPage() {
                       )}
                     </div>
 
-                    <div className="flex flex-col space-y-2 ml-6">
-                      <Button variant="outline" size="sm">
-                        <Eye className="h-3 w-3 mr-1" />
-                        View
-                      </Button>
-
-                      {estimate.status === 'PENDING' && (
-                        <>
-                          <Button size="sm">
-                            <Send className="h-3 w-3 mr-1" />
-                            Send
-                          </Button>
-                          <Button variant="outline" size="sm">
-                            Edit
-                          </Button>
-                        </>
-                      )}
-
-                      {estimate.status === 'ACCEPTED' && !estimate.convertedToInvoice && (
-                        <Button size="sm">
-                          Convert to Invoice
-                        </Button>
-                      )}
-
-                      <Button variant="outline" size="sm">
-                        <Download className="h-3 w-3 mr-1" />
-                        PDF
-                      </Button>
-                    </div>
+                    <EstimateActions estimate={estimate} />
                   </div>
                 </CardContent>
               </Card>
@@ -521,15 +495,7 @@ export default async function InvoicesPage() {
                       </div>
                     </div>
 
-                    <div className="flex space-x-2">
-                      <Button variant="outline" size="sm">
-                        Edit
-                      </Button>
-                      <Button size="sm">
-                        <Send className="h-3 w-3 mr-1" />
-                        Send
-                      </Button>
-                    </div>
+                    <DraftInvoiceActions invoice={invoice} />
                   </div>
                 </CardContent>
               </Card>
@@ -576,14 +542,7 @@ export default async function InvoicesPage() {
                       </div>
                     </div>
 
-                    <div className="flex space-x-2">
-                      <Button variant="destructive" size="sm">
-                        Send Reminder
-                      </Button>
-                      <Button size="sm">
-                        Mark Paid
-                      </Button>
-                    </div>
+                    <OverdueInvoiceActions invoice={invoice} />
                   </div>
                 </CardContent>
               </Card>

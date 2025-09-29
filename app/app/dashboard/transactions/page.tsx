@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar, Search, Filter, Download, ArrowUpRight, ArrowDownLeft, CreditCard, Building } from 'lucide-react'
 import { format } from 'date-fns'
+import { TransactionExportFilterButtons, TransactionActions, ExpenseReceiptButton } from '@/components/transactions/transaction-page-client'
 import Link from 'next/link'
 
 async function getTransactionsData(userId: string) {
@@ -270,16 +271,7 @@ export default async function TransactionsPage() {
             <TabsTrigger value="transfers">Transfers</TabsTrigger>
           </TabsList>
 
-          <div className="flex items-center space-x-3">
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-            <Button variant="outline" size="sm">
-              <Filter className="h-4 w-4 mr-2" />
-              Filter
-            </Button>
-          </div>
+          <TransactionExportFilterButtons mockTransactions={mockTransactions} />
         </div>
 
         {/* Search and Filters */}
@@ -402,17 +394,7 @@ export default async function TransactionsPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center space-x-2">
-                        {transaction.receiptUrl && (
-                          <Button variant="outline" size="sm">
-                            <Download className="h-3 w-3 mr-1" />
-                            Receipt
-                          </Button>
-                        )}
-                        <Button variant="outline" size="sm">
-                          View
-                        </Button>
-                      </div>
+                      <TransactionActions transaction={transaction} />
                     </div>
                   </div>
                 ))}
@@ -491,7 +473,26 @@ export default async function TransactionsPage() {
                       </div>
 
                       {transaction.receiptUrl && (
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            // Simulate receipt download
+                            const receiptContent = `Expense Receipt\n\nDate: ${format(transaction.date, 'MMM d, yyyy')}\nDescription: ${transaction.description}\nAmount: $${Math.abs(transaction.amount).toLocaleString()}\nCategory: ${transaction.category?.name || 'N/A'}\nVendor: ${transaction.vendor?.name || 'N/A'}\nAccount: ${transaction.account.name}\nReference: ${transaction.reference || 'N/A'}\n\nThis is a simulated receipt download.`
+                            
+                            const blob = new Blob([receiptContent], { type: 'text/plain' })
+                            const url = URL.createObjectURL(blob)
+                            const a = document.createElement('a')
+                            a.href = url
+                            a.download = `expense-receipt-${transaction.reference || transaction.id}.txt`
+                            document.body.appendChild(a)
+                            a.click()
+                            document.body.removeChild(a)
+                            URL.revokeObjectURL(url)
+                            
+                            toast.success('Expense receipt downloaded!')
+                          }}
+                        >
                           <Download className="h-3 w-3 mr-1" />
                           Receipt
                         </Button>
