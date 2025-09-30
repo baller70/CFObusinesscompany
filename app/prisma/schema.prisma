@@ -54,6 +54,10 @@ model User {
   country       String?
   zipCode       String?
   businessType  BusinessType @default(SMALL_BUSINESS)
+  industry      String?
+  annualRevenue Float?
+  companySize   CompanySize @default(SMALL)
+  fiscalYearEnd DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -88,6 +92,21 @@ model User {
   chartOfAccounts    ChartOfAccount[]
   journalEntries     JournalEntry[]
   reconciliations    Reconciliation[]
+
+  // Advanced Financial Features
+  cashFlowForecasts  CashFlowForecast[]
+  taxOptimizations   TaxOptimization[]
+  businessInsights   BusinessInsight[]
+  aiRecommendations  AIRecommendation[]
+  scenarioAnalyses   ScenarioAnalysis[]
+  complianceTracking ComplianceTracking[]
+  creditApplications CreditApplication[]
+  industryBenchmarks IndustryBenchmark[]
+  predictiveModels   PredictiveModel[]
+  businessEntities   BusinessEntity[]
+  workflowRules      WorkflowRule[]
+  kpiTargets         KPITarget[]
+  budgetScenarios    BudgetScenario[]
 }
 
 model VerificationToken {
@@ -301,6 +320,19 @@ model FinancialMetrics {
   netWorth          Float?
   emergencyFundGoal Float?
   debtToIncomeRatio Float?
+  profitMargin      Float?
+  workingCapital    Float?
+  currentRatio      Float?
+  quickRatio        Float?
+  debtToEquityRatio Float?
+  returnOnAssets    Float?
+  returnOnEquity    Float?
+  grossMargin       Float?
+  operatingMargin   Float?
+  cashFlowFromOps   Float?
+  freeCashFlow      Float?
+  businessCreditScore Int?
+  riskScore         Float?
   lastCalculated    DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -698,7 +730,12 @@ model Receipt {
   description     String?
   cloudStoragePath String?
   ocrText         String?
+  ocrData         Json?    // Structured OCR data
+  aiAnalysis      Json?    // AI insights from receipt
   processed       Boolean  @default(false)
+  confidence      Float?   // OCR confidence score
+  taxDeductible   Boolean  @default(false)
+  businessExpense Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -706,6 +743,7 @@ model Receipt {
 
   @@index([userId, date])
   @@index([userId, processed])
+  @@index([userId, taxDeductible])
 }
 
 model Automation {
@@ -815,6 +853,527 @@ model Payment {
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 }
 
+// Advanced Financial Features
+
+model CashFlowForecast {
+  id          String   @id @default(cuid())
+  userId      String
+  period      String   // "2024-Q1", "2024-01", etc.
+  periodType  ForecastPeriod
+  startDate   DateTime
+  endDate     DateTime
+  
+  // Forecasted amounts
+  projectedIncome    Float @default(0)
+  projectedExpenses  Float @default(0)
+  projectedCashFlow  Float @default(0)
+  openingBalance     Float @default(0)
+  closingBalance     Float @default(0)
+  
+  // Confidence and scenarios
+  confidence         Float    @default(0.5)
+  scenarioType       ScenarioType @default(REALISTIC)
+  
+  // Breakdown data
+  incomeBreakdown    Json?    // Category-wise income projections
+  expenseBreakdown   Json?    // Category-wise expense projections
+  
+  // Metadata
+  modelVersion       String?
+  generatedAt        DateTime @default(now())
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, period, scenarioType])
+  @@index([userId, startDate])
+  @@index([userId, scenarioType])
+}
+
+model TaxOptimization {
+  id              String   @id @default(cuid())
+  userId          String
+  taxYear         Int
+  quarter         Int?     // 1,2,3,4 for quarterly estimates
+  
+  // Tax calculations
+  estimatedTaxableIncome Float @default(0)
+  estimatedTaxLiability  Float @default(0)
+  currentTaxPaid         Float @default(0)
+  quarterlyEstimate      Float @default(0)
+  
+  // Deductions and credits
+  standardDeduction      Float @default(0)
+  itemizedDeductions     Json? // Breakdown by category
+  businessDeductions     Json? // Business-specific deductions
+  availableCredits       Json? // Tax credits
+  
+  // Optimization suggestions
+  recommendations        Json? // AI-generated recommendations
+  potentialSavings       Float @default(0)
+  implementationSteps    Json? // Action items
+  
+  // Compliance tracking
+  documentsRequired      Json? // List of required documents
+  deadlines             Json? // Important tax deadlines
+  filingStatus          TaxFilingStatus?
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, taxYear, quarter])
+  @@index([userId, taxYear])
+}
+
+model BusinessInsight {
+  id          String      @id @default(cuid())
+  userId      String
+  type        InsightType
+  category    InsightCategory
+  title       String
+  description String
+  
+  // Insight data
+  value       Float?
+  percentage  Float?
+  trend       Trend?
+  timeframe   String?     // "last_30_days", "MTD", "YTD", etc.
+  
+  // Context and analysis
+  context     Json?       // Supporting data and context
+  analysis    String?     // AI analysis explanation
+  confidence  Float       @default(0.5)
+  
+  // Action items
+  actionable  Boolean     @default(false)
+  priority    Priority    @default(MEDIUM)
+  suggestions Json?       // Specific action suggestions
+  
+  // Metadata
+  source      String?     // Data source or model that generated this
+  isStale     Boolean     @default(false)
+  staleAt     DateTime?
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@index([userId, priority])
+  @@index([userId, actionable])
+}
+
+model AIRecommendation {
+  id              String      @id @default(cuid())
+  userId          String
+  type            RecommendationType
+  category        RecommendationCategory
+  title           String
+  description     String
+  
+  // Impact analysis
+  impactLevel     ImpactLevel
+  potentialSavings Float?
+  potentialRevenue Float?
+  riskLevel       RiskLevel   @default(LOW)
+  timeToImplement String?     // "1 week", "1 month", etc.
+  
+  // Implementation
+  steps           Json        // Step-by-step implementation guide
+  requirements    Json?       // Prerequisites or requirements
+  resources       Json?       // Needed resources
+  
+  // Status tracking
+  status          RecommendationStatus @default(PENDING)
+  implementedAt   DateTime?
+  rejectedAt      DateTime?
+  rejectionReason String?
+  
+  // Validation
+  confidence      Float       @default(0.5)
+  dataSupporting  Json?       // Supporting data and analysis
+  
+  // Priority and urgency
+  priority        Priority    @default(MEDIUM)
+  urgencyLevel    UrgencyLevel @default(NORMAL)
+  dueDate         DateTime?
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([userId, priority])
+  @@index([userId, urgencyLevel])
+}
+
+model ScenarioAnalysis {
+  id              String       @id @default(cuid())
+  userId          String
+  name            String
+  description     String?
+  scenarioType    ScenarioType @default(REALISTIC)
+  
+  // Scenario parameters
+  timeHorizon     String       // "3_months", "1_year", "3_years"
+  startDate       DateTime
+  endDate         DateTime
+  
+  // Base assumptions
+  revenueGrowth   Float?       // % growth rate
+  expenseGrowth   Float?       // % growth rate
+  inflationRate   Float?       // Expected inflation
+  customVariables Json?        // Custom scenario variables
+  
+  // Results
+  projectedRevenue   Float?
+  projectedExpenses  Float?
+  projectedProfit    Float?
+  projectedCashFlow  Float?
+  breakEvenPoint     DateTime?
+  
+  // Analysis
+  riskFactors        Json?    // Identified risks
+  opportunities      Json?    // Identified opportunities  
+  recommendations    Json?    // Scenario-specific recommendations
+  
+  // Comparison with other scenarios
+  comparisonData     Json?    // Comparison metrics
+  
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, scenarioType])
+  @@index([userId, startDate])
+}
+
+model ComplianceTracking {
+  id              String          @id @default(cuid())
+  userId          String
+  complianceType  ComplianceType
+  title           String
+  description     String?
+  
+  // Requirements
+  requirements    Json            // List of compliance requirements
+  regulations     Json?           // Applicable regulations
+  industry        String?         // Industry-specific compliance
+  
+  // Status tracking
+  status          ComplianceStatus @default(PENDING)
+  completedItems  Json?           // Completed compliance items
+  pendingItems    Json?           // Pending items
+  overdue         Boolean         @default(false)
+  
+  // Deadlines
+  dueDate         DateTime?
+  lastReviewDate  DateTime?
+  nextReviewDate  DateTime?
+  frequency       ComplianceFrequency?
+  
+  // Documentation
+  documents       Json?           // Required/submitted documents
+  evidence        Json?           // Evidence of compliance
+  notes           String?
+  
+  // Risk assessment
+  riskLevel       RiskLevel       @default(LOW)
+  penalties       Json?           // Potential penalties for non-compliance
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([userId, dueDate])
+  @@index([userId, complianceType])
+}
+
+model CreditApplication {
+  id                String           @id @default(cuid())
+  userId            String
+  type              CreditType
+  lender            String?
+  productName       String?
+  
+  // Application details
+  requestedAmount   Float
+  purpose           String
+  termLength        Int?             // in months
+  collateral        String?
+  
+  // Business information
+  businessRevenue   Float?
+  businessExpenses  Float?
+  businessAge       Int?             // in months
+  
+  // Status tracking
+  status            ApplicationStatus @default(DRAFT)
+  applicationDate   DateTime?
+  approvalDate      DateTime?
+  decisionAmount    Float?
+  interestRate      Float?
+  
+  // Requirements and documents
+  requirements      Json?            // Required documents/info
+  submittedDocs     Json?            // Submitted documentation
+  
+  // Analysis and recommendations
+  eligibilityScore  Float?           // 0-1 score
+  recommendations   Json?            // Improvement suggestions
+  alternativeOptions Json?           // Alternative financing options
+  
+  notes             String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([userId, type])
+}
+
+model IndustryBenchmark {
+  id              String   @id @default(cuid())
+  userId          String
+  industry        String
+  companySize     CompanySize
+  region          String?
+  
+  // Financial benchmarks
+  avgRevenue      Float?
+  avgProfit       Float?
+  avgExpenses     Float?
+  
+  // Ratios benchmarks
+  avgProfitMargin Float?
+  avgCurrentRatio Float?
+  avgDebtToEquity Float?
+  avgROA          Float?
+  avgROE          Float?
+  
+  // Operational benchmarks
+  avgEmployees    Int?
+  avgCustomers    Int?
+  avgProjects     Int?
+  
+  // Performance metrics
+  revenueGrowth   Float?
+  customerGrowth  Float?
+  marketShare     Float?
+  
+  // Comparison with user
+  userPerformance Json?    // How user compares to benchmarks
+  gaps            Json?    // Areas for improvement
+  strengths       Json?    // User's strengths vs industry
+  
+  // Data source and validity
+  dataSource      String?
+  dataDate        DateTime
+  isActive        Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, industry, companySize])
+  @@index([userId, industry])
+}
+
+model PredictiveModel {
+  id              String      @id @default(cuid())
+  userId          String
+  modelType       ModelType
+  name            String
+  description     String?
+  
+  // Model configuration
+  features        Json        // Input features used
+  parameters      Json        // Model parameters
+  algorithm       String?     // ML algorithm used
+  
+  // Training data
+  trainingData    Json?       // Training dataset info
+  trainingPeriod  String?     // Period of training data
+  dataQuality     Float?      // Data quality score
+  
+  // Model performance
+  accuracy        Float?      // Model accuracy
+  precision       Float?      // Precision score
+  recall          Float?      // Recall score
+  lastTrained     DateTime?
+  
+  // Predictions
+  predictions     Json?       // Current predictions
+  confidenceLevel Float?      // Overall confidence
+  
+  // Metadata
+  version         String      @default("1.0")
+  isActive        Boolean     @default(true)
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, modelType])
+  @@index([userId, isActive])
+}
+
+model BusinessEntity {
+  id              String           @id @default(cuid())
+  userId          String
+  name            String
+  type            EntityType
+  
+  // Registration details
+  registrationNumber String?
+  taxId           String?
+  registrationDate DateTime?
+  registrationState String?
+  
+  // Contact information
+  address         String?
+  city            String?
+  state           String?
+  country         String?
+  zipCode         String?
+  phone           String?
+  email           String?
+  
+  // Financial details
+  annualRevenue   Float?
+  employees       Int?
+  fiscalYearEnd   DateTime?
+  
+  // Relationships
+  parentEntityId  String?
+  isActive        Boolean          @default(true)
+  
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentEntity    BusinessEntity?  @relation("EntityHierarchy", fields: [parentEntityId], references: [id])
+  childEntities   BusinessEntity[] @relation("EntityHierarchy")
+
+  @@index([userId, type])
+  @@index([userId, isActive])
+}
+
+model WorkflowRule {
+  id          String          @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  
+  // Rule configuration
+  trigger     WorkflowTrigger
+  conditions  Json            // Trigger conditions
+  actions     Json            // Actions to perform
+  
+  // Execution
+  isActive    Boolean         @default(true)
+  lastRun     DateTime?
+  runCount    Int             @default(0)
+  successCount Int            @default(0)
+  
+  // Schedule (for scheduled triggers)
+  schedule    String?         // Cron expression
+  nextRun     DateTime?
+  
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isActive])
+  @@index([userId, trigger])
+}
+
+model KPITarget {
+  id          String      @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  kpiType     KPIType
+  
+  // Target configuration
+  targetValue Float
+  currentValue Float       @default(0)
+  unit        String?      // "$", "%", "count", etc.
+  
+  // Time tracking
+  period      String       // "monthly", "quarterly", "yearly"
+  startDate   DateTime
+  endDate     DateTime
+  
+  // Status
+  status      TargetStatus @default(IN_PROGRESS)
+  progress    Float        @default(0) // 0-100%
+  
+  // Analysis
+  trend       Trend?
+  lastUpdate  DateTime?
+  isAchievable Boolean?    // AI prediction
+  
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([userId, kpiType])
+}
+
+model BudgetScenario {
+  id              String       @id @default(cuid())
+  userId          String
+  name            String
+  description     String?
+  scenarioType    ScenarioType @default(REALISTIC)
+  
+  // Budget parameters
+  period          String       // "2024", "2024-Q1", etc.
+  startDate       DateTime
+  endDate         DateTime
+  
+  // Budget allocations
+  categoryBudgets Json         // Budget by category
+  totalBudget     Float
+  contingency     Float        @default(0) // Emergency buffer
+  
+  // Performance tracking
+  actualSpending  Float        @default(0)
+  variance        Float        @default(0) // budget vs actual
+  variancePercent Float        @default(0)
+  
+  // Analysis
+  riskFactors     Json?        // Budget risks
+  opportunities   Json?        // Savings opportunities
+  recommendations Json?        // Budget optimization suggestions
+  
+  isActive        Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, scenarioType])
+  @@index([userId, startDate])
+}
+
 // Enums
 enum BusinessType {
   SMALL_BUSINESS
@@ -823,6 +1382,254 @@ enum BusinessType {
   PARTNERSHIP
   SOLE_PROPRIETORSHIP
   NONPROFIT
+}
+
+enum CompanySize {
+  MICRO          // 1-9 employees
+  SMALL          // 10-49 employees  
+  MEDIUM         // 50-249 employees
+  LARGE          // 250+ employees
+}
+
+enum ForecastPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum ScenarioType {
+  OPTIMISTIC
+  REALISTIC
+  PESSIMISTIC
+  CUSTOM
+}
+
+enum TaxFilingStatus {
+  SINGLE
+  MARRIED_FILING_JOINTLY
+  MARRIED_FILING_SEPARATELY
+  HEAD_OF_HOUSEHOLD
+  QUALIFYING_WIDOW
+}
+
+enum InsightType {
+  FINANCIAL_RATIO
+  TREND_ANALYSIS
+  BENCHMARK_COMPARISON
+  CASH_FLOW_PATTERN
+  EXPENSE_PATTERN
+  REVENUE_PATTERN
+  DEBT_STATUS
+  PROFITABILITY_METRIC
+  EFFICIENCY_METRIC
+  RISK_INDICATOR
+  SEASONAL_PATTERN
+  CUSTOMER_ANALYSIS
+  VENDOR_ANALYSIS
+  PROJECT_PERFORMANCE
+}
+
+enum InsightCategory {
+  REVENUE
+  EXPENSES
+  PROFITABILITY
+  CASH_FLOW
+  DEBT_MANAGEMENT
+  OPERATIONAL_EFFICIENCY
+  MARKET_ANALYSIS
+  CUSTOMER_INSIGHTS
+  RISK_MANAGEMENT
+  GROWTH_OPPORTUNITIES
+}
+
+enum Trend {
+  UP
+  DOWN
+  STABLE
+  VOLATILE
+  SEASONAL
+}
+
+enum RecommendationType {
+  COST_REDUCTION
+  REVENUE_OPTIMIZATION
+  DEBT_MANAGEMENT
+  CASH_FLOW_IMPROVEMENT
+  OPERATIONAL_EFFICIENCY
+  STRATEGIC_PLANNING
+  RISK_MITIGATION
+  TAX_OPTIMIZATION
+  INVESTMENT_STRATEGY
+  PROCESS_IMPROVEMENT
+  CUSTOMER_RETENTION
+  MARKET_EXPANSION
+}
+
+enum RecommendationCategory {
+  FINANCIAL
+  OPERATIONAL
+  STRATEGIC
+  TACTICAL
+  COMPLIANCE
+  TECHNOLOGY
+  HUMAN_RESOURCES
+  MARKETING
+  SALES
+}
+
+enum ImpactLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum RecommendationStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+  ON_HOLD
+}
+
+enum UrgencyLevel {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+  CRITICAL
+}
+
+enum ComplianceType {
+  TAX_COMPLIANCE
+  REGULATORY_COMPLIANCE
+  INDUSTRY_STANDARDS
+  FINANCIAL_REPORTING
+  DATA_PRIVACY
+  EMPLOYMENT_LAW
+  ENVIRONMENTAL
+  SAFETY_STANDARDS
+  LICENSING
+  CERTIFICATION
+}
+
+enum ComplianceStatus {
+  COMPLIANT
+  PARTIALLY_COMPLIANT
+  NON_COMPLIANT
+  PENDING
+  UNDER_REVIEW
+  EXPIRED
+}
+
+enum ComplianceFrequency {
+  MONTHLY
+  QUARTERLY
+  SEMI_ANNUALLY
+  ANNUALLY
+  BI_ANNUALLY
+  AS_NEEDED
+}
+
+enum CreditType {
+  BUSINESS_LOAN
+  LINE_OF_CREDIT
+  EQUIPMENT_FINANCING
+  WORKING_CAPITAL
+  SBA_LOAN
+  MERCHANT_CASH_ADVANCE
+  BUSINESS_CREDIT_CARD
+  INVOICE_FACTORING
+  ASSET_BASED_LENDING
+}
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  DECLINED
+  CONDITIONAL_APPROVAL
+  FUNDED
+  CANCELLED
+}
+
+enum ModelType {
+  CASH_FLOW_FORECAST
+  REVENUE_PREDICTION
+  EXPENSE_PREDICTION
+  CUSTOMER_CHURN
+  DEMAND_FORECASTING
+  PRICE_OPTIMIZATION
+  RISK_ASSESSMENT
+  PROFITABILITY_ANALYSIS
+  MARKET_ANALYSIS
+  SEASONAL_ADJUSTMENT
+}
+
+enum EntityType {
+  SOLE_PROPRIETORSHIP
+  PARTNERSHIP
+  LLC
+  CORPORATION
+  S_CORPORATION
+  NON_PROFIT
+  TRUST
+  SUBSIDIARY
+  BRANCH
+}
+
+enum WorkflowTrigger {
+  INVOICE_CREATED
+  PAYMENT_RECEIVED
+  PAYMENT_OVERDUE
+  EXPENSE_THRESHOLD
+  REVENUE_MILESTONE
+  CASH_FLOW_ALERT
+  BUDGET_VARIANCE
+  SCHEDULED
+  MANUAL
+  DATA_CHANGE
+  COMPLIANCE_DUE
+  PROJECT_MILESTONE
+}
+
+enum KPIType {
+  REVENUE
+  PROFIT_MARGIN
+  CASH_FLOW
+  CUSTOMER_ACQUISITION
+  CUSTOMER_RETENTION
+  OPERATIONAL_EFFICIENCY
+  DEBT_TO_EQUITY
+  CURRENT_RATIO
+  ROI
+  ROE
+  WORKING_CAPITAL
+  INVENTORY_TURNOVER
+  ACCOUNTS_RECEIVABLE
+  ACCOUNTS_PAYABLE
+  EMPLOYEE_PRODUCTIVITY
+  MARKET_SHARE
+}
+
+enum TargetStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  ON_TRACK
+  AT_RISK
+  ACHIEVED
+  EXCEEDED
+  FAILED
 }
 
 enum RateType {
