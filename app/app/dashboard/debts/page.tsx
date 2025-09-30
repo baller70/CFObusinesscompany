@@ -251,10 +251,10 @@ export default function DebtsPage() {
 
       <Tabs defaultValue="overview" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="overview">Debt Overview</TabsTrigger>
-          <TabsTrigger value="strategy">Payoff Strategy</TabsTrigger>
-          <TabsTrigger value="calculator">Debt Calculator</TabsTrigger>
-          <TabsTrigger value="history">Payment History</TabsTrigger>
+          <TabsTrigger value="overview" onClick={() => toast.info('Overview of all your debts with current balances and payment details')}>Debt Overview</TabsTrigger>
+          <TabsTrigger value="strategy" onClick={() => toast.info('Choose your debt payoff strategy - avalanche, snowball, or custom approach')}>Payoff Strategy</TabsTrigger>
+          <TabsTrigger value="calculator" onClick={() => toast.info('Calculate payoff times, interest savings, and payment scenarios')}>Debt Calculator</TabsTrigger>
+          <TabsTrigger value="history" onClick={() => toast.info('Track your payment history and see your progress over time')}>Payment History</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">

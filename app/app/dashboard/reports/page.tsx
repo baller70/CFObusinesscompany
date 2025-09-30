@@ -226,10 +226,10 @@ export default function ReportsPage() {
 
       <Tabs defaultValue="generate" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="generate">Generate Reports</TabsTrigger>
-          <TabsTrigger value="history">Report History</TabsTrigger>
-          <TabsTrigger value="templates">Templates</TabsTrigger>
-          <TabsTrigger value="scheduled">Scheduled</TabsTrigger>
+          <TabsTrigger value="generate" onClick={() => toast.info('Generate new financial reports - select from various report types')}>Generate Reports</TabsTrigger>
+          <TabsTrigger value="history" onClick={() => toast.info('View your previously generated reports and download them')}>Report History</TabsTrigger>
+          <TabsTrigger value="templates" onClick={() => toast.info('Use pre-built report templates for common financial packages')}>Templates</TabsTrigger>
+          <TabsTrigger value="scheduled" onClick={() => toast.info('Set up automated report generation on a schedule')}>Scheduled</TabsTrigger>
         </TabsList>
 
         <TabsContent value="generate">

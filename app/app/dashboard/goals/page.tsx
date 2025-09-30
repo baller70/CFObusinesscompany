@@ -256,11 +256,11 @@ export default function GoalsPage() {
 
       <Tabs defaultValue="active" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="active">Active Goals</TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
-          <TabsTrigger value="savings">Savings</TabsTrigger>
-          <TabsTrigger value="revenue">Revenue</TabsTrigger>
-          <TabsTrigger value="all">All Goals</TabsTrigger>
+          <TabsTrigger value="active" onClick={() => toast.info('Showing active goals currently in progress')}>Active Goals</TabsTrigger>
+          <TabsTrigger value="completed" onClick={() => toast.success('Showing completed goals - celebrate your achievements!')}>Completed</TabsTrigger>
+          <TabsTrigger value="savings" onClick={() => toast.info('Showing savings goals for building reserves and funds')}>Savings</TabsTrigger>
+          <TabsTrigger value="revenue" onClick={() => toast.info('Showing revenue growth and income targets')}>Revenue</TabsTrigger>
+          <TabsTrigger value="all" onClick={() => toast.info('Overview of all financial goals across categories')}>All Goals</TabsTrigger>
         </TabsList>
 
         <TabsContent value="active">

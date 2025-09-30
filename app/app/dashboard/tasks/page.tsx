@@ -189,10 +189,10 @@ export default function TasksPage() {
 
       <Tabs defaultValue="active" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="active">Active Tasks</TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
-          <TabsTrigger value="overdue">Overdue</TabsTrigger>
-          <TabsTrigger value="all">All Tasks</TabsTrigger>
+          <TabsTrigger value="active" onClick={() => toast.info('Showing active tasks - tasks that are in progress or ready to start')}>Active Tasks</TabsTrigger>
+          <TabsTrigger value="completed" onClick={() => toast.success('Showing completed tasks - great work on finishing these!')}>Completed</TabsTrigger>
+          <TabsTrigger value="overdue" onClick={() => toast.error('Showing overdue tasks - these need immediate attention')}>Overdue</TabsTrigger>
+          <TabsTrigger value="all" onClick={() => toast.info('Showing all tasks across all statuses')}>All Tasks</TabsTrigger>
         </TabsList>
 
         <TabsContent value="active">

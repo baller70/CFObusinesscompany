@@ -107,9 +107,16 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
                   variant="ghost" 
                   size="sm" 
                   className="relative"
+                  onClick={() => toast.info('Showing notifications - you have 3 new notifications')}
                 >
                   <Bell className="h-5 w-5" />
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  <span 
+                    className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toast.info('You have 3 new notifications - click to view details')
+                    }}
+                  >
                     3
                   </span>
                 </Button>
@@ -148,10 +155,11 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
                 <Button 
                   variant="ghost" 
                   className="relative h-8 w-8 rounded-full"
+                  onClick={() => toast.info('Opening user menu - access settings and account options')}
                 >
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={user?.image || session?.user?.image || ''} alt={user?.name || session?.user?.name || ''} />
-                    <AvatarFallback>
+                    <AvatarFallback className="cursor-pointer">
                       {user?.firstName?.[0]?.toUpperCase() || session?.user?.name?.[0]?.toUpperCase() || 'U'}
                       {user?.lastName?.[0]?.toUpperCase() || session?.user?.name?.split(' ')?.[1]?.[0]?.toUpperCase() || ''}
                     </AvatarFallback>
