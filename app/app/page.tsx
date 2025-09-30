@@ -26,32 +26,32 @@ export default async function HomePage() {
   const features = [
     {
       icon: Upload,
-      title: "Smart CSV Import",
+      title: "SMART CSV IMPORT",
       description: "Upload bank statements with intelligent column mapping"
     },
     {
       icon: PieChart,
-      title: "Expense Tracking",
+      title: "EXPENSE TRACKING",
       description: "AI-powered categorization of your spending patterns"
     },
     {
       icon: Calculator,
-      title: "Burn Rate Analysis",
+      title: "BURN RATE ANALYSIS",
       description: "Calculate how long your money will last at current spending"
     },
     {
       icon: Target,
-      title: "Debt Strategies",
+      title: "DEBT STRATEGIES",
       description: "Snowball and avalanche methods for debt elimination"
     },
     {
       icon: TrendingUp,
-      title: "Goal Setting",
+      title: "GOAL SETTING",
       description: "Set and track emergency fund and savings goals"
     },
     {
       icon: BarChart3,
-      title: "Visual Analytics",
+      title: "VISUAL ANALYTICS",
       description: "Beautiful charts showing your financial progress"
     },
   ];
@@ -96,8 +96,8 @@ export default async function HomePage() {
               <Shield className="h-12 w-12 text-white" />
             </div>
             <h1 className="text-display text-foreground mb-8 max-w-5xl mx-auto">
-              Take Control of Your 
-              <span className="bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent"> Financial Future</span>
+              TAKE CONTROL OF YOUR 
+              <span className="bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent"> FINANCIAL FUTURE</span>
             </h1>
             <p className="text-body text-muted-foreground mb-10 max-w-3xl mx-auto leading-relaxed">
               The comprehensive budgeting app designed specifically for individuals in debt who need help creating their first budget. Get personalized strategies and clear insights to achieve financial freedom.
@@ -124,7 +124,7 @@ export default async function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-20">
             <h2 className="text-heading text-foreground mb-6">
-              Everything You Need to Budget Successfully
+              EVERYTHING YOU NEED TO BUDGET SUCCESSFULLY
             </h2>
             <p className="text-subheading text-muted-foreground max-w-2xl mx-auto">
               Powerful features designed to make budgeting simple and effective
@@ -164,7 +164,7 @@ export default async function HomePage() {
         
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
           <h2 className="text-heading text-white mb-8">
-            Ready to Transform Your Financial Life?
+            READY TO TRANSFORM YOUR FINANCIAL LIFE?
           </h2>
           <p className="text-subheading text-blue-100 mb-10 leading-relaxed">
             Join thousands who have taken control of their finances with our comprehensive budgeting platform.

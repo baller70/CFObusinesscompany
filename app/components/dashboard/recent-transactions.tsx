@@ -47,7 +47,7 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Recent Transactions</CardTitle>
+            <CardTitle>RECENT TRANSACTIONS</CardTitle>
             <CardDescription>
               Your latest financial activities
             </CardDescription>

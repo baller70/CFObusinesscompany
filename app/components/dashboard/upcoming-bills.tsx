@@ -79,7 +79,7 @@ export function UpcomingBills({ debts }: UpcomingBillsProps) {
           <div>
             <CardTitle className="flex items-center">
               <Calendar className="h-5 w-5 mr-2" />
-              Upcoming Bills
+              UPCOMING BILLS
             </CardTitle>
             <CardDescription>
               Keep track of payment due dates

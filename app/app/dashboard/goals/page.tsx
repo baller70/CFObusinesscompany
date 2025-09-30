@@ -194,7 +194,7 @@ export default function GoalsPage() {
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Financial Goals</h1>
+          <h1 className="text-3xl font-bold text-gray-900">FINANCIAL GOALS</h1>
           <p className="text-gray-600 mt-1">Set, track, and achieve your financial objectives</p>
         </div>
         <Link href="/dashboard/goals/new">

@@ -47,7 +47,7 @@ export function UpcomingTasks({ tasks }: UpcomingTasksProps) {
         <CardTitle className="flex items-center justify-between">
           <span className="flex items-center">
             <CheckSquare className="h-5 w-5 mr-2" />
-            Upcoming Tasks
+            UPCOMING TASKS
           </span>
           <Link href="/dashboard/tasks">
             <Button variant="outline" size="sm">

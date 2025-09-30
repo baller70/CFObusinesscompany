@@ -122,7 +122,7 @@ export function CFOInsightsWidget({ onOpenChat }: CFOInsightsWidgetProps) {
         <CardHeader>
           <CardTitle className="text-red-600 flex items-center gap-2">
             <AlertTriangle className="h-5 w-5" />
-            CFO Analysis Error
+            CFO ANALYSIS ERROR
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -148,7 +148,7 @@ export function CFOInsightsWidget({ onOpenChat }: CFOInsightsWidgetProps) {
               <Brain className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h3 className="text-subheading text-foreground">CFO AI Insights</h3>
+              <h3 className="text-subheading text-foreground">CFO AI INSIGHTS</h3>
               <div className="flex items-center gap-1 mt-1">
                 <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>
                 <span className="text-small text-muted-foreground">Active Analysis</span>
