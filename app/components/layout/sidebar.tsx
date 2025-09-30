@@ -58,8 +58,8 @@ const menuItems = [
     icon: ArrowUpDown
   },
   {
-    title: 'Bank Statements',
-    href: '/dashboard/bank-statements',
+    title: 'Financial Statements',
+    href: '/dashboard/statements',
     icon: Upload
   },
   {

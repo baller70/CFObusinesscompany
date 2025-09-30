@@ -7,7 +7,7 @@ const s3Client = createS3Client();
 const { bucketName, folderPrefix } = getBucketConfig();
 
 export async function uploadFile(buffer: Buffer, fileName: string, contentType?: string): Promise<string> {
-  const key = `${folderPrefix}bank-statements/${Date.now()}-${fileName}`;
+  const key = `${folderPrefix}statements/${Date.now()}-${fileName}`;
   
   const command = new PutObjectCommand({
     Bucket: bucketName,
@@ -44,6 +44,6 @@ export async function renameFile(oldKey: string, newKey: string): Promise<string
   // S3 doesn't have a native rename, so we copy and delete
   // For simplicity, we'll just return a new key with updated name
   const timestamp = Date.now();
-  const newFullKey = `${folderPrefix}bank-statements/${timestamp}-${newKey}`;
+  const newFullKey = `${folderPrefix}statements/${timestamp}-${newKey}`;
   return newFullKey;
 }

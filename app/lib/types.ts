@@ -238,3 +238,42 @@ export interface DebtMilestone {
   remainingDebt: number
   achieved: boolean
 }
+
+// Bank Statement Types
+export interface BankStatement {
+  id: string
+  userId: string
+  fileName: string
+  originalName: string
+  cloudStoragePath: string
+  fileType: 'CSV' | 'PDF'
+  fileSize?: number | null
+  sourceType: 'BANK' | 'CREDIT_CARD'
+  bankName?: string | null
+  accountType?: string | null
+  accountNumber?: string | null
+  creditLimit?: number | null
+  statementPeriod?: string | null
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
+  processingStage: 'UPLOADED' | 'EXTRACTING_DATA' | 'CATEGORIZING_TRANSACTIONS' | 'ANALYZING_PATTERNS' | 'GENERATING_INSIGHTS' | 'DISTRIBUTING_DATA' | 'COMPLETED' | 'FAILED'
+  recordCount: number
+  processedCount: number
+  errorLog?: string | null
+  aiAnalysis?: any
+  extractedData?: any
+  mappingConfig?: any
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface StatementProcessingResult {
+  success: boolean
+  message: string
+  data?: {
+    transactionsCreated: number
+    categoriesCreated: number
+    insights: string[]
+    recommendations: string[]
+  }
+  errors?: string[]
+}

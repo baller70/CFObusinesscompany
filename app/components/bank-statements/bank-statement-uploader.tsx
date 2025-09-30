@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Upload, 
   FileText, 
@@ -16,7 +17,9 @@ import {
   Clock, 
   AlertCircle,
   Brain,
-  Zap
+  Zap,
+  CreditCard,
+  Building2
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -27,22 +30,25 @@ interface UploadFile {
   progress: number;
   error?: string;
   result?: any;
+  sourceType?: 'BANK' | 'CREDIT_CARD';
 }
 
-export default function BankStatementUploader() {
+export default function StatementUploader() {
   const [uploadFiles, setUploadFiles] = useState<UploadFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [defaultSourceType, setDefaultSourceType] = useState<'BANK' | 'CREDIT_CARD'>('BANK');
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newFiles = acceptedFiles.map(file => ({
       file,
       id: Math.random().toString(36).substr(2, 9),
       status: 'pending' as const,
-      progress: 0
+      progress: 0,
+      sourceType: defaultSourceType
     }));
 
     setUploadFiles(prev => [...prev, ...newFiles]);
-  }, []);
+  }, [defaultSourceType]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -62,8 +68,9 @@ export default function BankStatementUploader() {
     
     try {
       const formData = new FormData();
-      uploadFiles.forEach(({ file }) => {
+      uploadFiles.forEach(({ file, sourceType }) => {
         formData.append('files', file);
+        formData.append('sourceTypes', sourceType || 'BANK');
       });
 
       // Update all files to uploading status
@@ -71,7 +78,7 @@ export default function BankStatementUploader() {
         prev.map(file => ({ ...file, status: 'uploading', progress: 0 }))
       );
 
-      const response = await fetch('/api/bank-statements/upload', {
+      const response = await fetch('/api/statements/upload', {
         method: 'POST',
         body: formData
       });
@@ -128,7 +135,7 @@ export default function BankStatementUploader() {
 
     const statusPromises = processingFiles.map(async (file) => {
       try {
-        const response = await fetch(`/api/bank-statements/status?id=${file.result.id}`);
+        const response = await fetch(`/api/statements/status?id=${file.result.id}`);
         const status = await response.json();
         return { fileId: file.id, status };
       } catch {
@@ -180,6 +187,14 @@ export default function BankStatementUploader() {
     setUploadFiles(prev => prev.filter(file => file.status !== 'completed'));
   };
 
+  const updateFileSourceType = (id: string, sourceType: 'BANK' | 'CREDIT_CARD') => {
+    setUploadFiles(prev => 
+      prev.map(file => 
+        file.id === id ? { ...file, sourceType } : file
+      )
+    );
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'pending': return <Clock className="h-4 w-4 text-muted-foreground" />;
@@ -207,9 +222,33 @@ export default function BankStatementUploader() {
       {/* Upload Drop Zone */}
       <Card className="card-premium-elevated">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5 text-primary" />
-            AI-POWERED STATEMENT PROCESSOR
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-primary" />
+              AI-POWERED STATEMENT PROCESSOR
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">DEFAULT TYPE:</span>
+              <Select value={defaultSourceType} onValueChange={(value: 'BANK' | 'CREDIT_CARD') => setDefaultSourceType(value)}>
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="BANK">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4" />
+                      Bank Statement
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="CREDIT_CARD">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="h-4 w-4" />
+                      Credit Card
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -236,12 +275,12 @@ export default function BankStatementUploader() {
               <h3 className="text-subheading text-foreground mb-3">
                 {isDragActive 
                   ? 'DROP FILES TO UPLOAD' 
-                  : 'DRAG & DROP BANK STATEMENTS'
+                  : 'DRAG & DROP FINANCIAL STATEMENTS'
                 }
               </h3>
               
               <p className="text-body text-muted-foreground mb-4">
-                Support for CSV and PDF files • Individual or bulk upload • Max 10MB per file
+                Bank & Credit Card Statements • CSV and PDF files • Individual or bulk upload • Max 10MB per file
               </p>
 
               <div className="flex flex-wrap gap-2 justify-center mb-6">
@@ -314,6 +353,39 @@ export default function BankStatementUploader() {
                         {uploadFile.file.name}
                       </h4>
                       <div className="flex items-center gap-2">
+                        {uploadFile.status === 'pending' && (
+                          <Select 
+                            value={uploadFile.sourceType || 'BANK'} 
+                            onValueChange={(value: 'BANK' | 'CREDIT_CARD') => updateFileSourceType(uploadFile.id, value)}
+                          >
+                            <SelectTrigger className="w-32 h-6 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="BANK">
+                                <div className="flex items-center gap-1">
+                                  <Building2 className="h-3 w-3" />
+                                  Bank
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="CREDIT_CARD">
+                                <div className="flex items-center gap-1">
+                                  <CreditCard className="h-3 w-3" />
+                                  Credit Card
+                                </div>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                        {uploadFile.status !== 'pending' && (
+                          <Badge variant="outline" className="text-xs">
+                            {uploadFile.sourceType === 'CREDIT_CARD' ? (
+                              <><CreditCard className="h-3 w-3 mr-1" />Credit Card</>
+                            ) : (
+                              <><Building2 className="h-3 w-3 mr-1" />Bank</>
+                            )}
+                          </Badge>
+                        )}
                         <Badge variant={getStatusColor(uploadFile.status) as any}>
                           {getStatusIcon(uploadFile.status)}
                           {uploadFile.status.toUpperCase()}
