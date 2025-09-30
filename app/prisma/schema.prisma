@@ -108,6 +108,34 @@ model User {
   kpiTargets         KPITarget[]
   budgetScenarios    BudgetScenario[]
   recurringCharges   RecurringCharge[]
+  
+  // Premium Investment Management
+  investments           Investment[]
+  portfolios            Portfolio[]
+  investmentTransactions InvestmentTransaction[]
+  multiCurrencyTransactions MultiCurrencyTransaction[]
+  
+  // Treasury & Cash Management  
+  cashPositions         CashPosition[]
+  cashFlows             CashFlow[]
+  cashForecasts         CashForecast[]
+  
+  // Risk Management
+  riskAssessments       RiskAssessment[]
+  insurancePolicies     InsurancePolicy[]
+  
+  // Board & Investor Management
+  boardMembers          BoardMember[]
+  boardMeetings         BoardMeeting[]
+  investorUpdates       InvestorUpdate[]
+  shareholders          Shareholder[]
+  
+  // Advanced Reporting
+  customReports         CustomReport[]
+  
+  // Market Intelligence
+  marketData            MarketData[]
+  competitiveAnalyses   CompetitiveAnalysis[]
 }
 
 model VerificationToken {
@@ -144,6 +172,7 @@ model Transaction {
   csvUpload     CsvUpload?     @relation(fields: [csvUploadId], references: [id])
   bankStatement BankStatement? @relation(fields: [bankStatementId], references: [id])
   vendor        Vendor?        @relation(fields: [vendorId], references: [id])
+  multiCurrencyTransaction MultiCurrencyTransaction?
 
   @@index([userId, date])
   @@index([userId, category])
@@ -1422,6 +1451,817 @@ model BudgetScenario {
   @@index([userId, startDate])
 }
 
+// Premium Investment Management Features
+model Investment {
+  id              String           @id @default(cuid())
+  userId          String
+  name            String
+  type            InvestmentType
+  category        InvestmentCategory
+  symbol          String?          // Stock symbol or identifier
+  
+  // Investment details
+  currentValue    Float
+  originalCost    Float
+  quantity        Float?
+  pricePerShare   Float?
+  currency        String           @default("USD")
+  
+  // Performance metrics
+  totalReturn     Float?           // Absolute return
+  totalReturnPct  Float?           // Percentage return
+  annualizedReturn Float?          // Annualized return
+  beta            Float?           // Risk measure
+  dividendYield   Float?
+  
+  // Risk metrics
+  volatility      Float?
+  maxDrawdown     Float?
+  sharpeRatio     Float?
+  
+  // Dates and status
+  purchaseDate    DateTime
+  maturityDate    DateTime?
+  lastUpdated     DateTime         @default(now())
+  isActive        Boolean          @default(true)
+  
+  // Portfolio allocation
+  targetAllocation Float?          // Target % of portfolio
+  actualAllocation Float?          // Actual % of portfolio
+  
+  // Analysis and tracking
+  benchmarkIndex   String?
+  benchmarkReturn  Float?
+  riskRating       RiskRating      @default(MEDIUM)
+  sector           String?
+  geography        String?
+  
+  // Recommendations
+  action           InvestmentAction? // BUY, SELL, HOLD, REBALANCE
+  targetPrice      Float?
+  stopLoss         Float?
+  
+  notes           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  portfolios      PortfolioInvestment[]
+  transactions    InvestmentTransaction[]
+
+  @@index([userId, type])
+  @@index([userId, category])
+  @@index([userId, isActive])
+}
+
+model Portfolio {
+  id              String           @id @default(cuid())
+  userId          String
+  name            String
+  description     String?
+  type            PortfolioType    @default(GENERAL)
+  
+  // Performance metrics
+  totalValue      Float            @default(0)
+  totalCost       Float            @default(0)
+  totalReturn     Float            @default(0)
+  totalReturnPct  Float            @default(0)
+  
+  // Risk metrics
+  expectedReturn  Float?
+  volatility      Float?
+  sharpeRatio     Float?
+  beta            Float?
+  
+  // Allocation targets
+  equityTarget    Float?           // Target % in equities
+  bondTarget      Float?           // Target % in bonds
+  cashTarget      Float?           // Target % in cash
+  alternativeTarget Float?         // Target % in alternatives
+  
+  // Status and dates
+  isActive        Boolean          @default(true)
+  lastRebalanced  DateTime?
+  nextRebalance   DateTime?
+  
+  // Currency and location
+  baseCurrency    String           @default("USD")
+  
+  notes           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  investments     PortfolioInvestment[]
+  rebalanceEvents PortfolioRebalance[]
+
+  @@index([userId, type])
+  @@index([userId, isActive])
+}
+
+model PortfolioInvestment {
+  id            String    @id @default(cuid())
+  portfolioId   String
+  investmentId  String
+  allocation    Float     // Percentage allocation in portfolio
+  targetWeight  Float?    // Target weight in portfolio
+  currentWeight Float?    // Current weight in portfolio
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  portfolio     Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  investment    Investment @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+
+  @@unique([portfolioId, investmentId])
+}
+
+model InvestmentTransaction {
+  id             String              @id @default(cuid())
+  userId         String
+  investmentId   String
+  type           InvestmentTransactionType
+  
+  // Transaction details
+  quantity       Float
+  price          Float
+  totalAmount    Float
+  fees           Float               @default(0)
+  tax            Float               @default(0)
+  
+  // Currency
+  currency       String              @default("USD")
+  exchangeRate   Float?              // If different from base currency
+  
+  // Dates and references
+  transactionDate DateTime
+  settlementDate DateTime?
+  referenceId    String?
+  
+  notes          String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  investment     Investment          @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+
+  @@index([userId, transactionDate])
+  @@index([userId, type])
+}
+
+model PortfolioRebalance {
+  id              String     @id @default(cuid())
+  portfolioId     String
+  rebalanceDate   DateTime
+  reason          String?    // Why rebalancing was triggered
+  
+  // Pre-rebalance state
+  preRebalanceValue Float
+  preRebalanceAllocation Json
+  
+  // Post-rebalance state  
+  postRebalanceValue Float
+  postRebalanceAllocation Json
+  
+  // Rebalance actions
+  actions         Json       // List of buy/sell actions
+  totalCost       Float      @default(0)
+  
+  // Performance impact
+  expectedImpact  String?
+  
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  portfolio       Portfolio  @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([portfolioId, rebalanceDate])
+}
+
+// Multi-Currency Support
+model Currency {
+  id              String     @id @default(cuid())
+  code            String     @unique // USD, EUR, GBP, etc.
+  name            String     // US Dollar, Euro, British Pound
+  symbol          String     // $, €, £
+  decimals        Int        @default(2)
+  isActive        Boolean    @default(true)
+  
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  exchangeRates   ExchangeRate[]
+}
+
+model ExchangeRate {
+  id              String     @id @default(cuid())
+  fromCurrency    String
+  toCurrency      String
+  rate            Float
+  date            DateTime
+  source          String?    // Source of the exchange rate
+  
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  fromCurrencyData Currency @relation(fields: [fromCurrency], references: [code])
+
+  @@unique([fromCurrency, toCurrency, date])
+  @@index([fromCurrency, toCurrency])
+  @@index([date])
+}
+
+model MultiCurrencyTransaction {
+  id                String    @id @default(cuid())
+  userId            String
+  transactionId     String    @unique
+  
+  // Original currency
+  originalAmount    Float
+  originalCurrency  String
+  
+  // Base currency (user's default)
+  baseAmount        Float
+  baseCurrency      String
+  
+  // Exchange rate used
+  exchangeRate      Float
+  exchangeRateDate  DateTime
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transaction       Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, originalCurrency])
+}
+
+// Treasury & Cash Management
+model CashPosition {
+  id              String     @id @default(cuid())
+  userId          String
+  accountName     String
+  accountType     CashAccountType
+  bankName        String?
+  
+  // Balances
+  currentBalance  Float
+  availableBalance Float?    // Available for use (after holds, etc.)
+  currency        String     @default("USD")
+  
+  // Interest and fees
+  interestRate    Float?
+  monthlyFees     Float?
+  minimumBalance  Float?
+  
+  // Cash management
+  targetBalance   Float?     // Optimal balance to maintain
+  sweepAccount    String?    // Account to sweep excess cash to
+  
+  // Risk and compliance
+  fdic            Boolean    @default(false) // FDIC insured
+  riskRating      RiskRating @default(LOW)
+  
+  // Status
+  isActive        Boolean    @default(true)
+  lastReconciled  DateTime?
+  
+  notes           String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cashFlows       CashFlow[]
+
+  @@index([userId, accountType])
+  @@index([userId, isActive])
+}
+
+model CashFlow {
+  id              String       @id @default(cuid())
+  userId          String
+  cashPositionId  String?
+  
+  // Cash flow details
+  amount          Float
+  type            CashFlowType
+  category        CashFlowCategory
+  description     String
+  
+  // Timing
+  date            DateTime
+  isRecurring     Boolean      @default(false)
+  frequency       RecurringFrequency?
+  
+  // Source/destination
+  counterparty    String?
+  reference       String?
+  
+  // Status
+  status          CashFlowStatus @default(PROJECTED)
+  confidence      Float?       // Confidence in projection (0-1)
+  
+  // Currency
+  currency        String       @default("USD")
+  
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cashPosition    CashPosition? @relation(fields: [cashPositionId], references: [id])
+
+  @@index([userId, type])
+  @@index([userId, date])
+  @@index([userId, status])
+}
+
+model CashForecast {
+  id                String           @id @default(cuid())
+  userId            String
+  forecastDate      DateTime
+  horizon           Int              // Days ahead
+  
+  // Forecast amounts
+  openingBalance    Float
+  projectedInflows  Float
+  projectedOutflows Float
+  closingBalance    Float
+  
+  // Analysis
+  minimumBalance    Float?           // Lowest projected balance
+  maximumBalance    Float?           // Highest projected balance
+  riskDays          Json?            // Days with cash flow risk
+  
+  // Confidence and model
+  confidence        Float            @default(0.5)
+  modelVersion      String?
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, forecastDate])
+  @@index([userId, forecastDate])
+}
+
+// Risk Management System
+model RiskAssessment {
+  id                String       @id @default(cuid())
+  userId            String
+  name              String
+  type              RiskType
+  category          RiskCategory
+  
+  // Risk details
+  description       String
+  probability       Float        // 0-1 scale
+  impact            Float        // Financial impact ($)
+  riskScore         Float        // Calculated risk score
+  riskLevel         RiskLevel
+  
+  // Mitigation
+  mitigationPlan    String?
+  mitigationCost    Float?
+  residualRisk      Float?
+  
+  // Status and timing
+  status            RiskStatus   @default(IDENTIFIED)
+  identifiedDate    DateTime     @default(now())
+  reviewDate        DateTime?
+  nextReviewDate    DateTime?
+  
+  // Ownership
+  owner             String?      // Who is responsible
+  reviewer          String?      // Who reviews this risk
+  
+  // Documentation
+  evidence          Json?        // Supporting evidence
+  controls          Json?        // Risk controls in place
+  
+  notes             String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  incidents         RiskIncident[]
+
+  @@index([userId, type])
+  @@index([userId, riskLevel])
+  @@index([userId, status])
+}
+
+model RiskIncident {
+  id              String         @id @default(cuid())
+  riskId          String
+  title           String
+  description     String
+  
+  // Incident details
+  incidentDate    DateTime
+  discoveredDate  DateTime       @default(now())
+  severity        IncidentSeverity
+  actualImpact    Float?         // Actual financial impact
+  
+  // Response
+  responseActions Json?          // Actions taken
+  lessonsLearned  String?
+  preventiveMeasures String?
+  
+  // Status
+  status          IncidentStatus @default(OPEN)
+  resolvedDate    DateTime?
+  
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  risk            RiskAssessment @relation(fields: [riskId], references: [id], onDelete: Cascade)
+
+  @@index([riskId, incidentDate])
+  @@index([status])
+}
+
+model InsurancePolicy {
+  id                String         @id @default(cuid())
+  userId            String
+  policyName        String
+  policyNumber      String?
+  insuranceProvider String
+  type              InsuranceType
+  
+  // Coverage details
+  coverageAmount    Float
+  deductible        Float?
+  premium           Float          // Annual premium
+  
+  // Policy period
+  effectiveDate     DateTime
+  expirationDate    DateTime
+  autoRenewal       Boolean        @default(false)
+  
+  // Claims and usage
+  claimsHistory     Json?          // Historical claims
+  claimsCount       Int            @default(0)
+  lastClaimDate     DateTime?
+  
+  // Risk assessment
+  riskCovered       Json?          // Types of risks covered
+  exclusions        Json?          // What's not covered
+  
+  // Financial tracking
+  totalPaid         Float          @default(0) // Total premiums paid
+  totalClaims       Float          @default(0) // Total claims received
+  
+  isActive          Boolean        @default(true)
+  notes             String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@index([userId, expirationDate])
+  @@index([userId, isActive])
+}
+
+// Board & Investor Management
+model BoardMember {
+  id              String           @id @default(cuid())
+  userId          String
+  name            String
+  email           String
+  phone           String?
+  
+  // Role and background
+  position        String           // Chairman, CEO, Independent Director, etc.
+  biography       String?
+  expertise       Json?            // Areas of expertise
+  
+  // Board details
+  appointmentDate DateTime
+  termExpiry      DateTime?
+  isActive        Boolean          @default(true)
+  isIndependent   Boolean          @default(false)
+  
+  // Committee memberships
+  committees      Json?            // Audit, Compensation, etc.
+  
+  // Communication preferences
+  preferredContact String?         // email, phone, etc.
+  timezone        String?
+  
+  notes           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  boardMeetings   BoardMeetingAttendee[]
+
+  @@index([userId, isActive])
+  @@index([userId, position])
+}
+
+model BoardMeeting {
+  id              String             @id @default(cuid())
+  userId          String
+  title           String
+  description     String?
+  
+  // Meeting details
+  meetingDate     DateTime
+  duration        Int?               // Minutes
+  location        String?
+  isVirtual       Boolean            @default(false)
+  meetingLink     String?
+  
+  // Agenda and materials
+  agenda          Json?              // Meeting agenda items
+  materials       Json?              // Board materials/documents
+  presentations   Json?              // Presentation materials
+  
+  // Minutes and outcomes
+  minutes         String?
+  decisions       Json?              // Key decisions made
+  actionItems     Json?              // Follow-up actions
+  
+  // Status
+  status          MeetingStatus      @default(SCHEDULED)
+  completedAt     DateTime?
+  
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attendees       BoardMeetingAttendee[]
+
+  @@index([userId, meetingDate])
+  @@index([userId, status])
+}
+
+model BoardMeetingAttendee {
+  id              String       @id @default(cuid())
+  meetingId       String
+  boardMemberId   String
+  
+  // Attendance
+  status          AttendanceStatus @default(INVITED)
+  attendedAt      DateTime?
+  leftAt          DateTime?
+  
+  // Participation
+  comments        String?
+  votes           Json?        // Votes on various matters
+  
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  meeting         BoardMeeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  boardMember     BoardMember  @relation(fields: [boardMemberId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, boardMemberId])
+}
+
+model InvestorUpdate {
+  id              String           @id @default(cuid())
+  userId          String
+  title           String
+  content         String
+  
+  // Update details
+  period          String           // "Q1 2024", "January 2024", etc.
+  updateType      InvestorUpdateType
+  
+  // Key metrics
+  keyMetrics      Json             // Financial and operational metrics
+  highlights      Json?            // Key achievements
+  challenges      Json?            // Current challenges
+  
+  // Forward looking
+  outlook         String?
+  nextMilestones  Json?
+  
+  // Distribution
+  recipientList   Json             // List of recipients
+  sentAt          DateTime?
+  openRate        Float?           // Email open rate
+  
+  // Attachments
+  attachments     Json?            // Supporting documents
+  
+  status          UpdateStatus     @default(DRAFT)
+  publishedAt     DateTime?
+  
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, period])
+  @@index([userId, updateType])
+  @@index([userId, status])
+}
+
+model Shareholder {
+  id              String           @id @default(cuid())
+  userId          String
+  name            String
+  email           String?
+  phone           String?
+  
+  // Shareholding details
+  sharesOwned     Float
+  shareClass      String?          // Common, Preferred, etc.
+  ownershipPct    Float
+  
+  // Investment details
+  investmentDate  DateTime?
+  investmentAmount Float?
+  currentValue    Float?
+  
+  // Shareholder type
+  investorType    InvestorType     // ANGEL, VC, PE, STRATEGIC, EMPLOYEE, etc.
+  isAccredited    Boolean          @default(false)
+  
+  // Contact and preferences
+  preferredContact String?
+  communicationFreq String?        // Monthly, Quarterly, etc.
+  
+  // Status
+  isActive        Boolean          @default(true)
+  
+  notes           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, investorType])
+  @@index([userId, isActive])
+}
+
+// Advanced Reporting Engine
+model CustomReport {
+  id              String           @id @default(cuid())
+  userId          String
+  name            String
+  description     String?
+  category        ReportCategory
+  
+  // Report configuration
+  reportType      ReportType
+  dataSource      Json             // Data sources and tables
+  filters         Json             // Report filters
+  grouping        Json?            // How to group data
+  sorting         Json?            // Sorting preferences
+  
+  // Visualization
+  chartType       ChartType?
+  visualization   Json?            // Chart/visualization config
+  
+  // Output format
+  outputFormat    OutputFormat     @default(PDF)
+  pageLayout      PageLayout       @default(PORTRAIT)
+  
+  // Scheduling
+  isScheduled     Boolean          @default(false)
+  schedule        Json?            // Cron schedule
+  recipients      Json?            // Email recipients
+  lastGenerated   DateTime?
+  nextGeneration  DateTime?
+  
+  // Template
+  template        Json?            // Report template
+  
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  generations     ReportGeneration[]
+
+  @@index([userId, category])
+  @@index([userId, reportType])
+  @@index([userId, isActive])
+}
+
+model ReportGeneration {
+  id              String       @id @default(cuid())
+  reportId        String
+  
+  // Generation details
+  generatedAt     DateTime     @default(now())
+  parameters      Json?        // Parameters used for this generation
+  
+  // Output
+  cloudStoragePath String?      // Path to generated report file
+  fileSize        Int?
+  pageCount       Int?
+  
+  // Status and performance
+  status          GenerationStatus @default(PENDING)
+  errorMessage    String?
+  executionTime   Int?         // Milliseconds
+  
+  // Distribution
+  emailsSent      Int          @default(0)
+  downloadCount   Int          @default(0)
+  
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  report          CustomReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId, generatedAt])
+  @@index([status])
+}
+
+// Market Intelligence
+model MarketData {
+  id              String           @id @default(cuid())
+  userId          String
+  industry        String
+  region          String?
+  
+  // Market metrics
+  marketSize      Float?           // Total addressable market
+  growthRate      Float?           // Annual growth rate
+  
+  // Competitive data
+  competitors     Json?            // List of competitors
+  marketShare     Json?            // Market share data
+  
+  // Economic indicators
+  economicData    Json?            // Relevant economic indicators
+  
+  // Trends
+  trends          Json?            // Market trends
+  opportunities   Json?            // Market opportunities
+  threats         Json?            // Market threats
+  
+  // Data source and freshness
+  dataSource      String?
+  dataDate        DateTime
+  confidence      Float?           // Data confidence score
+  
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, industry, region])
+  @@index([userId, industry])
+  @@index([dataDate])
+}
+
+model CompetitiveAnalysis {
+  id                String       @id @default(cuid())
+  userId            String
+  competitorName    String
+  industry          String
+  
+  // Company details
+  description       String?
+  website           String?
+  employees         Int?
+  foundedYear       Int?
+  
+  // Financial data (if available)
+  estimatedRevenue  Float?
+  fundingRaised     Float?
+  valuation         Float?
+  
+  // Competitive positioning
+  strengths         Json?
+  weaknesses        Json?
+  marketPosition    String?
+  targetMarket      Json?
+  
+  // Product/service comparison
+  products          Json?        // Their product offerings
+  pricing           Json?        // Pricing information
+  features          Json?        // Feature comparison
+  
+  // Analysis
+  threatLevel       ThreatLevel  @default(MEDIUM)
+  competitiveGap    Json?        // Where we're ahead/behind
+  recommendations   Json?        // Strategic recommendations
+  
+  // Data freshness
+  lastUpdated       DateTime
+  dataSource        String?
+  
+  isActive          Boolean      @default(true)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, competitorName])
+  @@index([userId, industry])
+  @@index([userId, threatLevel])
+}
+
 // Enums
 enum BusinessType {
   SMALL_BUSINESS
@@ -1880,4 +2720,287 @@ enum ProcessingStage {
   DISTRIBUTING_DATA
   COMPLETED
   FAILED
+}
+
+// Premium Feature Enums
+enum InvestmentType {
+  STOCK
+  BOND
+  MUTUAL_FUND
+  ETF
+  REAL_ESTATE
+  COMMODITIES
+  CRYPTOCURRENCY
+  PRIVATE_EQUITY
+  VENTURE_CAPITAL
+  ALTERNATIVE
+  CASH
+  CD
+  TREASURY
+  CORPORATE_BOND
+  MUNICIPAL_BOND
+  OPTIONS
+  FUTURES
+  FOREX
+}
+
+enum InvestmentCategory {
+  GROWTH
+  VALUE
+  DIVIDEND
+  INCOME
+  SPECULATION
+  HEDGE
+  CORE_HOLDING
+  SATELLITE
+  TACTICAL
+}
+
+enum InvestmentAction {
+  BUY
+  SELL
+  HOLD
+  REBALANCE
+  REDUCE
+  INCREASE
+}
+
+enum PortfolioType {
+  GENERAL
+  RETIREMENT
+  TAXABLE
+  TAX_DEFERRED
+  HEDGE_FUND
+  PRIVATE_EQUITY
+  REAL_ESTATE
+  COMMODITIES
+  EMERGENCY_FUND
+}
+
+enum InvestmentTransactionType {
+  BUY
+  SELL
+  DIVIDEND
+  INTEREST
+  SPLIT
+  MERGER
+  SPINOFF
+  DEPOSIT
+  WITHDRAWAL
+  FEE
+  TAX
+  REINVESTMENT
+}
+
+enum CashAccountType {
+  CHECKING
+  SAVINGS
+  MONEY_MARKET
+  CD
+  TREASURY
+  SWEEP
+  ESCROW
+  OPERATING
+  INVESTMENT
+}
+
+enum CashFlowType {
+  INFLOW
+  OUTFLOW
+}
+
+enum CashFlowCategory {
+  OPERATIONS
+  INVESTING
+  FINANCING
+  TAX
+  DIVIDEND
+  INTEREST
+  PAYROLL
+  SUPPLIER
+  CUSTOMER
+  LOAN
+  OTHER
+}
+
+enum CashFlowStatus {
+  PROJECTED
+  CONFIRMED
+  ACTUAL
+  CANCELLED
+}
+
+enum RiskType {
+  FINANCIAL
+  OPERATIONAL
+  STRATEGIC
+  COMPLIANCE
+  REPUTATIONAL
+  TECHNOLOGY
+  MARKET
+  CREDIT
+  LIQUIDITY
+  INTEREST_RATE
+  CURRENCY
+  CYBERSECURITY
+}
+
+enum RiskCategory {
+  HIGH_LEVEL
+  PROCESS_LEVEL
+  TRANSACTION_LEVEL
+  SYSTEM_LEVEL
+}
+
+enum RiskStatus {
+  IDENTIFIED
+  ASSESSED
+  MITIGATED
+  MONITORED
+  CLOSED
+  ESCALATED
+}
+
+enum RiskRating {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IncidentStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum InsuranceType {
+  GENERAL_LIABILITY
+  PROFESSIONAL_LIABILITY
+  PROPERTY
+  AUTO
+  WORKERS_COMP
+  DIRECTORS_OFFICERS
+  CYBER_LIABILITY
+  BUSINESS_INTERRUPTION
+  KEY_PERSON
+  HEALTH
+  DISABILITY
+}
+
+enum MeetingStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  POSTPONED
+}
+
+enum AttendanceStatus {
+  INVITED
+  ACCEPTED
+  DECLINED
+  ATTENDED
+  ABSENT
+}
+
+enum InvestorUpdateType {
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+  MILESTONE
+  FUNDRAISING
+  EXIT
+  SPECIAL
+}
+
+enum UpdateStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum InvestorType {
+  FOUNDER
+  EMPLOYEE
+  ANGEL
+  VC
+  PE
+  STRATEGIC
+  FAMILY_OFFICE
+  FUND
+  INDIVIDUAL
+  INSTITUTIONAL
+}
+
+enum ReportCategory {
+  FINANCIAL
+  OPERATIONAL
+  STRATEGIC
+  COMPLIANCE
+  INVESTOR
+  BOARD
+  CUSTOM
+}
+
+enum ReportType {
+  INCOME_STATEMENT
+  BALANCE_SHEET
+  CASH_FLOW
+  BUDGET_VARIANCE
+  KPI_DASHBOARD
+  INVESTOR_DECK
+  BOARD_PACKAGE
+  COMPLIANCE_REPORT
+  CUSTOM_ANALYSIS
+}
+
+enum ChartType {
+  BAR
+  LINE
+  PIE
+  DONUT
+  AREA
+  SCATTER
+  RADAR
+  GAUGE
+  TABLE
+  HEATMAP
+}
+
+enum OutputFormat {
+  PDF
+  EXCEL
+  CSV
+  POWERPOINT
+  HTML
+  EMAIL
+}
+
+enum PageLayout {
+  PORTRAIT
+  LANDSCAPE
+}
+
+enum GenerationStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum ThreatLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
 }

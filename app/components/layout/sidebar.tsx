@@ -38,7 +38,16 @@ import {
   Brain,
   Target,
   PieChart,
-  Banknote
+  Banknote,
+  Coins,
+  Globe,
+  Shield,
+  Calendar,
+  FileSpreadsheet,
+  Search,
+  Landmark,
+  Activity,
+  Workflow
 } from 'lucide-react'
 
 const menuItems = [
@@ -73,6 +82,66 @@ const menuItems = [
     ]
   },
   {
+    title: 'Investment Management',
+    icon: TrendingUp,
+    submenu: [
+      { title: 'Investment Portfolio', href: '/dashboard/investments/portfolio', icon: PieChart },
+      { title: 'Asset Allocation', href: '/dashboard/investments/allocation', icon: Target },
+      { title: 'Performance Analytics', href: '/dashboard/investments/analytics', icon: BarChart3 },
+      { title: 'Investment Transactions', href: '/dashboard/investments/transactions', icon: ArrowUpDown },
+      { title: 'Rebalancing', href: '/dashboard/investments/rebalancing', icon: Workflow }
+    ]
+  },
+  {
+    title: 'Treasury & Cash',
+    icon: Landmark,
+    submenu: [
+      { title: 'Cash Positions', href: '/dashboard/treasury/positions', icon: Banknote },
+      { title: 'Cash Flow Management', href: '/dashboard/treasury/cash-flow', icon: Activity },
+      { title: 'Cash Forecasting', href: '/dashboard/treasury/forecasting', icon: TrendingUp },
+      { title: 'Multi-Currency', href: '/dashboard/treasury/currency', icon: Globe }
+    ]
+  },
+  {
+    title: 'Risk Management',
+    icon: Shield,
+    submenu: [
+      { title: 'Risk Assessment', href: '/dashboard/risk/assessment', icon: Shield },
+      { title: 'Risk Incidents', href: '/dashboard/risk/incidents', icon: Activity },
+      { title: 'Insurance Policies', href: '/dashboard/risk/insurance', icon: FileText },
+      { title: 'Risk Dashboard', href: '/dashboard/risk/dashboard', icon: BarChart3 }
+    ]
+  },
+  {
+    title: 'Board & Investors',
+    icon: Users,
+    submenu: [
+      { title: 'Board Members', href: '/dashboard/board/members', icon: Users },
+      { title: 'Board Meetings', href: '/dashboard/board/meetings', icon: Calendar },
+      { title: 'Investor Updates', href: '/dashboard/board/investor-updates', icon: FileText },
+      { title: 'Shareholders', href: '/dashboard/board/shareholders', icon: UserCheck }
+    ]
+  },
+  {
+    title: 'Advanced Reports',
+    icon: FileSpreadsheet,
+    submenu: [
+      { title: 'Custom Reports', href: '/dashboard/reports/custom', icon: FileSpreadsheet },
+      { title: 'Executive Dashboard', href: '/dashboard/reports/executive', icon: BarChart3 },
+      { title: 'Investor Reports', href: '/dashboard/reports/investor', icon: FileText },
+      { title: 'Compliance Reports', href: '/dashboard/reports/compliance', icon: Shield }
+    ]
+  },
+  {
+    title: 'Market Intelligence',
+    icon: Search,
+    submenu: [
+      { title: 'Market Data', href: '/dashboard/market/data', icon: TrendingUp },
+      { title: 'Competitive Analysis', href: '/dashboard/market/competitive', icon: Search },
+      { title: 'Industry Benchmarks', href: '/dashboard/market/benchmarks', icon: BarChart3 }
+    ]
+  },
+  {
     title: 'Invoices & Estimates',
     href: '/dashboard/invoices',
     icon: FileText
@@ -90,7 +159,7 @@ const menuItems = [
   },
   {
     title: 'Contacts & Products',
-    icon: Users,
+    icon: Building2,
     submenu: [
       { title: 'People & Contractors', href: '/dashboard/contacts/contractors', icon: UserCheck },
       { title: 'Vendors', href: '/dashboard/contacts/vendors', icon: Building2 },
@@ -131,11 +200,6 @@ const menuItems = [
     title: 'Automations',
     href: '/dashboard/automations',
     icon: Zap
-  },
-  {
-    title: 'Reports',
-    href: '/dashboard/reports',
-    icon: BarChart3
   },
   {
     title: 'Settings',
