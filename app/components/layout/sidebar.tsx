@@ -81,6 +81,7 @@ const menuItems = [
     title: 'Expenses',
     icon: Receipt,
     submenu: [
+      { title: 'Recurring Charges', href: '/recurring-charges', icon: Repeat },
       { title: 'Bills to Pay', href: '/dashboard/expenses/bills', icon: CreditCard },
       { title: 'Expense Claims', href: '/dashboard/expenses/claims', icon: Receipt },
       { title: 'Receipts', href: '/dashboard/expenses/receipts', icon: FileBarChart },

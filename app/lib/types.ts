@@ -760,3 +760,83 @@ export interface ExpenseAnalysis {
   }>
   optimizationOpportunities: string[]
 }
+
+// Recurring Charges Types
+export interface RecurringCharge {
+  id: string
+  userId: string
+  name: string
+  description?: string | null
+  amount: number
+  category: string
+  frequency: RecurringFrequency
+  nextDueDate: Date
+  lastPaidDate?: Date | null
+  vendor?: string | null
+  billingCycle: number
+  reminderEnabled: boolean
+  reminderDays: number
+  isActive: boolean
+  isPaused: boolean
+  pausedUntil?: Date | null
+  annualAmount: number
+  taxDeductible: boolean
+  businessExpense: boolean
+  notes?: string | null
+  tags?: string[]
+  autoPayEnabled: boolean
+  paymentMethod?: string | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+export type RecurringFrequency = 
+  | 'DAILY'
+  | 'WEEKLY'
+  | 'BIWEEKLY'
+  | 'MONTHLY'
+  | 'BIMONTHLY'
+  | 'QUARTERLY'
+  | 'SEMIANNUALLY'
+  | 'ANNUALLY'
+  | 'CUSTOM'
+
+export interface RecurringChargesSummary {
+  totalCharges: number
+  activeCharges: number
+  totalMonthlyAmount: number
+  totalAnnualAmount: number
+  dueSoon: number
+  overdue: number
+  categories: string[]
+  topCategories: Array<{
+    category: string
+    amount: number
+    count: number
+  }>
+  nextPayments: Array<{
+    id: string
+    name: string
+    amount: number
+    dueDate: Date
+  }>
+}
+
+export interface RecurringChargeFormData {
+  name: string
+  description?: string
+  amount: number
+  category: string
+  frequency: RecurringFrequency
+  nextDueDate: string
+  vendor?: string
+  billingCycle: number
+  reminderEnabled: boolean
+  reminderDays: number
+  taxDeductible: boolean
+  businessExpense: boolean
+  notes?: string
+  tags: string[]
+  autoPayEnabled: boolean
+  paymentMethod?: string
+}

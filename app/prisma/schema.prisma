@@ -107,6 +107,7 @@ model User {
   workflowRules      WorkflowRule[]
   kpiTargets         KPITarget[]
   budgetScenarios    BudgetScenario[]
+  recurringCharges   RecurringCharge[]
 }
 
 model VerificationToken {
@@ -1099,6 +1100,53 @@ model ComplianceTracking {
   @@index([userId, complianceType])
 }
 
+model RecurringCharge {
+  id              String           @id @default(cuid())
+  userId          String
+  name            String
+  description     String?
+  amount          Float
+  category        String
+  frequency       RecurringFrequency @default(MONTHLY)
+  
+  // Billing details
+  nextDueDate     DateTime
+  lastPaidDate    DateTime?
+  vendor          String?
+  billingCycle    Int              @default(1) // e.g., every 1 month, every 2 weeks
+  
+  // Notification settings
+  reminderEnabled Boolean          @default(true)
+  reminderDays    Int              @default(3) // days before due date
+  
+  // Status tracking
+  isActive        Boolean          @default(true)
+  isPaused        Boolean          @default(false)
+  pausedUntil     DateTime?
+  
+  // Financial tracking
+  annualAmount    Float            // calculated field
+  taxDeductible   Boolean          @default(false)
+  businessExpense Boolean          @default(true)
+  
+  // Metadata
+  notes           String?
+  tags            Json?            // flexible tagging system
+  lastUpdated     DateTime         @updatedAt
+  createdAt       DateTime         @default(now())
+  
+  // Auto-pay settings
+  autoPayEnabled  Boolean          @default(false)
+  paymentMethod   String?
+  
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, isActive])
+  @@index([userId, nextDueDate])
+  @@index([userId, category])
+  @@index([userId, frequency])
+}
+
 model CreditApplication {
   id                String           @id @default(cuid())
   userId            String
@@ -1538,6 +1586,18 @@ enum ComplianceFrequency {
   ANNUALLY
   BI_ANNUALLY
   AS_NEEDED
+}
+
+enum RecurringFrequency {
+  DAILY
+  WEEKLY
+  BIWEEKLY     // every 2 weeks
+  MONTHLY
+  BIMONTHLY    // every 2 months
+  QUARTERLY
+  SEMIANNUALLY // every 6 months
+  ANNUALLY
+  CUSTOM
 }
 
 enum CreditType {

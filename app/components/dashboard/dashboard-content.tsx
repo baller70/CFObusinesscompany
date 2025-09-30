@@ -8,6 +8,7 @@ import { QuickActions } from '@/components/dashboard/business-quick-actions'
 import { UpcomingTasks } from '@/components/dashboard/upcoming-tasks'
 import { FinancialSummary } from '@/components/dashboard/financial-summary'
 import { CFOInsightsWidget, CFOChatDialog, DebtReductionPlanner } from '@/components/cfo-ai'
+import { RecurringChargesWidget } from '@/components/dashboard/recurring-charges-widget'
 
 interface DashboardContentProps {
   businessMetrics: any
@@ -48,6 +49,9 @@ export default function DashboardContent({
 
         {/* Sidebar */}
         <div className="lg:col-span-1 space-y-8">
+          {/* Recurring Charges Widget */}
+          <RecurringChargesWidget />
+          
           {/* Debt Reduction Planner */}
           <DebtReductionPlanner />
           
