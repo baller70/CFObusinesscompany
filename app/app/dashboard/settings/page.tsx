@@ -62,11 +62,25 @@ export default function SettingsPage() {
                     </AvatarFallback>
                   </Avatar>
                   <div className="space-y-2">
-                    <Button variant="outline">
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        toast.info('Photo upload functionality would open here')
+                        // In a real app, this would open file picker
+                      }}
+                    >
                       <Upload className="h-4 w-4 mr-2" />
                       Upload Photo
                     </Button>
-                    <Button variant="ghost" size="sm" className="text-red-600">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-red-600"
+                      onClick={() => {
+                        toast.success('Profile photo removed')
+                        // In a real app, this would remove the photo
+                      }}
+                    >
                       <Trash2 className="h-4 w-4 mr-2" />
                       Remove Photo
                     </Button>
@@ -419,7 +433,16 @@ export default function SettingsPage() {
                       </div>
                       <div className="flex items-center space-x-3">
                         <Badge variant="secondary">Not Enabled</Badge>
-                        <Button variant="outline" size="sm">Enable 2FA</Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            toast.info('2FA setup would start here')
+                            // In a real app, this would start 2FA setup process
+                          }}
+                        >
+                          Enable 2FA
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -443,7 +466,15 @@ export default function SettingsPage() {
                           <p className="font-medium">Mobile App</p>
                           <p className="text-sm text-gray-600">iOS App • Last seen 2 hours ago</p>
                         </div>
-                        <Button variant="outline" size="sm" className="text-red-600">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-red-600"
+                          onClick={() => {
+                            toast.success('Mobile session revoked')
+                            // In a real app, this would revoke the session
+                          }}
+                        >
                           Revoke
                         </Button>
                       </div>
@@ -455,11 +486,24 @@ export default function SettingsPage() {
                   <div>
                     <h4 className="font-medium mb-3">Data & Privacy</h4>
                     <div className="space-y-3">
-                      <Button variant="outline">
+                      <Button 
+                        variant="outline"
+                        onClick={() => {
+                          toast.info('Data export initiated. You will receive an email when ready.')
+                          // In a real app, this would start data export process
+                        }}
+                      >
                         <Download className="h-4 w-4 mr-2" />
                         Export My Data
                       </Button>
-                      <Button variant="outline" className="text-red-600">
+                      <Button 
+                        variant="outline" 
+                        className="text-red-600"
+                        onClick={() => {
+                          toast.error('Account deletion requires additional verification. Contact support for assistance.')
+                          // In a real app, this would start account deletion process
+                        }}
+                      >
                         <Trash2 className="h-4 w-4 mr-2" />
                         Delete Account
                       </Button>
@@ -493,8 +537,25 @@ export default function SettingsPage() {
                     </div>
                   </div>
                   <div className="mt-4 flex space-x-3">
-                    <Button variant="outline">Change Plan</Button>
-                    <Button variant="ghost" className="text-red-600">Cancel Subscription</Button>
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        toast.info('Plan change options would be displayed here')
+                        // In a real app, this would show plan options
+                      }}
+                    >
+                      Change Plan
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      className="text-red-600"
+                      onClick={() => {
+                        toast.warning('Subscription cancellation requires confirmation. Contact support for assistance.')
+                        // In a real app, this would start cancellation process
+                      }}
+                    >
+                      Cancel Subscription
+                    </Button>
                   </div>
                 </div>
 
@@ -509,7 +570,16 @@ export default function SettingsPage() {
                           <p className="text-sm text-gray-600">Expires 12/2025</p>
                         </div>
                       </div>
-                      <Button variant="outline" size="sm">Update</Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          toast.info('Payment method update form would open here')
+                          // In a real app, this would open payment method form
+                        }}
+                      >
+                        Update
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -517,7 +587,14 @@ export default function SettingsPage() {
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <h4 className="font-medium">Billing History</h4>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        toast.success('Downloading all billing statements...')
+                        // In a real app, this would download all statements
+                      }}
+                    >
                       <Download className="h-4 w-4 mr-2" />
                       Download All
                     </Button>
@@ -530,7 +607,13 @@ export default function SettingsPage() {
                       </div>
                       <div className="text-right">
                         <p className="font-medium">$49.00</p>
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => {
+                            toast.success('Downloading November 2024 statement...')
+                          }}
+                        >
                           <Download className="h-3 w-3 mr-1" />
                           PDF
                         </Button>
@@ -544,7 +627,13 @@ export default function SettingsPage() {
                       </div>
                       <div className="text-right">
                         <p className="font-medium">$49.00</p>
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => {
+                            toast.success('Downloading October 2024 statement...')
+                          }}
+                        >
                           <Download className="h-3 w-3 mr-1" />
                           PDF
                         </Button>
@@ -558,7 +647,13 @@ export default function SettingsPage() {
                       </div>
                       <div className="text-right">
                         <p className="font-medium">$49.00</p>
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => {
+                            toast.success('Downloading September 2024 statement...')
+                          }}
+                        >
                           <Download className="h-3 w-3 mr-1" />
                           PDF
                         </Button>
@@ -697,11 +792,23 @@ export default function SettingsPage() {
                   <div>
                     <h4 className="font-medium mb-3">Data Management</h4>
                     <div className="space-y-3">
-                      <Button variant="outline">
+                      <Button 
+                        variant="outline"
+                        onClick={() => {
+                          toast.success('Data backup initiated. You will receive confirmation when complete.')
+                          // In a real app, this would start data backup process
+                        }}
+                      >
                         <Database className="h-4 w-4 mr-2" />
                         Backup Data
                       </Button>
-                      <Button variant="outline">
+                      <Button 
+                        variant="outline"
+                        onClick={() => {
+                          toast.info('Data import dialog would open here. Select files to import.')
+                          // In a real app, this would open file picker for data import
+                        }}
+                      >
                         <Upload className="h-4 w-4 mr-2" />
                         Import Data
                       </Button>

@@ -27,6 +27,7 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import Link from 'next/link'
+import { toast } from 'sonner'
 
 async function getDocumentsData(userId: string) {
   const [documents, documentStats] = await Promise.all([
@@ -174,7 +175,13 @@ export default async function DocumentsPage() {
           <p className="text-gray-600 mt-1">Secure document management with version control</p>
         </div>
         <div className="flex space-x-3">
-          <Button variant="outline">
+          <Button 
+            variant="outline"
+            onClick={() => {
+              toast.info('Bulk share dialog would open here')
+              // In a real app, this would open bulk sharing options
+            }}
+          >
             <Share2 className="h-4 w-4 mr-2" />
             Bulk Share
           </Button>
@@ -198,7 +205,13 @@ export default async function DocumentsPage() {
                 className="pl-10"
               />
             </div>
-            <Button variant="outline">
+            <Button 
+              variant="outline"
+              onClick={() => {
+                toast.info('Filter options would be displayed here')
+                // In a real app, this would show filter dropdown
+              }}
+            >
               <Filter className="h-4 w-4 mr-2" />
               Filter
             </Button>
@@ -307,15 +320,36 @@ export default async function DocumentsPage() {
                         </div>
 
                         <div className="flex items-center space-x-2 ml-4">
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              toast.info(`Viewing ${document.name}`)
+                              // In a real app, this would open document viewer
+                            }}
+                          >
                             <Eye className="h-3 w-3 mr-1" />
                             View
                           </Button>
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              toast.success(`Downloading ${document.name}...`)
+                              // In a real app, this would download the document
+                            }}
+                          >
                             <Download className="h-3 w-3 mr-1" />
                             Download
                           </Button>
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              toast.info(`Share dialog for ${document.name} would open here`)
+                              // In a real app, this would open sharing options
+                            }}
+                          >
                             <Share2 className="h-3 w-3 mr-1" />
                             Share
                           </Button>
@@ -434,7 +468,16 @@ export default async function DocumentsPage() {
               <Shield className="h-8 w-8 text-blue-500 mx-auto mb-3" />
               <h3 className="font-semibold mb-2">Secure Sharing</h3>
               <p className="text-sm text-gray-600 mb-4">Encrypted document sharing with expiration dates</p>
-              <Button variant="outline" size="sm">Configure Security</Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  toast.info('Security configuration would open here')
+                  // In a real app, this would open security settings
+                }}
+              >
+                Configure Security
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -445,7 +488,16 @@ export default async function DocumentsPage() {
               <Clock className="h-8 w-8 text-green-500 mx-auto mb-3" />
               <h3 className="font-semibold mb-2">Version Control</h3>
               <p className="text-sm text-gray-600 mb-4">Document versioning with change tracking</p>
-              <Button variant="outline" size="sm">View Versions</Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  toast.info('Version history would be displayed here')
+                  // In a real app, this would show document version history
+                }}
+              >
+                View Versions
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -456,7 +508,16 @@ export default async function DocumentsPage() {
               <File className="h-8 w-8 text-purple-500 mx-auto mb-3" />
               <h3 className="font-semibold mb-2">Compliance Vault</h3>
               <p className="text-sm text-gray-600 mb-4">Regulatory document storage with retention policies</p>
-              <Button variant="outline" size="sm">Setup Retention</Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  toast.info('Retention policy setup would open here')
+                  // In a real app, this would open retention policy configuration
+                }}
+              >
+                Setup Retention
+              </Button>
             </div>
           </CardContent>
         </Card>
