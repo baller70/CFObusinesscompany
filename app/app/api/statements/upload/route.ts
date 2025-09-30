@@ -7,6 +7,8 @@ import { uploadFile } from '@/lib/s3';
 
 const prisma = new PrismaClient();
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);

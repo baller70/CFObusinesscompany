@@ -301,6 +301,10 @@ export default function StatementUploader() {
               <Button 
                 variant="outline" 
                 className="bg-background hover:bg-muted"
+                onClick={() => {
+                  // This will be handled by the dropzone getRootProps
+                  toast.info('Click anywhere in the upload area to select files or drag and drop files here')
+                }}
               >
                 Choose Files
               </Button>

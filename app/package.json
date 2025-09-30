@@ -69,6 +69,7 @@
     "@types/bcryptjs": "2.4.6",
     "@types/jsonwebtoken": "9.0.5",
     "@types/plotly.js": "2.35.5",
+    "@types/react-dropzone": "^5.1.0",
     "@types/react-plotly.js": "2.6.3",
     "autoprefixer": "10.4.15",
     "bcryptjs": "2.4.3",

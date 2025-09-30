@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic';
+
 // Validation schema for recurring charges
 const recurringChargeSchema = z.object({
   name: z.string().min(1, "Name is required"),
