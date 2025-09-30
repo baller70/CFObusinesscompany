@@ -9,7 +9,10 @@ export class CFOAIService {
       debts,
       invoices,
       bills,
-      financialMetrics
+      financialMetrics,
+      bankStatements,
+      categories,
+      goals
     ] = await Promise.all([
       prisma.transaction.findMany({
         where: { userId },
@@ -26,6 +29,16 @@ export class CFOAIService {
       }),
       prisma.financialMetrics.findUnique({
         where: { userId }
+      }),
+      prisma.bankStatement.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.category.findMany({
+        where: { userId }
+      }),
+      prisma.goal.findMany({
+        where: { userId, isCompleted: false }
       })
     ])
 
@@ -71,6 +84,29 @@ export class CFOAIService {
     const currentLiabilities = totalDebt + (monthlyExpenses * 1.5) // Simplified estimate
     const workingCapital = currentAssets - currentLiabilities
 
+    // Bank statement insights
+    const aiCategorizedTransactions = transactions.filter(t => t.aiCategorized === true).length
+    const totalBankStatements = bankStatements.length
+    const recentBankStatements = bankStatements.filter(bs => bs.status === 'COMPLETED').length
+    
+    // Category analysis
+    const topExpenseCategories = categories
+      .filter(c => c.type === 'EXPENSE')
+      .map(cat => ({
+        name: cat.name,
+        total: transactions
+          .filter(t => t.categoryId === cat.id && t.type === 'EXPENSE')
+          .reduce((sum, t) => sum + t.amount, 0),
+        count: transactions.filter(t => t.categoryId === cat.id && t.type === 'EXPENSE').length
+      }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 10)
+
+    // Goal progress
+    const totalGoalAmount = goals.reduce((sum, g) => sum + g.targetAmount, 0)
+    const currentGoalAmount = goals.reduce((sum, g) => sum + g.currentAmount, 0)
+    const goalCompletionRate = totalGoalAmount > 0 ? (currentGoalAmount / totalGoalAmount) * 100 : 0
+
     return {
       totalRevenue,
       totalExpenses,
@@ -83,7 +119,14 @@ export class CFOAIService {
       profitMargin,
       currentAssets,
       currentLiabilities,
-      workingCapital
+      workingCapital,
+      aiCategorizedTransactions,
+      totalBankStatements,
+      recentBankStatements,
+      topExpenseCategories,
+      totalGoalAmount,
+      currentGoalAmount,
+      goalCompletionRate
     }
   }
 
@@ -191,7 +234,39 @@ Analyze current investments and recommend optimal allocation. Focus on:
 2. Cash allocation priorities
 3. Capital expenditure recommendations
 4. Working capital optimization
-5. Investment timeline strategies`
+5. Investment timeline strategies`,
+
+      BANK_STATEMENT_ANALYSIS: `
+Analyze bank statement data and AI-categorized transactions. Focus on:
+1. Transaction pattern analysis from bank statements
+2. AI categorization accuracy and insights
+3. Spending behavior patterns
+4. Income stability analysis
+5. Automated financial tracking recommendations`,
+
+      SPENDING_PATTERN_ANALYSIS: `
+Analyze spending patterns from imported bank data. Focus on:
+1. Monthly spending trends by category
+2. Recurring expense identification
+3. Unusual spending pattern alerts
+4. Seasonal spending variations
+5. Budget adherence analysis`,
+
+      GOAL_PROGRESS_ANALYSIS: `
+Analyze progress toward financial goals. Focus on:
+1. Goal achievement timeline analysis
+2. Current progress vs targets
+3. Recommended monthly contributions
+4. Goal prioritization strategy
+5. Achievement probability assessment`,
+
+      COMPREHENSIVE_OVERVIEW: `
+Provide a complete financial overview incorporating all data sources. Focus on:
+1. Overall financial health score
+2. Key performance indicators
+3. Progress tracking dashboard insights
+4. Priority action items
+5. Strategic roadmap for financial improvement`
     }
 
     return basePrompt + '\n\n' + (analysisSpecificPrompts[analysisType] || analysisSpecificPrompts.FINANCIAL_HEALTH) + `
@@ -273,5 +348,148 @@ Respond with raw JSON only. Do not include code blocks, markdown, or any other f
       orderBy: { date: 'desc' },
       include: { categoryRelation: true }
     })
+  }
+
+  static async getBankStatementInsights(userId: string) {
+    const statements = await prisma.bankStatement.findMany({
+      where: { userId },
+      include: {
+        transactions: {
+          include: { categoryRelation: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    })
+
+    const insights = {
+      totalStatementsProcessed: statements.length,
+      totalTransactionsProcessed: statements.reduce((sum, s) => sum + s.processedCount, 0),
+      aiCategorizedTransactions: statements.reduce((sum, s) => 
+        sum + s.transactions.filter(t => t.aiCategorized).length, 0
+      ),
+      uniqueBanks: [...new Set(statements.map(s => s.bankName).filter(Boolean))],
+      processingAccuracy: statements.filter(s => s.status === 'COMPLETED').length / Math.max(statements.length, 1),
+      latestProcessingDate: statements[0]?.createdAt,
+      totalDataPoints: statements.reduce((sum, s) => sum + (s.recordCount || 0), 0)
+    }
+
+    return insights
+  }
+
+  static async getSpendingPatterns(userId: string) {
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+    const transactions = await prisma.transaction.findMany({
+      where: {
+        userId,
+        type: 'EXPENSE',
+        date: { gte: thirtyDaysAgo }
+      },
+      include: { categoryRelation: true },
+      orderBy: { date: 'desc' }
+    })
+
+    // Group by category
+    const categorySpending = transactions.reduce((acc, t) => {
+      const category = t.categoryRelation?.name || 'Uncategorized'
+      if (!acc[category]) {
+        acc[category] = { total: 0, count: 0, transactions: [] }
+      }
+      acc[category].total += t.amount
+      acc[category].count += 1
+      acc[category].transactions.push(t)
+      return acc
+    }, {} as Record<string, { total: number; count: number; transactions: any[] }>)
+
+    // Identify recurring transactions
+    const recurringPatterns = Object.entries(categorySpending)
+      .map(([category, data]) => {
+        const avgAmount = data.total / data.count
+        const frequency = data.count
+        const isRecurring = frequency >= 4 && data.transactions.some(t => t.isRecurring)
+        
+        return {
+          category,
+          avgAmount,
+          frequency,
+          isRecurring,
+          totalSpent: data.total
+        }
+      })
+      .filter(p => p.isRecurring)
+
+    return {
+      categorySpending: Object.entries(categorySpending)
+        .map(([category, data]) => ({ category, ...data }))
+        .sort((a, b) => b.total - a.total),
+      recurringPatterns,
+      totalSpent: transactions.reduce((sum, t) => sum + t.amount, 0),
+      averageDailySpending: transactions.reduce((sum, t) => sum + t.amount, 0) / 30
+    }
+  }
+
+  static async generateBankStatementReport(userId: string) {
+    const [context, insights, patterns] = await Promise.all([
+      this.getFinancialContext(userId),
+      this.getBankStatementInsights(userId),
+      this.getSpendingPatterns(userId)
+    ])
+
+    return {
+      summary: {
+        totalStatementsProcessed: insights.totalStatementsProcessed,
+        totalTransactions: insights.totalTransactionsProcessed,
+        processingAccuracy: insights.processingAccuracy,
+        aiCategorized: insights.aiCategorizedTransactions
+      },
+      spendingAnalysis: patterns,
+      financialHealth: {
+        cashFlow: context.cashFlow,
+        burnRate: context.burnRate,
+        debtToIncome: context.debtToIncomeRatio
+      },
+      recommendations: await this.generateActionableRecommendations(context, patterns)
+    }
+  }
+
+  static async generateActionableRecommendations(context: any, patterns: any) {
+    // Generate specific recommendations based on spending patterns and financial context
+    const recommendations = []
+
+    // High spending categories
+    if (patterns.categorySpending.length > 0) {
+      const topCategory = patterns.categorySpending[0]
+      if (topCategory.total > context.monthlyIncome * 0.3) {
+        recommendations.push({
+          title: `Reduce ${topCategory.category} spending`,
+          description: `Your ${topCategory.category} spending (${this.formatCurrency(topCategory.total)}) exceeds 30% of monthly income`,
+          priority: 'HIGH',
+          potentialSavings: topCategory.total * 0.2
+        })
+      }
+    }
+
+    // Recurring expense optimization
+    if (patterns.recurringPatterns.length > 3) {
+      recommendations.push({
+        title: 'Audit recurring subscriptions',
+        description: `You have ${patterns.recurringPatterns.length} recurring expenses. Review for unnecessary subscriptions.`,
+        priority: 'MEDIUM',
+        potentialSavings: patterns.recurringPatterns.reduce((sum: number, p: any) => sum + p.totalSpent * 0.15, 0)
+      })
+    }
+
+    // Cash flow improvement
+    if (context.cashFlow < 0) {
+      recommendations.push({
+        title: 'Improve cash flow immediately',
+        description: 'Negative cash flow detected. Focus on increasing income or reducing expenses.',
+        priority: 'CRITICAL',
+        potentialSavings: Math.abs(context.cashFlow)
+      })
+    }
+
+    return recommendations
   }
 }

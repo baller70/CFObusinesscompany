@@ -33,7 +33,12 @@ import {
   BookOpen,
   TrendingUp,
   Repeat,
-  CreditCard
+  CreditCard,
+  Upload,
+  Brain,
+  Target,
+  PieChart,
+  Banknote
 } from 'lucide-react'
 
 const menuItems = [
@@ -51,6 +56,21 @@ const menuItems = [
     title: 'Transactions',
     href: '/dashboard/transactions',
     icon: ArrowUpDown
+  },
+  {
+    title: 'Bank Statements',
+    href: '/dashboard/bank-statements',
+    icon: Upload
+  },
+  {
+    title: 'Personal Finance',
+    icon: Brain,
+    submenu: [
+      { title: 'Budget Planner', href: '/dashboard/budget', icon: PieChart },
+      { title: 'Financial Goals', href: '/dashboard/goals', icon: Target },
+      { title: 'Debt Management', href: '/dashboard/debts', icon: CreditCard },
+      { title: 'Categories', href: '/dashboard/categories', icon: FolderOpen }
+    ]
   },
   {
     title: 'Invoices & Estimates',
@@ -86,6 +106,11 @@ const menuItems = [
     title: 'Documents',
     href: '/dashboard/documents',
     icon: File
+  },
+  {
+    title: 'Data Import',
+    href: '/dashboard/import',
+    icon: Upload
   },
   {
     title: 'Accounting',

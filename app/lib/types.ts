@@ -198,6 +198,17 @@ export interface FinancialContext {
   currentAssets?: number
   currentLiabilities?: number
   workingCapital?: number
+  aiCategorizedTransactions?: number
+  totalBankStatements?: number
+  recentBankStatements?: number
+  topExpenseCategories?: Array<{
+    name: string
+    total: number
+    count: number
+  }>
+  totalGoalAmount?: number
+  currentGoalAmount?: number
+  goalCompletionRate?: number
 }
 
 export interface DebtReductionPlan {

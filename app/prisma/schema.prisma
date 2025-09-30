@@ -66,6 +66,7 @@ model User {
   budgets            Budget[]
   notifications      Notification[]
   csvUploads         CsvUpload[]
+  bankStatements     BankStatement[]
   financialMetrics   FinancialMetrics?
   
   // Business entities
@@ -99,26 +100,30 @@ model VerificationToken {
 
 // Core Financial Models
 model Transaction {
-  id          String   @id @default(cuid())
-  userId      String
-  date        DateTime
-  amount      Float
-  description String
-  merchant    String?
-  category    String
-  categoryId  String?
-  vendorId    String?
-  type        TransactionType // INCOME, EXPENSE, TRANSFER
-  account     String?
-  csvUploadId String?
-  isRecurring Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  userId        String
+  date          DateTime
+  amount        Float
+  description   String
+  merchant      String?
+  category      String
+  categoryId    String?
+  vendorId      String?
+  type          TransactionType // INCOME, EXPENSE, TRANSFER
+  account       String?
+  csvUploadId   String?
+  bankStatementId String?
+  isRecurring   Boolean  @default(false)
+  aiCategorized Boolean  @default(false) // Indicates if AI categorized this
+  confidence    Float?   // AI confidence score (0-1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  categoryRelation Category? @relation(fields: [categoryId], references: [id])
-  csvUpload CsvUpload? @relation(fields: [csvUploadId], references: [id])
-  vendor    Vendor?    @relation(fields: [vendorId], references: [id])
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryRelation Category?   @relation(fields: [categoryId], references: [id])
+  csvUpload     CsvUpload?     @relation(fields: [csvUploadId], references: [id])
+  bankStatement BankStatement? @relation(fields: [bankStatementId], references: [id])
+  vendor        Vendor?        @relation(fields: [vendorId], references: [id])
 
   @@index([userId, date])
   @@index([userId, category])
@@ -250,6 +255,36 @@ model CsvUpload {
   transactions Transaction[]
 
   @@index([userId, status])
+}
+
+model BankStatement {
+  id               String              @id @default(cuid())
+  userId           String
+  fileName         String
+  originalName     String
+  cloudStoragePath String
+  fileType         BankStatementType   // CSV, PDF
+  fileSize         Int?
+  bankName         String?
+  accountType      String?
+  accountNumber    String?             // Last 4 digits only for security
+  statementPeriod  String?             // e.g., "2024-01-01 to 2024-01-31"
+  status           UploadStatus        @default(PENDING)
+  processingStage  ProcessingStage     @default(UPLOADED)
+  recordCount      Int                 @default(0)
+  processedCount   Int                 @default(0)
+  errorLog         String?
+  aiAnalysis       Json?               // AI insights and recommendations
+  extractedData    Json?               // Raw extracted data
+  mappingConfig    Json?               // Column mapping for CSV
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions     Transaction[]
+
+  @@index([userId, status])
+  @@index([userId, processingStage])
 }
 
 model FinancialMetrics {
@@ -952,6 +987,22 @@ enum NotificationType {
 enum UploadStatus {
   PENDING
   PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum BankStatementType {
+  CSV
+  PDF
+}
+
+enum ProcessingStage {
+  UPLOADED
+  EXTRACTING_DATA
+  CATEGORIZING_TRANSACTIONS
+  ANALYZING_PATTERNS
+  GENERATING_INSIGHTS
+  DISTRIBUTING_DATA
   COMPLETED
   FAILED
 }
