@@ -390,7 +390,27 @@ export default function ImportPage() {
               <Button 
                 key={template}
                 variant="outline" 
-                onClick={() => toast.success(`${template} template downloaded!`)}
+                className="cursor-pointer hover:bg-gray-50"
+                onClick={() => {
+                  // Create and trigger download of CSV template
+                  const csvContent = template === 'Transactions' 
+                    ? 'Date,Amount,Description,Category\n2024-01-01,100.00,Sample Transaction,Expenses'
+                    : template === 'Customers'
+                    ? 'Name,Email,Phone,Address\nJohn Doe,john@example.com,555-0123,123 Main St'
+                    : 'Name,Price,Category,SKU\nSample Product,29.99,Electronics,SP001';
+                  
+                  const blob = new Blob([csvContent], { type: 'text/csv' });
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `${template.toLowerCase()}_template.csv`;
+                  document.body.appendChild(a);
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+                  document.body.removeChild(a);
+                  
+                  toast.success(`${template} template downloaded!`);
+                }}
               >
                 <Download className="h-4 w-4 mr-2" />
                 {template} Template

@@ -135,14 +135,16 @@ export default function StatementsPage() {
           <TabsList className="grid w-full grid-cols-2 bg-white/50 border-border">
             <TabsTrigger 
               value="upload" 
-              className="data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:border-primary/20"
+              className="data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:border-primary/20 cursor-pointer"
+              onClick={() => console.log('Upload tab clicked')}
             >
               <FileText className="h-4 w-4 mr-2" />
               UPLOAD STATEMENTS
             </TabsTrigger>
             <TabsTrigger 
               value="history"
-              className="data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:border-primary/20"
+              className="data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:border-primary/20 cursor-pointer"
+              onClick={() => console.log('History tab clicked')}
             >
               <Brain className="h-4 w-4 mr-2" />
               PROCESSING HISTORY

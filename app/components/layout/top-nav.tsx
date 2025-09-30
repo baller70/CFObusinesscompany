@@ -50,9 +50,23 @@ export function TopNav({ user, onMenuToggle }: TopNavProps) {
         {/* Notifications */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="relative">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="relative"
+              onClick={(e) => {
+                // Ensure dropdown opens
+                e.preventDefault();
+              }}
+            >
               <Bell className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+              <span 
+                className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Handle notification click
+                }}
+              >
                 3
               </span>
             </Button>
@@ -80,12 +94,19 @@ export function TopNav({ user, onMenuToggle }: TopNavProps) {
         {/* User Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-              <Avatar className="h-8 w-8">
+            <Button 
+              variant="ghost" 
+              className="relative h-8 w-8 rounded-full"
+              onClick={(e) => {
+                // Ensure dropdown opens
+                e.preventDefault();
+              }}
+            >
+              <Avatar className="h-8 w-8 cursor-pointer">
                 <AvatarImage src={user?.image || ''} alt={user?.name || ''} />
-                <AvatarFallback>
-                  {user?.firstName?.[0]?.toUpperCase() || 'U'}
-                  {user?.lastName?.[0]?.toUpperCase() || ''}
+                <AvatarFallback className="cursor-pointer">
+                  {user?.firstName?.[0]?.toUpperCase() || 'J'}
+                  {user?.lastName?.[0]?.toUpperCase() || 'D'}
                 </AvatarFallback>
               </Avatar>
             </Button>
@@ -107,7 +128,7 @@ export function TopNav({ user, onMenuToggle }: TopNavProps) {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => window.location.href = '/dashboard/settings'}>
               <Settings className="mr-2 h-4 w-4" />
               <span>Settings</span>
             </DropdownMenuItem>

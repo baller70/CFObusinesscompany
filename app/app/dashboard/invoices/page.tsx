@@ -1,7 +1,8 @@
-import { getServerSession } from 'next-auth'
-import { redirect } from 'next/navigation'
-import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/db'
+'use client';
+
+import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -13,24 +14,15 @@ import { InvoiceActions } from '@/components/invoices/invoice-actions'
 import { ExportFilterButtons, EstimateActions, DraftInvoiceActions, OverdueInvoiceActions } from '@/components/invoices/invoice-page-client'
 import Link from 'next/link'
 
-async function getInvoicesData(userId: string) {
-  const [invoices, invoiceStats, estimates] = await Promise.all([
-    Promise.resolve([]),
-    Promise.resolve([]),
-    Promise.resolve([])
-  ])
-
-  return { invoices, invoiceStats, estimates }
-}
-
-export default async function InvoicesPage() {
-  const session = await getServerSession(authOptions)
+export default function InvoicesPage() {
+  const { data: session } = useSession() || {}
+  const router = useRouter()
   
-  if (!session?.user?.id) {
-    redirect('/auth/signin')
-  }
-
-  const { invoices, invoiceStats, estimates } = await getInvoicesData(session.user.id)
+  useEffect(() => {
+    if (!session?.user?.id) {
+      router.push('/auth/signin')
+    }
+  }, [session, router])
 
   // Mock data for demonstration
   const mockInvoices = [
@@ -255,10 +247,34 @@ export default async function InvoicesPage() {
 
       <Tabs defaultValue="invoices" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="invoices">Invoices</TabsTrigger>
-          <TabsTrigger value="estimates">Estimates</TabsTrigger>
-          <TabsTrigger value="drafts">Drafts</TabsTrigger>
-          <TabsTrigger value="overdue">Overdue</TabsTrigger>
+          <TabsTrigger 
+            value="invoices" 
+            className="cursor-pointer"
+            onClick={() => console.log('Invoices tab clicked')}
+          >
+            Invoices
+          </TabsTrigger>
+          <TabsTrigger 
+            value="estimates" 
+            className="cursor-pointer"
+            onClick={() => console.log('Estimates tab clicked')}
+          >
+            Estimates
+          </TabsTrigger>
+          <TabsTrigger 
+            value="drafts" 
+            className="cursor-pointer"
+            onClick={() => console.log('Drafts tab clicked')}
+          >
+            Drafts
+          </TabsTrigger>
+          <TabsTrigger 
+            value="overdue" 
+            className="cursor-pointer"
+            onClick={() => console.log('Overdue tab clicked')}
+          >
+            Overdue
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="invoices">
