@@ -107,42 +107,66 @@
   }
   
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground antialiased font-saira;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  
+  /* Apply Audiowide to all headings */
+  h1, h2, h3, h4, h5, h6,
+  .text-display,
+  .text-heading,
+  .text-subheading {
+    @apply font-audiowide;
   }
   
   /* Premium Typography Scale */
   .text-display {
-    @apply text-4xl md:text-6xl font-bold tracking-tight;
+    @apply text-4xl md:text-6xl font-bold tracking-tight font-audiowide;
   }
   
   .text-heading {
-    @apply text-2xl md:text-3xl font-semibold tracking-tight;
+    @apply text-2xl md:text-3xl font-semibold tracking-tight font-audiowide;
   }
   
   .text-subheading {
-    @apply text-lg md:text-xl font-medium tracking-tight;
+    @apply text-lg md:text-xl font-medium tracking-tight font-audiowide;
   }
   
   .text-body {
-    @apply text-sm md:text-base leading-relaxed;
+    @apply text-sm md:text-base leading-relaxed font-saira;
   }
   
   .text-small {
-    @apply text-xs md:text-sm;
+    @apply text-xs md:text-sm font-saira;
   }
   
   /* Financial-specific typography */
   .text-financial-large {
-    @apply text-xl md:text-2xl font-bold tabular-nums;
+    @apply text-xl md:text-2xl font-bold tabular-nums font-saira;
   }
   
   .text-financial-medium {
-    @apply text-base md:text-lg font-semibold tabular-nums;
+    @apply text-base md:text-lg font-semibold tabular-nums font-saira;
   }
   
   .text-financial-small {
-    @apply text-sm font-medium tabular-nums;
+    @apply text-sm font-medium tabular-nums font-saira;
+  }
+  
+  /* Ensure buttons, labels, and other text elements use Saira */
+  button, input, textarea, select, label, 
+  .btn-premium, .card-premium, .card-premium-elevated {
+    @apply font-saira;
+  }
+  
+  /* Ensure all headings use Audiowide even when styled differently */
+  .font-bold, .font-semibold, .font-medium {
+    /* Only apply to heading elements or heading classes */
+  }
+  
+  /* Override for specific heading-like elements */
+  .card-title, .dialog-title, .sheet-title, .alert-title {
+    @apply font-audiowide;
   }
 }
 

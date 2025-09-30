@@ -9,6 +9,11 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        'audiowide': ['var(--font-audiowide)', 'cursive'],
+        'saira': ['var(--font-saira)', 'sans-serif'],
+        'sans': ['var(--font-saira)', 'sans-serif'], // Set Saira as default sans font
+      },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-conic':

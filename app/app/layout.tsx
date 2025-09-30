@@ -1,9 +1,20 @@
 import type { Metadata } from "next";
-import { Inter } from 'next/font/google'
+import { Audiowide, Saira } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/providers'
 
-const inter = Inter({ subsets: ['latin'] })
+const audiowide = Audiowide({ 
+  weight: '400',
+  subsets: ['latin'],
+  variable: '--font-audiowide',
+  display: 'swap',
+})
+
+const saira = Saira({ 
+  subsets: ['latin'],
+  variable: '--font-saira',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: "CFO Business - Comprehensive Business Accounting",
@@ -17,7 +28,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className} suppressHydrationWarning>
+      <body className={`${audiowide.variable} ${saira.variable}`} suppressHydrationWarning>
         <Providers>
           {children}
         </Providers>
