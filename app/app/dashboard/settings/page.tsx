@@ -1,8 +1,7 @@
 'use client'
 
-import { getServerSession } from 'next-auth'
+import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
-import { authOptions } from '@/lib/auth'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,14 +16,13 @@ import { User, Building, CreditCard, Bell, Shield, Download, Upload, Trash2, Key
 import { toast } from 'sonner'
 
 export default function SettingsPage() {
-  // Mock session data for demonstration
-  const session = {
-    user: {
-      id: '1',
-      name: 'John Doe',
-      email: 'john@example.com',
-      image: null
-    }
+  const { data: session, status } = useSession() || {}
+  
+  if (status === 'loading') return <div className="p-6">Loading...</div>
+  
+  if (!session?.user?.id) {
+    redirect('/auth/signin')
+    return null
   }
 
   return (

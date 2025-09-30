@@ -147,6 +147,16 @@ export default function RecurringChargesClient() {
     const matchesSearch = charge.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          charge.vendor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          charge.category.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    // Tab-based filtering
+    if (activeTab === 'active' && !charge.isActive) return false
+    if (activeTab === 'upcoming') {
+      const dueDate = new Date(charge.nextDueDate)
+      const today = new Date()
+      const daysUntilDue = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+      if (daysUntilDue > 7) return false // Only show charges due in next 7 days
+    }
+    
     return matchesSearch
   })
 
@@ -242,7 +252,6 @@ export default function RecurringChargesClient() {
           </div>
           <Button 
             onClick={() => setShowForm(true)}
-            className="bg-gradient-primary hover:bg-gradient-primary-hover text-white"
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Recurring Charge

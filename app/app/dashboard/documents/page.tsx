@@ -1,9 +1,8 @@
 
+'use client'
 
-import { getServerSession } from 'next-auth'
+import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
-import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/db'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -29,31 +28,15 @@ import { format } from 'date-fns'
 import Link from 'next/link'
 import { toast } from 'sonner'
 
-async function getDocumentsData(userId: string) {
-  const [documents, documentStats] = await Promise.all([
-    prisma.document.findMany({
-      where: { userId },
-      include: { project: { select: { name: true } } },
-      orderBy: { createdAt: 'desc' }
-    }).catch(() => []),
-    prisma.document.groupBy({
-      by: ['category'],
-      where: { userId },
-      _count: { _all: true }
-    }).catch(() => [])
-  ])
-
-  return { documents, documentStats }
-}
-
-export default async function DocumentsPage() {
-  const session = await getServerSession(authOptions)
+export default function DocumentsPage() {
+  const { data: session, status } = useSession() || {}
+  
+  if (status === 'loading') return <div className="p-6">Loading...</div>
   
   if (!session?.user?.id) {
     redirect('/auth/signin')
+    return null
   }
-
-  const { documents, documentStats } = await getDocumentsData(session.user.id)
 
   // Mock data for demonstration
   const mockDocuments = [
@@ -391,7 +374,15 @@ export default async function DocumentsPage() {
                         {format(document.createdAt, 'MMM d, yyyy')} • {formatFileSize(document.fileSize)}
                       </div>
                     </div>
-                    <Button variant="outline" size="sm">View</Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        toast.info(`Viewing ${document.name}`)
+                      }}
+                    >
+                      View
+                    </Button>
                   </div>
                 ))}
               </div>

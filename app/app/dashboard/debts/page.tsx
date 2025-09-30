@@ -186,7 +186,12 @@ export default function DebtsPage() {
             <Calculator className="h-4 w-4 mr-2" />
             Generate Payment Plan
           </Button>
-          <Button>
+          <Button
+            onClick={() => {
+              toast.info('Add debt form would open here')
+              // In a real app, this would open add debt form
+            }}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Add Debt
           </Button>

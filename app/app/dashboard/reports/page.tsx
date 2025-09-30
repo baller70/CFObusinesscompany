@@ -156,7 +156,12 @@ export default function ReportsPage() {
             <Filter className="h-4 w-4 mr-2" />
             {showFilters ? 'Hide' : 'Show'} Filters
           </Button>
-          <Button>
+          <Button
+            onClick={() => {
+              toast.info('Quick report generation dialog would open here')
+              // In a real app, this would open a quick report generation dialog
+            }}
+          >
             <FileText className="h-4 w-4 mr-2" />
             Generate Report
           </Button>

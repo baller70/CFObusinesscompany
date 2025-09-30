@@ -330,11 +330,25 @@ export default function AutomationsPage() {
                               console.log('Toggle automation:', automation.id, checked)
                             }}
                           />
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              console.log('Edit automation:', automation.id)
+                              // In a real app, this would open edit form
+                            }}
+                          >
                             <Settings className="h-3 w-3 mr-1" />
                             Edit
                           </Button>
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              console.log(automation.isActive ? 'Pausing' : 'Starting', 'automation:', automation.id)
+                              // In a real app, this would toggle automation state
+                            }}
+                          >
                             {automation.isActive ? (
                               <>
                                 <Pause className="h-3 w-3 mr-1" />
