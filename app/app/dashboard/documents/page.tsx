@@ -22,14 +22,28 @@ import {
   Clock,
   Eye,
   Download,
-  Share2
+  Share2,
+  Lock
 } from 'lucide-react'
 import { format } from 'date-fns'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { useEffect, useState } from 'react'
+import { useSecureFileAccess } from '@/hooks/use-secure-file-access'
+import { PasswordVerificationDialog } from '@/components/password-verification-dialog'
 
 export default function DocumentsPage() {
   const { data: session, status } = useSession() || {}
+  const [documents, setDocuments] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState<any>({})
+  
+  const {
+    isDialogOpen,
+    setIsDialogOpen,
+    handleVerified,
+    downloadDocument
+  } = useSecureFileAccess()
   
   if (status === 'loading') return <div className="p-6">Loading...</div>
   
@@ -38,12 +52,29 @@ export default function DocumentsPage() {
     return null
   }
 
-  // All data will come from the database - no mock data
-  const mockDocuments: any[] = []
+  useEffect(() => {
+    fetchDocuments()
+  }, [])
 
-  const categoryStats: any = {}
-  const totalSize = 0
-  const publicDocuments = 0
+  const fetchDocuments = async () => {
+    try {
+      const response = await fetch('/api/documents')
+      const data = await response.json()
+      if (response.ok) {
+        setDocuments(data.documents || [])
+        setStats(data.stats || {})
+      }
+    } catch (error) {
+      console.error('Error fetching documents:', error)
+      toast.error('Failed to load documents')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const categoryStats = stats.categoryCounts || {}
+  const totalSize = stats.totalSize || 0
+  const publicDocuments = documents.filter(doc => doc.isPublic).length
 
   const getFileIcon = (mimeType: string) => {
     if (mimeType.includes('pdf')) return <FileText className="h-5 w-5 text-red-500" />
@@ -80,9 +111,22 @@ export default function DocumentsPage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
   }
 
+  if (loading) {
+    return <div className="p-6">Loading documents...</div>
+  }
+
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
+    <>
+      <PasswordVerificationDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        onVerified={handleVerified}
+        title="Verify Your Identity"
+        description="For security purposes, please re-enter your password to download this document."
+      />
+      
+      <div className="p-6 max-w-7xl mx-auto">
+        <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Documents</h1>
           <p className="text-gray-600 mt-1">Secure document management with version control</p>
@@ -139,7 +183,7 @@ export default function DocumentsPage() {
             <CardTitle className="text-sm font-medium text-gray-600">Total Documents</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{mockDocuments.length}</div>
+            <div className="text-2xl font-bold text-gray-900">{documents.length}</div>
             <p className="text-xs text-gray-500 mt-1">All files</p>
           </CardContent>
         </Card>
@@ -170,8 +214,8 @@ export default function DocumentsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">
-              {mockDocuments.filter(doc => 
-                doc.createdAt.getMonth() === new Date().getMonth()
+              {documents.filter(doc => 
+                new Date(doc.createdAt).getMonth() === new Date().getMonth()
               ).length}
             </div>
             <p className="text-xs text-gray-500 mt-1">New uploads</p>
@@ -193,9 +237,9 @@ export default function DocumentsPage() {
               <CardTitle>Document Library</CardTitle>
             </CardHeader>
             <CardContent>
-              {mockDocuments.length > 0 ? (
+              {documents.length > 0 ? (
                 <div className="space-y-4">
-                  {mockDocuments.map((document) => (
+                  {documents.map((document) => (
                     <div key={document.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                       <div className="flex items-start justify-between">
                         <div className="flex items-start space-x-4 flex-1">
@@ -220,10 +264,10 @@ export default function DocumentsPage() {
                             )}
 
                             <div className="flex items-center space-x-6 text-sm text-gray-500">
-                              <span>Size: <span className="font-medium">{formatFileSize(document.fileSize)}</span></span>
-                              <span>Created: {format(document.createdAt, 'MMM d, yyyy')}</span>
-                              {document.updatedAt > document.createdAt && (
-                                <span>Modified: {format(document.updatedAt, 'MMM d, yyyy')}</span>
+                              <span>Size: <span className="font-medium">{formatFileSize(document.fileSize || 0)}</span></span>
+                              <span>Created: {format(new Date(document.createdAt), 'MMM d, yyyy')}</span>
+                              {new Date(document.updatedAt) > new Date(document.createdAt) && (
+                                <span>Modified: {format(new Date(document.updatedAt), 'MMM d, yyyy')}</span>
                               )}
                               {document.project && (
                                 <span>Project: <span className="font-medium">{document.project.name}</span></span>
@@ -248,12 +292,11 @@ export default function DocumentsPage() {
                             variant="outline" 
                             size="sm"
                             onClick={() => {
-                              toast.success(`Downloading ${document.name}...`)
-                              // In a real app, this would download the document
+                              downloadDocument(document.id, document.fileName)
                             }}
                           >
-                            <Download className="h-3 w-3 mr-1" />
-                            Download
+                            <Lock className="h-3 w-3 mr-1" />
+                            Secure Download
                           </Button>
                           <Button 
                             variant="outline" 
@@ -295,13 +338,13 @@ export default function DocumentsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {mockDocuments.slice(0, 3).map((document) => (
+                {documents.slice(0, 3).map((document) => (
                   <div key={document.id} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
                     {getFileIcon(document.mimeType)}
                     <div className="flex-1">
                       <div className="font-medium text-gray-900">{document.name}</div>
                       <div className="text-sm text-gray-500">
-                        {format(document.createdAt, 'MMM d, yyyy')} • {formatFileSize(document.fileSize)}
+                        {format(new Date(document.createdAt), 'MMM d, yyyy')} • {formatFileSize(document.fileSize || 0)}
                       </div>
                     </div>
                     <Button 
@@ -327,13 +370,13 @@ export default function DocumentsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {mockDocuments.filter(doc => doc.isPublic).map((document) => (
+                {documents.filter(doc => doc.isPublic).map((document) => (
                   <div key={document.id} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
                     {getFileIcon(document.mimeType)}
                     <div className="flex-1">
                       <div className="font-medium text-gray-900">{document.name}</div>
                       <div className="text-sm text-gray-500">
-                        Shared • {format(document.createdAt, 'MMM d, yyyy')}
+                        Shared • {format(new Date(document.createdAt), 'MMM d, yyyy')}
                       </div>
                     </div>
                     <Badge variant="outline">
@@ -360,7 +403,7 @@ export default function DocumentsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    {mockDocuments
+                    {documents
                       .filter(doc => doc.category === category)
                       .slice(0, 3)
                       .map((document) => (
@@ -447,5 +490,6 @@ export default function DocumentsPage() {
         </Card>
       </div>
     </div>
+    </>
   )
 }

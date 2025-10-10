@@ -20,6 +20,21 @@ export async function uploadFile(buffer: Buffer, fileName: string, contentType?:
   return key; // Return the cloud_storage_path
 }
 
+// Upload with custom key (full path control)
+export async function uploadFileWithKey(buffer: Buffer, key: string, contentType?: string): Promise<string> {
+  const fullKey = `${folderPrefix}${key}`;
+  
+  const command = new PutObjectCommand({
+    Bucket: bucketName,
+    Key: fullKey,
+    Body: buffer,
+    ContentType: contentType,
+  });
+
+  await s3Client.send(command);
+  return fullKey; // Return the cloud_storage_path
+}
+
 export async function downloadFile(key: string): Promise<string> {
   const command = new GetObjectCommand({
     Bucket: bucketName,
