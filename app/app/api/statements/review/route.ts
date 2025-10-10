@@ -20,24 +20,29 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
-    const businessProfileId = searchParams.get('businessProfileId');
+    const statementId = searchParams.get('id');
 
-    const statements = await prisma.bankStatement.findMany({
+    if (!statementId) {
+      return NextResponse.json({ error: 'Statement ID required' }, { status: 400 });
+    }
+
+    const statement = await prisma.bankStatement.findFirst({
       where: {
+        id: statementId,
         userId: user.id,
-        ...(businessProfileId && { businessProfileId }),
       },
       include: {
         businessProfile: true,
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
     });
 
-    return NextResponse.json({ statements });
+    if (!statement) {
+      return NextResponse.json({ error: 'Statement not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ statement });
   } catch (error) {
-    console.error('Error fetching statements:', error);
-    return NextResponse.json({ error: 'Failed to fetch statements' }, { status: 500 });
+    console.error('Error fetching statement:', error);
+    return NextResponse.json({ error: 'Failed to fetch statement' }, { status: 500 });
   }
 }

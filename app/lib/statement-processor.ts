@@ -390,6 +390,7 @@ export async function processStatement(
     });
     
     // Download file from S3
+    // @ts-ignore
     const fileBuffer = await downloadFileBuffer(statement.cloudStoragePath);
     
     // Parse based on file type

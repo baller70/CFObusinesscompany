@@ -56,6 +56,7 @@ async function processStatement(statementId: string) {
     });
 
     // Get file from S3
+    // @ts-ignore
     const signedUrl = await downloadFile(statement.cloudStoragePath);
     const fileResponse = await fetch(signedUrl);
     

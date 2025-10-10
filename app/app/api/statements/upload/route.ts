@@ -1,115 +1,73 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
+import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { PrismaClient } from '@prisma/client';
-import { uploadFile } from '@/lib/s3';
-import { processStatement } from '@/lib/statement-processor';
+import { parsePNCStatement } from '@/lib/pdf-parser';
+import { prisma } from '@/lib/db';
 
-const prisma = new PrismaClient();
-
-export const dynamic = 'force-dynamic';
-
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, message: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const formData = await request.formData();
-    const files = formData.getAll('files') as File[];
-    const sourceTypes = formData.getAll('sourceTypes') as string[];
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: { businessProfiles: true },
+    });
 
-    if (files.length === 0) {
-      return NextResponse.json(
-        { success: false, message: 'NO FILES PROVIDED' },
-        { status: 400 }
-      );
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const uploads = [];
+    const formData = await req.formData();
+    const file = formData.get('file') as File;
+    const businessProfileId = formData.get('businessProfileId') as string;
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const sourceType = (sourceTypes[i] || 'BANK') as 'BANK' | 'CREDIT_CARD';
-
-      try {
-        // Validate file type
-        const fileType = file.type === 'application/pdf' ? 'PDF' : 'CSV';
-        if (!['application/pdf', 'text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'].includes(file.type)) {
-          uploads.push({
-            fileName: file.name,
-            error: 'UNSUPPORTED FILE TYPE'
-          });
-          continue;
-        }
-
-        // Convert file to buffer and upload to S3
-        const buffer = Buffer.from(await file.arrayBuffer());
-        const s3Key = `statements/${Date.now()}-${file.name}`;
-        const cloudStoragePath = await uploadFile(buffer, s3Key);
-
-        // Create database record
-        const bankStatement = await prisma.bankStatement.create({
-          data: {
-            userId: session.user.id,
-            fileName: s3Key,
-            originalName: file.name,
-            cloudStoragePath,
-            fileType,
-            sourceType,
-            fileSize: file.size,
-            status: 'PENDING',
-            processingStage: 'UPLOADED'
-          }
-        });
-
-        uploads.push({
-          id: bankStatement.id,
-          fileName: file.name,
-          sourceType,
-          status: 'uploaded',
-          message: 'STATEMENT UPLOADED SUCCESSFULLY'
-        });
-
-        // Start asynchronous processing with real AI processor
-        processStatementAsync(bankStatement.id, session.user.id);
-
-      } catch (error) {
-        console.error('FILE UPLOAD ERROR:', error);
-        uploads.push({
-          fileName: file.name,
-          error: 'UPLOAD FAILED'
-        });
-      }
+    if (!file) {
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
+
+    // Convert file to buffer
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+
+    // Parse the PDF statement
+    const parsedStatement = await parsePNCStatement(buffer);
+
+    // Store parsed statement in database for review
+    const statementRecord = await prisma.bankStatement.create({
+      data: {
+        userId: user.id,
+        businessProfileId: businessProfileId || null,
+        fileName: file.name,
+        statementType: parsedStatement.statementType,
+        accountNumber: parsedStatement.accountNumber,
+        accountName: parsedStatement.accountName,
+        periodStart: new Date(parsedStatement.periodStart),
+        periodEnd: new Date(parsedStatement.periodEnd),
+        beginningBalance: parsedStatement.beginningBalance,
+        endingBalance: parsedStatement.endingBalance,
+        transactionCount: parsedStatement.transactions.length,
+        status: 'PENDING',
+        parsedData: parsedStatement as any,
+      },
+    });
 
     return NextResponse.json({
       success: true,
-      message: `${uploads.filter(u => !u.error).length} STATEMENTS UPLOADED SUCCESSFULLY`,
-      uploads
+      statementId: statementRecord.id,
+      statement: {
+        ...parsedStatement,
+        transactionCount: parsedStatement.transactions.length,
+      },
     });
-
-  } catch (error) {
-    console.error('UPLOAD API ERROR:', error);
+  } catch (error: any) {
+    console.error('Error uploading statement:', error);
     return NextResponse.json(
-      { success: false, message: 'INTERNAL SERVER ERROR' },
+      { error: error.message || 'Failed to process statement' },
       { status: 500 }
     );
-  }
-}
-
-async function processStatementAsync(statementId: string, userId: string) {
-  try {
-    // Use the real AI-powered statement processor
-    await processStatement(statementId, userId);
-  } catch (error) {
-    console.error('PROCESSING ERROR:', error);
-    // Error handling is done in processStatement
   }
 }
