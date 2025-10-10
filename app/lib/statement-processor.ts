@@ -1,6 +1,6 @@
 
-import * as PdfParse from 'pdf-parse';
-import Papa from 'papaparse';
+const PdfParse = require('pdf-parse');
+import * as Papa from 'papaparse';
 import { PrismaClient, Prisma } from '@prisma/client';
 import { downloadFileBuffer } from './s3';
 
@@ -290,7 +290,6 @@ export async function parseCsvStatement(fileContent: string): Promise<Processing
  * Parse PDF bank statement
  */
 export async function parsePdfStatement(buffer: Buffer): Promise<ProcessingResult> {
-  //@ts-ignore
   const data = await PdfParse(buffer);
   const text = data.text;
   
@@ -379,6 +378,10 @@ export async function processStatement(
     if (!statement) {
       throw new Error('Statement not found');
     }
+
+    if (!statement.cloudStoragePath) {
+      throw new Error('Statement file not found in cloud storage');
+    }
     
     // Update status to processing
     await prisma.bankStatement.update({
@@ -390,7 +393,6 @@ export async function processStatement(
     });
     
     // Download file from S3
-    // @ts-ignore
     const fileBuffer = await downloadFileBuffer(statement.cloudStoragePath);
     
     // Parse based on file type

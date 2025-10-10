@@ -2,8 +2,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { parsePNCStatement } from '@/lib/pdf-parser';
 import { prisma } from '@/lib/db';
+import { uploadFile } from '@/lib/s3';
+import { processStatement } from '@/lib/statement-processor';
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,44 +30,61 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
+    // Validate file type
+    const isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const isCSV = file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv');
+
+    if (!isPDF && !isCSV) {
+      return NextResponse.json({ error: 'Only PDF and CSV files are supported' }, { status: 400 });
+    }
+
     // Convert file to buffer
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Parse the PDF statement
-    const parsedStatement = await parsePNCStatement(buffer);
+    // Upload file to S3
+    const cloudStoragePath = await uploadFile(
+      buffer, 
+      file.name, 
+      isPDF ? 'application/pdf' : 'text/csv'
+    );
 
-    // Store parsed statement in database for review
+    // Create statement record in database
     const statementRecord = await prisma.bankStatement.create({
       data: {
         userId: user.id,
         businessProfileId: businessProfileId || null,
         fileName: file.name,
-        statementType: parsedStatement.statementType,
-        accountNumber: parsedStatement.accountNumber,
-        accountName: parsedStatement.accountName,
-        periodStart: new Date(parsedStatement.periodStart),
-        periodEnd: new Date(parsedStatement.periodEnd),
-        beginningBalance: parsedStatement.beginningBalance,
-        endingBalance: parsedStatement.endingBalance,
-        transactionCount: parsedStatement.transactions.length,
+        originalName: file.name,
+        cloudStoragePath: cloudStoragePath,
+        fileType: isPDF ? 'PDF' : 'CSV',
+        fileSize: file.size,
+        sourceType: 'BANK', // Default to bank, can be changed later
         status: 'PENDING',
-        parsedData: parsedStatement as any,
+        processingStage: 'UPLOADED',
       },
+    });
+
+    // Trigger background processing (non-blocking)
+    processStatement(statementRecord.id, user.id).catch((error) => {
+      console.error('Background processing error:', error);
     });
 
     return NextResponse.json({
       success: true,
       statementId: statementRecord.id,
       statement: {
-        ...parsedStatement,
-        transactionCount: parsedStatement.transactions.length,
+        id: statementRecord.id,
+        fileName: statementRecord.fileName,
+        status: statementRecord.status,
+        transactionCount: 0, // Will be updated after processing
       },
+      message: 'Statement uploaded successfully. Processing will begin shortly.',
     });
   } catch (error: any) {
     console.error('Error uploading statement:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to process statement' },
+      { error: error.message || 'Failed to upload statement' },
       { status: 500 }
     );
   }
