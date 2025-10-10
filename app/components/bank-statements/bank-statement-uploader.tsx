@@ -78,7 +78,7 @@ export default function StatementUploader() {
         prev.map(file => ({ ...file, status: 'uploading', progress: 0 }))
       );
 
-      const response = await fetch('/api/statements/upload', {
+      const response = await fetch('/api/bank-statements/upload', {
         method: 'POST',
         body: formData
       });
@@ -135,7 +135,7 @@ export default function StatementUploader() {
 
     const statusPromises = processingFiles.map(async (file) => {
       try {
-        const response = await fetch(`/api/statements/status?id=${file.result.id}`);
+        const response = await fetch(`/api/bank-statements/status?id=${file.result.id}`);
         const status = await response.json();
         return { fileId: file.id, status };
       } catch {
