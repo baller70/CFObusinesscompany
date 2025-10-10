@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { useBusinessProfile } from '@/lib/business-profile-context'
 import { 
   Home, 
   CheckSquare,
@@ -47,10 +48,71 @@ import {
   Search,
   Landmark,
   Activity,
-  Workflow
+  Workflow,
+  Wallet,
+  Heart,
+  Sparkles
 } from 'lucide-react'
 
-const menuItems = [
+// Personal/Household menu items
+const personalMenuItems = [
+  {
+    title: 'Dashboard',
+    href: '/dashboard',
+    icon: Home
+  },
+  {
+    title: 'Transactions',
+    href: '/dashboard/transactions',
+    icon: ArrowUpDown
+  },
+  {
+    title: 'Budget Planner',
+    href: '/dashboard/budget',
+    icon: PieChart
+  },
+  {
+    title: 'Financial Goals',
+    href: '/dashboard/goals',
+    icon: Target
+  },
+  {
+    title: 'Income & Expenses',
+    icon: Wallet,
+    submenu: [
+      { title: 'Categories', href: '/dashboard/categories', icon: FolderOpen },
+      { title: 'Recurring Charges', href: '/recurring-charges', icon: Repeat },
+      { title: 'Bills to Pay', href: '/dashboard/expenses/bills', icon: CreditCard }
+    ]
+  },
+  {
+    title: 'Debt Management',
+    href: '/dashboard/debts',
+    icon: CreditCard
+  },
+  {
+    title: 'Savings & Investments',
+    icon: TrendingUp,
+    submenu: [
+      { title: 'Investment Portfolio', href: '/dashboard/investments/portfolio', icon: PieChart },
+      { title: 'Asset Allocation', href: '/dashboard/investments/allocation', icon: Target },
+      { title: 'Performance Analytics', href: '/dashboard/investments/analytics', icon: BarChart3 }
+    ]
+  },
+  {
+    title: 'Documents',
+    href: '/dashboard/documents',
+    icon: File
+  },
+  {
+    title: 'Settings',
+    href: '/dashboard/settings',
+    icon: Settings
+  }
+]
+
+// Business menu items
+const businessMenuItems = [
   {
     title: 'Dashboards',
     href: '/dashboard',
@@ -215,6 +277,7 @@ interface SidebarProps {
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname()
   const [expandedItems, setExpandedItems] = useState<string[]>([])
+  const { currentProfile } = useBusinessProfile()
 
   const toggleExpanded = (title: string) => {
     setExpandedItems(prev => 
@@ -227,14 +290,23 @@ export function Sidebar({ className }: SidebarProps) {
   const isExpanded = (title: string) => expandedItems.includes(title)
   const isActiveSubmenu = (submenu: any[]) => submenu.some(item => pathname === item.href)
 
+  // Determine which menu to show based on profile type
+  const isPersonal = currentProfile?.type === 'PERSONAL'
+  const menuItems = isPersonal ? personalMenuItems : businessMenuItems
+  const appTitle = isPersonal ? 'Personal Finance' : 'CFO Business'
+  const AppIcon = isPersonal ? Wallet : AccountingIcon
+
   return (
     <div className={cn("flex flex-col h-full", className)}>
       <div className="p-6 border-b">
         <Link href="/dashboard" className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <AccountingIcon className="w-5 h-5 text-white" />
+          <div className={cn(
+            "w-8 h-8 rounded-lg flex items-center justify-center",
+            isPersonal ? "bg-green-600" : "bg-blue-600"
+          )}>
+            <AppIcon className="w-5 h-5 text-white" />
           </div>
-          <span className="text-xl font-bold">CFO Business</span>
+          <span className="text-xl font-bold">{appTitle}</span>
         </Link>
       </div>
       
