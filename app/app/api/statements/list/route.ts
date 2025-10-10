@@ -1,43 +1,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/db';
 
+// This route is deprecated. Please use /api/bank-statements/* endpoints instead.
 export async function GET(req: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    const { searchParams } = new URL(req.url);
-    const businessProfileId = searchParams.get('businessProfileId');
-
-    const statements = await prisma.bankStatement.findMany({
-      where: {
-        userId: user.id,
-        ...(businessProfileId && { businessProfileId }),
-      },
-      include: {
-        businessProfile: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
-
-    return NextResponse.json({ statements });
-  } catch (error) {
-    console.error('Error fetching statements:', error);
-    return NextResponse.json({ error: 'Failed to fetch statements' }, { status: 500 });
-  }
+  return NextResponse.json(
+    { 
+      error: 'This endpoint is deprecated.',
+      message: 'Statement listing has been moved to the upload history component.'
+    },
+    { status: 410 } // 410 Gone
+  );
 }
