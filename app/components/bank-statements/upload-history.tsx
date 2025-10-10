@@ -52,9 +52,10 @@ export default function UploadHistory() {
     try {
       const response = await fetch('/api/bank-statements/status');
       const data = await response.json();
-      setStatements(data);
+      setStatements(data.statements || []);
     } catch (error) {
       console.error('Error fetching statements:', error);
+      setStatements([]);
     } finally {
       setLoading(false);
     }
