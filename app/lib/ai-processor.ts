@@ -4,10 +4,17 @@ export class AIBankStatementProcessor {
   private apiKey: string;
   
   constructor() {
-    this.apiKey = process.env.ABACUSAI_API_KEY!;
+    this.apiKey = process.env.ABACUSAI_API_KEY || '';
+    if (!this.apiKey) {
+      console.error('[AI Processor] ABACUSAI_API_KEY is not set in environment variables');
+      throw new Error('ABACUSAI_API_KEY is not configured');
+    }
+    console.log('[AI Processor] Initialized with API key');
   }
 
   async extractDataFromPDF(base64Content: string, fileName: string): Promise<any> {
+    console.log(`[AI Processor] Extracting data from PDF: ${fileName}, size: ${base64Content.length} bytes`);
+    
     try {
       const response = await fetch('https://apps.abacus.ai/v1/chat/completions', {
         method: 'POST',
@@ -63,15 +70,37 @@ export class AIBankStatementProcessor {
         }),
       });
 
+      console.log(`[AI Processor] PDF extraction API response status: ${response.status}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[AI Processor] API error response:', errorText);
+        throw new Error(`API request failed with status ${response.status}: ${errorText}`);
+      }
+
       const data = await response.json();
-      return JSON.parse(data.choices[0].message.content);
+      
+      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        console.error('[AI Processor] Invalid API response structure:', JSON.stringify(data));
+        throw new Error('Invalid API response structure');
+      }
+
+      const extractedData = JSON.parse(data.choices[0].message.content);
+      console.log(`[AI Processor] Successfully extracted data from PDF: ${extractedData.transactions?.length || 0} transactions`);
+      
+      return extractedData;
     } catch (error) {
-      console.error('PDF extraction error:', error);
-      throw new Error('Failed to extract data from PDF');
+      console.error('[AI Processor] PDF extraction error:', error);
+      if (error instanceof Error) {
+        throw new Error(`Failed to extract data from PDF: ${error.message}`);
+      }
+      throw new Error('Failed to extract data from PDF: Unknown error');
     }
   }
 
   async processCSVData(csvContent: string): Promise<any> {
+    console.log(`[AI Processor] Processing CSV data, size: ${csvContent.length} bytes`);
+    
     try {
       const response = await fetch('https://apps.abacus.ai/v1/chat/completions', {
         method: 'POST',
@@ -125,15 +154,37 @@ Respond with raw JSON only.`
         }),
       });
 
+      console.log(`[AI Processor] CSV processing API response status: ${response.status}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[AI Processor] API error response:', errorText);
+        throw new Error(`API request failed with status ${response.status}: ${errorText}`);
+      }
+
       const data = await response.json();
-      return JSON.parse(data.choices[0].message.content);
+      
+      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        console.error('[AI Processor] Invalid API response structure:', JSON.stringify(data));
+        throw new Error('Invalid API response structure');
+      }
+
+      const extractedData = JSON.parse(data.choices[0].message.content);
+      console.log(`[AI Processor] Successfully processed CSV: ${extractedData.transactions?.length || 0} transactions`);
+      
+      return extractedData;
     } catch (error) {
-      console.error('CSV processing error:', error);
-      throw new Error('Failed to process CSV data');
+      console.error('[AI Processor] CSV processing error:', error);
+      if (error instanceof Error) {
+        throw new Error(`Failed to process CSV data: ${error.message}`);
+      }
+      throw new Error('Failed to process CSV data: Unknown error');
     }
   }
 
   async categorizeTransactions(transactions: any[]): Promise<any[]> {
+    console.log(`[AI Processor] Categorizing ${transactions.length} transactions`);
+    
     try {
       const response = await fetch('https://apps.abacus.ai/v1/chat/completions', {
         method: 'POST',
@@ -172,16 +223,37 @@ Respond with raw JSON only.`
         }),
       });
 
+      console.log(`[AI Processor] Categorization API response status: ${response.status}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[AI Processor] API error response:', errorText);
+        throw new Error(`API request failed with status ${response.status}: ${errorText}`);
+      }
+
       const data = await response.json();
+      
+      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        console.error('[AI Processor] Invalid API response structure:', JSON.stringify(data));
+        throw new Error('Invalid API response structure');
+      }
+
       const result = JSON.parse(data.choices[0].message.content);
+      console.log(`[AI Processor] Successfully categorized ${result.categorizedTransactions?.length || 0} transactions`);
+      
       return result.categorizedTransactions;
     } catch (error) {
-      console.error('Categorization error:', error);
-      throw new Error('Failed to categorize transactions');
+      console.error('[AI Processor] Categorization error:', error);
+      if (error instanceof Error) {
+        throw new Error(`Failed to categorize transactions: ${error.message}`);
+      }
+      throw new Error('Failed to categorize transactions: Unknown error');
     }
   }
 
   async generateFinancialInsights(transactions: any[], userProfile: any): Promise<any> {
+    console.log(`[AI Processor] Generating financial insights for ${transactions.length} transactions`);
+    
     try {
       const response = await fetch('https://apps.abacus.ai/v1/chat/completions', {
         method: 'POST',
@@ -245,11 +317,31 @@ Respond with raw JSON only.`
         }),
       });
 
+      console.log(`[AI Processor] Insights generation API response status: ${response.status}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[AI Processor] API error response:', errorText);
+        throw new Error(`API request failed with status ${response.status}: ${errorText}`);
+      }
+
       const data = await response.json();
-      return JSON.parse(data.choices[0].message.content);
+      
+      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        console.error('[AI Processor] Invalid API response structure:', JSON.stringify(data));
+        throw new Error('Invalid API response structure');
+      }
+
+      const insights = JSON.parse(data.choices[0].message.content);
+      console.log(`[AI Processor] Successfully generated financial insights`);
+      
+      return insights;
     } catch (error) {
-      console.error('Insights generation error:', error);
-      throw new Error('Failed to generate financial insights');
+      console.error('[AI Processor] Insights generation error:', error);
+      if (error instanceof Error) {
+        throw new Error(`Failed to generate financial insights: ${error.message}`);
+      }
+      throw new Error('Failed to generate financial insights: Unknown error');
     }
   }
 }

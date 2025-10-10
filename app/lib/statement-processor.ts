@@ -3,7 +3,25 @@ import { downloadFile } from '@/lib/s3';
 import { AIBankStatementProcessor } from '@/lib/ai-processor';
 
 export async function processStatement(statementId: string) {
-  const aiProcessor = new AIBankStatementProcessor();
+  let aiProcessor: AIBankStatementProcessor;
+  
+  try {
+    console.log(`[Processing] Initializing AI processor for statement ${statementId}`);
+    aiProcessor = new AIBankStatementProcessor();
+  } catch (error) {
+    console.error('[Processing] Failed to initialize AI processor:', error);
+    
+    await prisma.bankStatement.update({
+      where: { id: statementId },
+      data: {
+        status: 'FAILED',
+        processingStage: 'FAILED',
+        errorLog: `Failed to initialize AI processor: ${error instanceof Error ? error.message : 'Unknown error'}`
+      }
+    }).catch(console.error);
+    
+    throw error;
+  }
   
   try {
     // Get statement from database
