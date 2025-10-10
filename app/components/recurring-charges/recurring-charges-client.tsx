@@ -181,12 +181,12 @@ export default function RecurringChargesClient() {
     }
     
     if (isTomorrow(dueDate)) {
-      return <Badge className="bg-yellow-500 hover:bg-yellow-600">Due Tomorrow</Badge>
+      return <Badge className="bg-blue-500 hover:bg-blue-600">Due Tomorrow</Badge>
     }
     
     const daysDifference = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 3600 * 24))
     if (daysDifference <= 7) {
-      return <Badge variant="outline" className="border-yellow-200 text-yellow-700">Due Soon</Badge>
+      return <Badge variant="outline" className="border-gray-200 text-gray-700">Due Soon</Badge>
     }
     
     return <Badge variant="outline" className="border-green-200 text-green-700">Active</Badge>

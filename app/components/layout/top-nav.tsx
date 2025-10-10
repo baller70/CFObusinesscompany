@@ -75,9 +75,9 @@ export function TopNav({ user, onMenuToggle }: TopNavProps) {
             <DropdownMenuLabel>Notifications</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <div className="space-y-2 p-2">
-              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                <p className="text-sm font-medium text-yellow-800">Invoice Overdue</p>
-                <p className="text-xs text-yellow-600">Invoice #INV-001 is 5 days overdue</p>
+              <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-sm font-medium text-red-800">Invoice Overdue</p>
+                <p className="text-xs text-red-600">Invoice #INV-001 is 5 days overdue</p>
               </div>
               <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
                 <p className="text-sm font-medium text-blue-800">Payment Received</p>

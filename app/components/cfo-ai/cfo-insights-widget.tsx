@@ -94,7 +94,7 @@ export function CFOInsightsWidget({ onOpenChat }: CFOInsightsWidgetProps) {
     switch (urgency) {
       case 'CRITICAL': return 'bg-red-500'
       case 'HIGH': return 'bg-orange-500'
-      case 'MEDIUM': return 'bg-yellow-500'
+      case 'MEDIUM': return 'bg-blue-500'
       default: return 'bg-green-500'
     }
   }

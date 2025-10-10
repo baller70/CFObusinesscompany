@@ -153,7 +153,7 @@ export default function DebtsPage() {
       case 'HIGH':
         return <Badge className="bg-red-100 text-red-800">High Priority</Badge>
       case 'MEDIUM':
-        return <Badge className="bg-yellow-100 text-yellow-800">Medium Priority</Badge>
+        return <Badge className="bg-gray-100 text-gray-800">Medium Priority</Badge>
       case 'LOW':
         return <Badge className="bg-green-100 text-green-800">Low Priority</Badge>
       default:

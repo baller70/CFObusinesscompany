@@ -104,7 +104,7 @@ export default function TreasuryPositionsPage() {
   const getRiskColor = (rating: string) => {
     switch (rating) {
       case 'LOW': return 'bg-green-100 text-green-800'
-      case 'MEDIUM': return 'bg-yellow-100 text-yellow-800'
+      case 'MEDIUM': return 'bg-gray-100 text-gray-800'
       case 'HIGH': return 'bg-red-100 text-red-800'
       case 'CRITICAL': return 'bg-red-200 text-red-900'
       default: return 'bg-gray-100 text-gray-800'
@@ -399,9 +399,9 @@ export default function TreasuryPositionsPage() {
       {/* Alerts Section */}
       {cashPositions.some(p => (p.minimumBalance && p.currentBalance < p.minimumBalance) || 
                               (p.monthlyFees && p.monthlyFees > 0)) && (
-        <Card className="card-premium-elevated mt-10 border-yellow-200 bg-yellow-50">
+        <Card className="card-premium-elevated mt-10 border-gray-200 bg-gray-50">
           <CardHeader>
-            <CardTitle className="text-body-large text-yellow-800 flex items-center gap-2">
+            <CardTitle className="text-body-large text-gray-800 flex items-center gap-2">
               <AlertCircle className="h-5 w-5" />
               Cash Position Alerts
             </CardTitle>
@@ -411,12 +411,12 @@ export default function TreasuryPositionsPage() {
               {cashPositions
                 .filter(p => p.minimumBalance && p.currentBalance < p.minimumBalance)
                 .map(position => (
-                  <div key={position.id} className="text-small text-yellow-700">
+                  <div key={position.id} className="text-small text-gray-700">
                     • Account "{position.accountName}" is below minimum balance
                   </div>
                 ))}
               {summary.monthlyFees > 1000 && (
-                <div className="text-small text-yellow-700">
+                <div className="text-small text-gray-700">
                   • High monthly fees detected: ${summary.monthlyFees.toLocaleString()}/month
                 </div>
               )}

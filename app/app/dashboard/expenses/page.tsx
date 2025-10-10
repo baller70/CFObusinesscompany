@@ -105,8 +105,8 @@ export default async function ExpensesPage() {
                   <p className="text-small text-muted-foreground mb-1">Pending Bills</p>
                   <p className="text-financial-large text-warning">$0.00</p>
                 </div>
-                <div className="bg-yellow-50 p-3 rounded-xl">
-                  <Calendar className="h-6 w-6 text-yellow-500" />
+                <div className="bg-gray-50 p-3 rounded-xl">
+                  <Calendar className="h-6 w-6 text-gray-500" />
                 </div>
               </div>
             </CardContent>

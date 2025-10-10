@@ -192,7 +192,7 @@ export default function CategoriesPage() {
   const getBudgetColor = (percentage: number) => {
     if (percentage >= 90) return 'text-red-600 bg-red-100'
     if (percentage >= 75) return 'text-orange-600 bg-orange-100'
-    if (percentage >= 50) return 'text-yellow-600 bg-yellow-100'
+    if (percentage >= 50) return 'text-gray-600 bg-yellow-100'
     return 'text-green-600 bg-green-100'
   }
 
@@ -354,7 +354,7 @@ export default function CategoriesPage() {
                               className={`h-2 rounded-full ${
                                 budgetUsage.percentage >= 90 ? 'bg-red-500' :
                                 budgetUsage.percentage >= 75 ? 'bg-orange-500' :
-                                budgetUsage.percentage >= 50 ? 'bg-yellow-500' :
+                                budgetUsage.percentage >= 50 ? 'bg-gray-500' :
                                 'bg-green-500'
                               }`}
                               style={{ width: `${Math.min(budgetUsage.percentage, 100)}%` }}
@@ -519,7 +519,7 @@ export default function CategoriesPage() {
                               className={`h-2 rounded-full ${
                                 budgetUsage.percentage >= 90 ? 'bg-red-500' :
                                 budgetUsage.percentage >= 75 ? 'bg-orange-500' :
-                                budgetUsage.percentage >= 50 ? 'bg-yellow-500' :
+                                budgetUsage.percentage >= 50 ? 'bg-gray-500' :
                                 'bg-green-500'
                               }`}
                               style={{ width: `${Math.min(budgetUsage.percentage, 100)}%` }}
@@ -640,7 +640,7 @@ export default function CategoriesPage() {
                             className={`h-3 rounded-full ${
                               budgetUsage.percentage >= 90 ? 'bg-red-500' :
                               budgetUsage.percentage >= 75 ? 'bg-orange-500' :
-                              budgetUsage.percentage >= 50 ? 'bg-yellow-500' :
+                              budgetUsage.percentage >= 50 ? 'bg-gray-500' :
                               'bg-green-500'
                             }`}
                             style={{ width: `${Math.min(budgetUsage.percentage, 100)}%` }}

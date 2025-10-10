@@ -225,7 +225,7 @@ export default async function ProductsServicesPage() {
                             </td>
                             <td className="py-3 px-4 text-right">
                               {product.cost ? (
-                                <span className={`font-medium ${margin > 20 ? 'text-green-600' : margin > 10 ? 'text-yellow-600' : 'text-red-600'}`}>
+                                <span className={`font-medium ${margin > 20 ? 'text-green-600' : margin > 10 ? 'text-gray-600' : 'text-red-600'}`}>
                                   {margin.toFixed(1)}%
                                 </span>
                               ) : '-'}

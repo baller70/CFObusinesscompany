@@ -71,12 +71,12 @@ export function RecurringChargesWidget() {
     }
     
     if (isTomorrow(dueDate)) {
-      return <Badge className="bg-yellow-500 hover:bg-yellow-600 text-xs">Tomorrow</Badge>
+      return <Badge className="bg-blue-500 hover:bg-blue-600 text-xs">Tomorrow</Badge>
     }
     
     const daysDifference = Math.ceil((dueDate.getTime() - new Date().getTime()) / (1000 * 3600 * 24))
     if (daysDifference <= 7) {
-      return <Badge variant="outline" className="border-yellow-200 text-yellow-700 text-xs">Due Soon</Badge>
+      return <Badge variant="outline" className="border-gray-200 text-gray-700 text-xs">Due Soon</Badge>
     }
     
     return null

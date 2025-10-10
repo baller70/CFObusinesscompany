@@ -165,7 +165,7 @@ export default async function BillsToPayPage() {
                       <tr 
                         key={bill.id} 
                         className={`border-b border-gray-100 hover:bg-gray-50 ${
-                          isOverdue ? 'bg-red-50' : isDueSoon ? 'bg-yellow-50' : ''
+                          isOverdue ? 'bg-red-50' : isDueSoon ? 'bg-gray-50' : ''
                         }`}
                       >
                         <td className="py-3 px-4 font-mono text-sm">

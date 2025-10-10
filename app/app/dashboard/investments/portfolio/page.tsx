@@ -99,7 +99,7 @@ export default function InvestmentPortfolioPage() {
 
   const getRiskBadgeColor = (riskScore: number) => {
     if (riskScore >= 80) return 'bg-red-100 text-red-800'
-    if (riskScore >= 60) return 'bg-yellow-100 text-yellow-800'
+    if (riskScore >= 60) return 'bg-gray-100 text-gray-800'
     return 'bg-green-100 text-green-800'
   }
 
@@ -314,9 +314,9 @@ export default function InvestmentPortfolioPage() {
 
       {/* Alerts Section */}
       {portfolios.some(p => p.riskScore > 80 || p.performanceScore < 30) && (
-        <Card className="card-premium-elevated mt-10 border-yellow-200 bg-yellow-50">
+        <Card className="card-premium-elevated mt-10 border-gray-200 bg-gray-50">
           <CardHeader>
-            <CardTitle className="text-body-large text-yellow-800 flex items-center gap-2">
+            <CardTitle className="text-body-large text-gray-800 flex items-center gap-2">
               <AlertTriangle className="h-5 w-5" />
               Portfolio Alerts
             </CardTitle>
@@ -324,12 +324,12 @@ export default function InvestmentPortfolioPage() {
           <CardContent>
             <div className="space-y-2">
               {portfolios.filter(p => p.riskScore > 80).map(portfolio => (
-                <div key={portfolio.id} className="text-small text-yellow-700">
+                <div key={portfolio.id} className="text-small text-gray-700">
                   • Portfolio "{portfolio.name}" has high risk score ({portfolio.riskScore.toFixed(0)})
                 </div>
               ))}
               {portfolios.filter(p => p.performanceScore < 30).map(portfolio => (
-                <div key={portfolio.id} className="text-small text-yellow-700">
+                <div key={portfolio.id} className="text-small text-gray-700">
                   • Portfolio "{portfolio.name}" needs performance review ({portfolio.performanceScore.toFixed(0)}/100)
                 </div>
               ))}

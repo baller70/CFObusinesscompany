@@ -125,9 +125,9 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
                 <DropdownMenuLabel>Notifications</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <div className="space-y-2 p-2">
-                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                    <p className="text-sm font-medium text-yellow-800">Upcoming Bill</p>
-                    <p className="text-xs text-yellow-600">Credit Card payment due in 3 days</p>
+                  <div className="p-3 bg-orange-50 border border-orange-200 rounded-md">
+                    <p className="text-sm font-medium text-orange-800">Upcoming Bill</p>
+                    <p className="text-xs text-orange-600">Credit Card payment due in 3 days</p>
                   </div>
                   <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
                     <p className="text-sm font-medium text-blue-800">Budget Alert</p>

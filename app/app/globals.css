@@ -6,10 +6,10 @@
 @layer base {
   :root {
     /* Premium Color Palette - Inspired by top financial apps */
-    --background: 250 252 255; /* Ultra clean white with hint of blue */
+    --background: 0 0% 100%; /* Pure white background */
     --foreground: 215.3 25% 26.7%; /* Professional dark blue-gray */
 
-    --card: 255 255 255; /* Pure white cards */
+    --card: 0 0% 100%; /* Pure white cards */
     --card-foreground: 215.3 25% 26.7%;
     
     --popover: 255 255 255;
@@ -35,9 +35,9 @@
     --success: 142.1 70.6% 45.3%; /* #22C55E */
     --success-foreground: 210 40% 98%;
     
-    /* Warning: Premium Amber */
-    --warning: 32.1 94.6% 43.7%; /* #F59E0B */
-    --warning-foreground: 210 40% 98%;
+    /* Warning: Neutral Gray */
+    --warning: 215.4 16.3% 46.9%; /* Neutral gray instead of yellow */
+    --warning-foreground: 255 255 255;
     
     /* Destructive: Professional Red */
     --destructive: 0 84.2% 60.2%;
@@ -89,7 +89,7 @@
     --success: 142.1 70.6% 45.3%;
     --success-foreground: 210 40% 98%;
     
-    --warning: 32.1 94.6% 43.7%;
+    --warning: 215 20.2% 65.1%;
     --warning-foreground: 210 40% 98%;
     
     --destructive: 0 62.8% 30.6%;

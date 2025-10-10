@@ -66,7 +66,7 @@ export function UpcomingBills({ debts }: UpcomingBillsProps) {
     if (daysUntilDue <= 3) {
       return <Badge variant="destructive">Due Soon</Badge>
     } else if (daysUntilDue <= 7) {
-      return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Due This Week</Badge>
+      return <Badge variant="secondary" className="bg-orange-100 text-orange-800">Due This Week</Badge>
     } else {
       return <Badge variant="outline">Upcoming</Badge>
     }

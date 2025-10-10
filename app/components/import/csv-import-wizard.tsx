@@ -269,14 +269,14 @@ export function CsvImportWizard({ userId, recentUploads }: CsvImportWizardProps)
                     <div className={`p-2 rounded-full ${
                       upload.status === 'COMPLETED' ? 'bg-green-100' :
                       upload.status === 'FAILED' ? 'bg-red-100' :
-                      'bg-yellow-100'
+                      'bg-blue-100'
                     }`}>
                       {upload.status === 'COMPLETED' ? (
                         <CheckCircle className="h-4 w-4 text-green-600" />
                       ) : upload.status === 'FAILED' ? (
                         <AlertCircle className="h-4 w-4 text-red-600" />
                       ) : (
-                        <Loader2 className="h-4 w-4 text-yellow-600 animate-spin" />
+                        <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
                       )}
                     </div>
                     <div>
@@ -291,7 +291,7 @@ export function CsvImportWizard({ userId, recentUploads }: CsvImportWizardProps)
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       upload.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
                       upload.status === 'FAILED' ? 'bg-red-100 text-red-800' :
-                      'bg-yellow-100 text-yellow-800'
+                      'bg-blue-100 text-blue-800'
                     }`}>
                       {upload.status.toLowerCase()}
                     </span>

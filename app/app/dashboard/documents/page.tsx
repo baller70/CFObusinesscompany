@@ -127,7 +127,7 @@ export default function DocumentsPage() {
     const categoryStyles = {
       CONTRACT: 'bg-blue-100 text-blue-800',
       INVOICE: 'bg-green-100 text-green-800',
-      RECEIPT: 'bg-yellow-100 text-yellow-800',
+      RECEIPT: 'bg-gray-100 text-gray-800',
       REPORT: 'bg-purple-100 text-purple-800',
       IMAGE: 'bg-pink-100 text-pink-800',
       SPREADSHEET: 'bg-emerald-100 text-emerald-800',

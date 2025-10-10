@@ -530,12 +530,12 @@ export default function PayrollPage() {
                     <CheckCircle className="h-5 w-5 text-green-500" />
                   </div>
                   
-                  <div className="flex justify-between items-center p-3 bg-yellow-50 border border-yellow-200 rounded">
+                  <div className="flex justify-between items-center p-3 bg-gray-50 border border-gray-200 rounded">
                     <div>
                       <div className="font-medium">Form 941 - Q4 2024</div>
                       <div className="text-sm text-gray-600">Due: Jan 31, 2025</div>
                     </div>
-                    <Clock className="h-5 w-5 text-yellow-500" />
+                    <Clock className="h-5 w-5 text-gray-500" />
                   </div>
 
                   <div className="flex justify-between items-center p-3 bg-blue-50 border border-blue-200 rounded">

@@ -33,7 +33,7 @@ async function main() {
     { name: "Transportation", color: "#4ECDC4", icon: "car", type: "EXPENSE" as const },
     { name: "Shopping", color: "#45B7D1", icon: "shopping-bag", type: "EXPENSE" as const },
     { name: "Entertainment", color: "#96CEB4", icon: "music", type: "EXPENSE" as const },
-    { name: "Bills & Utilities", color: "#FECA57", icon: "zap", type: "EXPENSE" as const },
+    { name: "Bills & Utilities", color: "#6B7280", icon: "zap", type: "EXPENSE" as const },
     { name: "Healthcare", color: "#FF9FF3", icon: "heart", type: "EXPENSE" as const },
     { name: "Education", color: "#54A0FF", icon: "book", type: "EXPENSE" as const },
     { name: "Personal Care", color: "#5F27CD", icon: "user", type: "EXPENSE" as const },
