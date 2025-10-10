@@ -104,30 +104,24 @@ export async function POST(request: NextRequest) {
 
 // Async processing function
 async function processStatementAsync(statementId: string) {
-  // Trigger processing via API call to avoid circular dependencies
-  try {
-    const response = await fetch(`${process.env.NEXTAUTH_URL}/api/bank-statements/process`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ statementId })
-    });
-    
-    if (!response.ok) {
-      throw new Error('Processing API call failed');
+  // Process in background without blocking the upload response
+  setImmediate(async () => {
+    try {
+      // Import the processor dynamically to avoid circular dependencies
+      const { processStatement } = await import('@/lib/statement-processor');
+      await processStatement(statementId);
+    } catch (error) {
+      console.error('Async processing failed:', error);
+      
+      // Update status to failed
+      await prisma.bankStatement.update({
+        where: { id: statementId },
+        data: {
+          status: 'FAILED',
+          processingStage: 'FAILED',
+          errorLog: error instanceof Error ? error.message : 'Processing failed'
+        }
+      }).catch(console.error);
     }
-  } catch (error) {
-    console.error('Async processing failed:', error);
-    
-    // Update status to failed
-    await prisma.bankStatement.update({
-      where: { id: statementId },
-      data: {
-        status: 'FAILED',
-        processingStage: 'FAILED',
-        errorLog: error instanceof Error ? error.message : 'Processing failed'
-      }
-    });
-  }
+  });
 }

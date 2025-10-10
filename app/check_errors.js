@@ -1,46 +1,30 @@
 require('dotenv').config();
 const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 async function checkErrors() {
-  const prisma = new PrismaClient();
-  
   try {
-    const recentUploads = await prisma.bankStatement.findMany({
-      where: {
-        user: {
-          email: 'khouston721@gmail.com'
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      },
-      take: 10
+    const statements = await prisma.bankStatement.findMany({
+      where: { status: 'FAILED' },
+      orderBy: { createdAt: 'desc' },
+      take: 5
     });
-
-    console.log('\n=== RECENT STATEMENT UPLOADS ===\n');
     
-    if (recentUploads.length === 0) {
-      console.log('No uploads found for khouston721@gmail.com');
+    if (statements.length === 0) {
+      console.log('No failed statements found.');
     } else {
-      recentUploads.forEach(upload => {
-        console.log(`ID: ${upload.id}`);
-        console.log(`File: ${upload.fileName}`);
-        console.log(`Original Name: ${upload.originalName || 'N/A'}`);
-        console.log(`Status: ${upload.status}`);
-        console.log(`Processing Stage: ${upload.processingStage}`);
-        console.log(`Source Type: ${upload.sourceType}`);
-        console.log(`Created: ${upload.createdAt}`);
-        console.log(`Processed: ${upload.processedAt || 'Not yet'}`);
-        if (upload.errorLog) {
-          console.log(`\n❌ ERROR LOG:\n${upload.errorLog}\n`);
-        }
-        console.log('---\n');
+      statements.forEach(stmt => {
+        console.log('\n=== Failed Statement ===');
+        console.log('File Name:', stmt.fileName);
+        console.log('Status:', stmt.status);
+        console.log('Processing Stage:', stmt.processingStage);
+        console.log('Error Log:', stmt.errorLog);
       });
     }
-
+    
+    await prisma.$disconnect();
   } catch (error) {
     console.error('Error:', error.message);
-  } finally {
     await prisma.$disconnect();
   }
 }
