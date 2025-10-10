@@ -118,6 +118,12 @@ model User {
   tasks                     Task[]
   taxOptimizations          TaxOptimization[]
   transactions              Transaction[]
+  bankAccounts              BankAccount[]
+  creditCardAccounts        CreditCardAccount[]
+  loanAccounts              LoanAccount[]
+  homeEquityAccounts        HomeEquityAccount[]
+  lineOfCreditAccounts      LineOfCreditAccount[]
+  burnRateAnalyses          BurnRateAnalysis[]
   vendors                   Vendor[]
   workflowRules             WorkflowRule[]
   assets                    Asset[]
@@ -3337,3 +3343,114 @@ enum HealthcareExpenseType {
   OTHER
 }
 
+
+// Burn Rate & Financial Outlook Models
+model BankAccount {
+  id                String           @id @default(cuid())
+  userId            String
+  businessProfileId String?
+  accountName       String
+  accountNumber     String?
+  bankName          String
+  accountType       String           // Checking, Savings, Money Market, etc.
+  currentBalance    Float
+  currency          String           @default("USD")
+  isActive          Boolean          @default(true)
+  lastUpdated       DateTime         @default(now())
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CreditCardAccount {
+  id                String           @id @default(cuid())
+  userId            String
+  businessProfileId String?
+  cardName          String
+  lastFourDigits    String?
+  issuer            String
+  creditLimit       Float
+  currentBalance    Float
+  availableCredit   Float
+  interestRate      Float?
+  minimumPayment    Float?
+  paymentDueDate    DateTime?
+  isActive          Boolean          @default(true)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model LoanAccount {
+  id                String           @id @default(cuid())
+  userId            String
+  businessProfileId String?
+  loanName          String
+  loanType          String           // Business Loan, Personal Loan, Auto Loan, Equipment Loan, etc.
+  lender            String
+  originalAmount    Float
+  currentBalance    Float
+  interestRate      Float
+  monthlyPayment    Float
+  remainingMonths   Int?
+  paymentDueDate    DateTime?
+  isActive          Boolean          @default(true)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model HomeEquityAccount {
+  id                String           @id @default(cuid())
+  userId            String
+  businessProfileId String?
+  accountName       String
+  lender            String
+  propertyValue     Float
+  mortgageBalance   Float
+  availableEquity   Float
+  creditLimit       Float?
+  currentBalance    Float            @default(0)
+  interestRate      Float?
+  isActive          Boolean          @default(true)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model LineOfCreditAccount {
+  id                String           @id @default(cuid())
+  userId            String
+  businessProfileId String?
+  accountName       String
+  lender            String
+  creditLimit       Float
+  currentBalance    Float
+  availableCredit   Float
+  interestRate      Float?
+  minimumPayment    Float?
+  paymentDueDate    DateTime?
+  isActive          Boolean          @default(true)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model BurnRateAnalysis {
+  id                String           @id @default(cuid())
+  userId            String
+  businessProfileId String?
+  analysisDate      DateTime         @default(now())
+  totalCash         Float
+  totalCredit       Float
+  totalDebt         Float
+  monthlyExpenses   Float
+  monthlyRevenue    Float
+  burnRate          Float
+  runwayMonths      Float?
+  recommendations   Json             // AI-generated recommendations
+  riskLevel         String           // LOW, MEDIUM, HIGH, CRITICAL
+  actionItems       Json             // Specific action items
+  createdAt         DateTime         @default(now())
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

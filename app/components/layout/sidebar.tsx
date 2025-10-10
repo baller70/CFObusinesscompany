@@ -215,6 +215,11 @@ const businessMenuItems = [
     ]
   },
   {
+    title: 'Burn Rate',
+    href: '/dashboard/burn-rate',
+    icon: Activity
+  },
+  {
     title: 'Treasury & Cash',
     icon: Landmark,
     submenu: [
