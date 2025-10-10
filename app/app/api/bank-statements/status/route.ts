@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
         transactions: undefined
       }));
 
-      return NextResponse.json(statementsWithCounts);
+      return NextResponse.json({ statements: statementsWithCounts });
     }
 
   } catch (error) {

@@ -75,7 +75,7 @@ export default function StatementsPage() {
   const fetchStatements = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/statements/list');
+      const res = await fetch('/api/bank-statements/status');
       const data = await res.json();
       setStatements(data.statements || []);
     } catch (error) {
@@ -94,16 +94,19 @@ export default function StatementsPage() {
       return;
     }
 
+    if (!selectedProfile) {
+      toast.error('Please select a business or household profile first');
+      return;
+    }
+
     setUploading(true);
 
     try {
       const formData = new FormData();
-      formData.append('file', file);
-      if (selectedProfile) {
-        formData.append('businessProfileId', selectedProfile);
-      }
+      formData.append('files', file); // Note: API expects 'files' not 'file'
+      formData.append('businessProfileId', selectedProfile);
 
-      const res = await fetch('/api/statements/upload', {
+      const res = await fetch('/api/bank-statements/upload', {
         method: 'POST',
         body: formData,
       });
@@ -114,13 +117,25 @@ export default function StatementsPage() {
         throw new Error(data.error || 'Upload failed');
       }
 
-      toast.success(`Statement uploaded! Found ${data.statement.transactionCount} transactions.`);
+      // Check if upload was successful
+      const successfulUploads = data.uploads?.filter((u: any) => !u.error) || [];
       
-      // Refresh statements list
-      fetchStatements();
-      
-      // Navigate to review page
-      router.push(`/dashboard/statements/review?id=${data.statementId}`);
+      if (successfulUploads.length > 0) {
+        toast.success(`Statement uploaded successfully! Processing...`);
+        
+        // Refresh statements list
+        fetchStatements();
+        
+        // Navigate to review page with the first uploaded statement
+        const firstUploadId = successfulUploads[0].id;
+        if (firstUploadId) {
+          setTimeout(() => {
+            router.push(`/dashboard/statements/review?id=${firstUploadId}`);
+          }, 1000);
+        }
+      } else {
+        throw new Error(data.uploads?.[0]?.error || 'Upload failed');
+      }
     } catch (error: any) {
       toast.error(error.message || 'Failed to upload statement');
     } finally {
