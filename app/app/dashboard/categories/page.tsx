@@ -21,162 +21,13 @@ export default function CategoriesPage() {
     redirect('/auth/signin')
   }
 
-  // Mock data for demonstration
-  const mockCategories = [
-    {
-      id: '1',
-      name: 'Professional Services',
-      type: 'INCOME',
-      description: 'Revenue from consulting and professional services',
-      color: '#10B981',
-      isActive: true,
-      budgetLimit: null,
-      taxDeductible: false,
-      transactions: [
-        { amount: 15000 },
-        { amount: 8500 },
-        { amount: 12000 }
-      ],
-      _count: { transactions: 3 }
-    },
-    {
-      id: '2',
-      name: 'Rent & Utilities',
-      type: 'EXPENSE',
-      description: 'Office rent, electricity, internet, and utilities',
-      color: '#EF4444',
-      isActive: true,
-      budgetLimit: 3000,
-      taxDeductible: true,
-      transactions: [
-        { amount: -2500 },
-        { amount: -2500 },
-        { amount: -2600 }
-      ],
-      _count: { transactions: 3 }
-    },
-    {
-      id: '3',
-      name: 'Technology',
-      type: 'EXPENSE',
-      description: 'Software subscriptions, hardware, and tech equipment',
-      color: '#F59E0B',
-      isActive: true,
-      budgetLimit: 2000,
-      taxDeductible: true,
-      transactions: [
-        { amount: -450 },
-        { amount: -3200 },
-        { amount: -800 }
-      ],
-      _count: { transactions: 3 }
-    },
-    {
-      id: '4',
-      name: 'Marketing',
-      type: 'EXPENSE',
-      description: 'Advertising, campaigns, and promotional expenses',
-      color: '#8B5CF6',
-      isActive: true,
-      budgetLimit: 1500,
-      taxDeductible: true,
-      transactions: [
-        { amount: -1200 },
-        { amount: -800 }
-      ],
-      _count: { transactions: 2 }
-    },
-    {
-      id: '5',
-      name: 'Travel & Entertainment',
-      type: 'EXPENSE',
-      description: 'Business travel, meals, and client entertainment',
-      color: '#06B6D4',
-      isActive: true,
-      budgetLimit: 1000,
-      taxDeductible: true,
-      transactions: [
-        { amount: -850 },
-        { amount: -650 }
-      ],
-      _count: { transactions: 2 }
-    },
-    {
-      id: '6',
-      name: 'Equipment',
-      type: 'EXPENSE',
-      description: 'Office furniture, computers, and equipment purchases',
-      color: '#84CC16',
-      isActive: true,
-      budgetLimit: 5000,
-      taxDeductible: true,
-      transactions: [
-        { amount: -3200 }
-      ],
-      _count: { transactions: 1 }
-    },
-    {
-      id: '7',
-      name: 'Consulting Revenue',
-      type: 'INCOME',
-      description: 'Income from consulting projects',
-      color: '#059669',
-      isActive: true,
-      budgetLimit: null,
-      taxDeductible: false,
-      transactions: [
-        { amount: 8500 },
-        { amount: 12500 }
-      ],
-      _count: { transactions: 2 }
-    },
-    {
-      id: '8',
-      name: 'Office Supplies',
-      type: 'EXPENSE',
-      description: 'Stationery, printer supplies, and office materials',
-      color: '#F97316',
-      isActive: true,
-      budgetLimit: 500,
-      taxDeductible: true,
-      transactions: [
-        { amount: -150 },
-        { amount: -200 }
-      ],
-      _count: { transactions: 2 }
-    },
-    {
-      id: '9',
-      name: 'Legal & Professional',
-      type: 'EXPENSE',
-      description: 'Legal fees, accounting services, and professional consultations',
-      color: '#7C3AED',
-      isActive: true,
-      budgetLimit: 2000,
-      taxDeductible: true,
-      transactions: [
-        { amount: -1500 }
-      ],
-      _count: { transactions: 1 }
-    },
-    {
-      id: '10',
-      name: 'Insurance',
-      type: 'EXPENSE',
-      description: 'Business insurance premiums and coverage',
-      color: '#DC2626',
-      isActive: false,
-      budgetLimit: 1200,
-      taxDeductible: true,
-      transactions: [],
-      _count: { transactions: 0 }
-    }
-  ]
+  // Empty categories array
+  const mockCategories: any[] = []
 
-  const incomeCategories = mockCategories.filter(cat => cat.type === 'INCOME')
-  const expenseCategories = mockCategories.filter(cat => cat.type === 'EXPENSE')
-  const activeCategories = mockCategories.filter(cat => cat.isActive).length
-  const totalCategories = mockCategories.length
+  const incomeCategories: any[] = []
+  const expenseCategories: any[] = []
+  const activeCategories = 0
+  const totalCategories = 0
 
   const getTotalAmount = (category: any) => {
     return category.transactions.reduce((sum: number, t: any) => sum + t.amount, 0)
@@ -289,96 +140,127 @@ export default function CategoriesPage() {
         </Card>
 
         <TabsContent value="all">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {mockCategories.map((category) => {
-              const totalAmount = getTotalAmount(category)
-              const budgetUsage = getBudgetUsage(category)
+          {mockCategories.length === 0 ? (
+            <Card>
+              <CardContent className="text-center py-12">
+                <Tag className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No categories yet</h3>
+                <p className="text-gray-600 mb-4">Create your first category to organize your income and expenses</p>
+                <Link href="/dashboard/categories/new">
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Category
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {mockCategories.map((category) => {
+                const totalAmount = getTotalAmount(category)
+                const budgetUsage = getBudgetUsage(category)
 
-              return (
-                <Card key={category.id} className={`hover:shadow-lg transition-shadow ${!category.isActive ? 'opacity-60' : ''}`}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div 
-                          className="w-4 h-4 rounded-full flex-shrink-0" 
-                          style={{ backgroundColor: category.color }}
-                        />
-                        <div>
-                          <h3 className="font-semibold text-gray-900">{category.name}</h3>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <Badge variant={category.type === 'INCOME' ? 'default' : 'destructive'}>
-                              {category.type.toLowerCase()}
-                            </Badge>
-                            {!category.isActive && (
-                              <Badge variant="secondary">Inactive</Badge>
-                            )}
-                            {category.taxDeductible && (
-                              <Badge variant="outline" className="text-xs">Tax Deductible</Badge>
-                            )}
+                return (
+                  <Card key={category.id} className={`hover:shadow-lg transition-shadow ${!category.isActive ? 'opacity-60' : ''}`}>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div 
+                            className="w-4 h-4 rounded-full flex-shrink-0" 
+                            style={{ backgroundColor: category.color }}
+                          />
+                          <div>
+                            <h3 className="font-semibold text-gray-900">{category.name}</h3>
+                            <div className="flex items-center space-x-2 mt-1">
+                              <Badge variant={category.type === 'INCOME' ? 'default' : 'destructive'}>
+                                {category.type.toLowerCase()}
+                              </Badge>
+                              {!category.isActive && (
+                                <Badge variant="secondary">Inactive</Badge>
+                              )}
+                              {category.taxDeductible && (
+                                <Badge variant="outline" className="text-xs">Tax Deductible</Badge>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </CardHeader>
+                    </CardHeader>
 
-                  <CardContent>
-                    <p className="text-gray-600 text-sm mb-4">{category.description}</p>
+                    <CardContent>
+                      <p className="text-gray-600 text-sm mb-4">{category.description}</p>
 
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Total Amount:</span>
-                        <span className={`font-semibold ${
-                          category.type === 'INCOME' ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                          {category.type === 'INCOME' ? '+' : ''}${Math.abs(totalAmount).toLocaleString()}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Transactions:</span>
-                        <span className="font-medium">{category._count.transactions}</span>
-                      </div>
-
-                      {budgetUsage && (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600">Budget Usage:</span>
-                            <span className={`font-semibold px-2 py-1 rounded-full text-xs ${
-                              getBudgetColor(budgetUsage.percentage)
-                            }`}>
-                              {budgetUsage.percentage.toFixed(0)}%
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div 
-                              className={`h-2 rounded-full ${
-                                budgetUsage.percentage >= 90 ? 'bg-red-500' :
-                                budgetUsage.percentage >= 75 ? 'bg-orange-500' :
-                                budgetUsage.percentage >= 50 ? 'bg-gray-500' :
-                                'bg-green-500'
-                              }`}
-                              style={{ width: `${Math.min(budgetUsage.percentage, 100)}%` }}
-                            />
-                          </div>
-                          <div className="flex items-center justify-between text-xs text-gray-500">
-                            <span>${budgetUsage.spent.toLocaleString()} spent</span>
-                            <span>${budgetUsage.limit.toLocaleString()} budget</span>
-                          </div>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">Total Amount:</span>
+                          <span className={`font-semibold ${
+                            category.type === 'INCOME' ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {category.type === 'INCOME' ? '+' : ''}${Math.abs(totalAmount).toLocaleString()}
+                          </span>
                         </div>
-                      )}
-                    </div>
 
-                    <CategoryActions categoryName={category.name} />
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">Transactions:</span>
+                          <span className="font-medium">{category._count.transactions}</span>
+                        </div>
+
+                        {budgetUsage && (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">Budget Usage:</span>
+                              <span className={`font-semibold px-2 py-1 rounded-full text-xs ${
+                                getBudgetColor(budgetUsage.percentage)
+                              }`}>
+                                {budgetUsage.percentage.toFixed(0)}%
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div 
+                                className={`h-2 rounded-full ${
+                                  budgetUsage.percentage >= 90 ? 'bg-red-500' :
+                                  budgetUsage.percentage >= 75 ? 'bg-orange-500' :
+                                  budgetUsage.percentage >= 50 ? 'bg-gray-500' :
+                                  'bg-green-500'
+                                }`}
+                                style={{ width: `${Math.min(budgetUsage.percentage, 100)}%` }}
+                              />
+                            </div>
+                            <div className="flex items-center justify-between text-xs text-gray-500">
+                              <span>${budgetUsage.spent.toLocaleString()} spent</span>
+                              <span>${budgetUsage.limit.toLocaleString()} budget</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <CategoryActions categoryName={category.name} />
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="income">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {incomeCategories.map((category) => {
+          {incomeCategories.length === 0 ? (
+            <Card>
+              <CardContent className="text-center py-12">
+                <TrendingUp className="h-12 w-12 text-green-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No income categories yet</h3>
+                <p className="text-gray-600 mb-4">Create income categories to track your revenue streams</p>
+                <Link href="/dashboard/categories/new">
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Income Category
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {incomeCategories.map((category) => {
               const totalAmount = getTotalAmount(category)
 
               return (
@@ -438,7 +320,7 @@ export default function CategoriesPage() {
                                   <p><strong>Category Type:</strong> ${category.type}</p>
                                   <p><strong>Total Amount:</strong> +$${totalAmount.toLocaleString()}</p>
                                   <h3>Recent Transactions (${category._count.transactions})</h3>
-                                  ${category.transactions.map((trans, idx) => 
+                                  ${category.transactions.map((trans: any, idx: number) => 
                                     `<div class="transaction">Transaction ${idx + 1}: $${trans.amount.toLocaleString()}</div>`
                                   ).join('')}
                                   <p style="margin-top: 20px; color: #666;">This shows a sample of transactions for this category.</p>
@@ -468,11 +350,27 @@ export default function CategoriesPage() {
               )
             })}
           </div>
+          )}
         </TabsContent>
 
         <TabsContent value="expenses">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {expenseCategories.map((category) => {
+          {expenseCategories.length === 0 ? (
+            <Card>
+              <CardContent className="text-center py-12">
+                <TrendingDown className="h-12 w-12 text-red-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No expense categories yet</h3>
+                <p className="text-gray-600 mb-4">Create expense categories to track and manage your costs</p>
+                <Link href="/dashboard/categories/new">
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Expense Category
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {expenseCategories.map((category) => {
               const totalAmount = Math.abs(getTotalAmount(category))
               const budgetUsage = getBudgetUsage(category)
 
@@ -562,7 +460,7 @@ export default function CategoriesPage() {
                                     ` : ''}
                                   </div>
                                   <h3>Recent Transactions (${category._count.transactions})</h3>
-                                  ${category.transactions.map((trans, idx) => 
+                                  ${category.transactions.map((trans: any, idx: number) => 
                                     `<div class="transaction">Expense ${idx + 1}: -$${Math.abs(trans.amount).toLocaleString()}</div>`
                                   ).join('')}
                                   <p style="margin-top: 20px; color: #666;">This shows expense transactions for this category.</p>
@@ -597,6 +495,7 @@ export default function CategoriesPage() {
               )
             })}
           </div>
+          )}
         </TabsContent>
 
         <TabsContent value="budget">
@@ -605,10 +504,23 @@ export default function CategoriesPage() {
               <CardTitle>Budget Performance</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {mockCategories
-                  .filter(cat => cat.budgetLimit && cat.type === 'EXPENSE')
-                  .map((category) => {
+              {mockCategories.filter(cat => cat.budgetLimit && cat.type === 'EXPENSE').length === 0 ? (
+                <div className="text-center py-12">
+                  <Percent className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No budgets set yet</h3>
+                  <p className="text-gray-600 mb-4">Create expense categories with budget limits to track spending</p>
+                  <Link href="/dashboard/categories/new">
+                    <Button>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Set Budget
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {mockCategories
+                    .filter(cat => cat.budgetLimit && cat.type === 'EXPENSE')
+                    .map((category) => {
                     const budgetUsage = getBudgetUsage(category)!
                     
                     return (
@@ -658,7 +570,8 @@ export default function CategoriesPage() {
                       </div>
                     )
                   })}
-              </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
