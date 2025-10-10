@@ -12,6 +12,7 @@ const config: Config = {
       fontFamily: {
         'audiowide': ['var(--font-audiowide)', 'cursive'],
         'saira': ['var(--font-saira)', 'sans-serif'],
+        'russo': ['var(--font-russo)', 'sans-serif'],
         'sans': ['var(--font-saira)', 'sans-serif'], // Set Saira as default sans font
       },
       backgroundImage: {
