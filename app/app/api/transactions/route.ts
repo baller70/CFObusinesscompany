@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../lib/auth";
 import { prisma } from "../../../lib/db";
+import { getCurrentBusinessProfileId } from "../../../lib/business-profile-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -20,8 +21,13 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category');
     const type = searchParams.get('type');
 
+    // Get current business profile ID
+    const businessProfileId = await getCurrentBusinessProfileId();
+
     const where: any = {
-      userId: session.user.id
+      userId: session.user.id,
+      // Filter by business profile if one is selected
+      ...(businessProfileId ? { businessProfileId } : {})
     };
 
     if (category) {
@@ -78,9 +84,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get current business profile ID
+    const businessProfileId = await getCurrentBusinessProfileId();
+
     const transaction = await prisma.transaction.create({
       data: {
         userId: session.user.id,
+        businessProfileId,
         date: new Date(date),
         amount: parseFloat(amount),
         description: description.trim(),

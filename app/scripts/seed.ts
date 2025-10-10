@@ -47,8 +47,9 @@ async function main() {
   for (const category of defaultCategories) {
     await prisma.category.upsert({
       where: {
-        userId_name: {
+        userId_businessProfileId_name: {
           userId: testUser.id,
+          businessProfileId: null,
           name: category.name
         }
       },
@@ -56,6 +57,7 @@ async function main() {
       create: {
         ...category,
         userId: testUser.id,
+        businessProfileId: null,
         isDefault: true
       }
     });
@@ -138,21 +140,26 @@ async function main() {
   console.log('💳 Created sample debt');
 
   // Create financial metrics
-  await prisma.financialMetrics.upsert({
-    where: { userId: testUser.id },
-    update: {},
-    create: {
-      userId: testUser.id,
-      monthlyIncome: 3500,
-      monthlyExpenses: 1343.49,
-      monthlyBurnRate: -2156.51,
-      totalDebt: 2500,
-      totalAssets: 5000,
-      netWorth: 2500,
-      emergencyFundGoal: 3000,
-      debtToIncomeRatio: 0.595
-    }
+  const existingMetrics = await prisma.financialMetrics.findFirst({
+    where: { userId: testUser.id, businessProfileId: null }
   });
+
+  if (!existingMetrics) {
+    await prisma.financialMetrics.create({
+      data: {
+        userId: testUser.id,
+        businessProfileId: null,
+        monthlyIncome: 3500,
+        monthlyExpenses: 1343.49,
+        monthlyBurnRate: -2156.51,
+        totalDebt: 2500,
+        totalAssets: 5000,
+        netWorth: 2500,
+        emergencyFundGoal: 3000,
+        debtToIncomeRatio: 0.595
+      }
+    });
+  }
 
   console.log('📈 Created financial metrics');
 

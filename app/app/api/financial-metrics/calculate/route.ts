@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { subMonths, startOfMonth, endOfMonth } from 'date-fns'
+import { getCurrentBusinessProfileId } from '@/lib/business-profile-utils'
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,6 +15,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    const businessProfileId = await getCurrentBusinessProfileId()
 
     const now = new Date()
     const threeMonthsAgo = subMonths(now, 3)
@@ -81,31 +84,43 @@ export async function POST(request: NextRequest) {
       ? (totalDebt._sum.balance || 0) / (monthlyIncome * 12) 
       : 0
 
-    // Upsert financial metrics
-    const metrics = await prisma.financialMetrics.upsert({
-      where: { userId },
-      update: {
-        monthlyIncome,
-        monthlyExpenses,
-        monthlyBurnRate,
-        totalDebt: totalDebt._sum.balance || 0,
-        totalAssets,
-        netWorth,
-        debtToIncomeRatio,
-        lastCalculated: now
-      },
-      create: {
-        userId,
-        monthlyIncome,
-        monthlyExpenses,
-        monthlyBurnRate,
-        totalDebt: totalDebt._sum.balance || 0,
-        totalAssets,
-        netWorth,
-        debtToIncomeRatio,
-        lastCalculated: now
-      }
+    // Find or create financial metrics
+    let metrics = await prisma.financialMetrics.findFirst({
+      where: { userId, businessProfileId }
     })
+
+    if (metrics) {
+      // Update existing metrics
+      metrics = await prisma.financialMetrics.update({
+        where: { id: metrics.id },
+        data: {
+          monthlyIncome,
+          monthlyExpenses,
+          monthlyBurnRate,
+          totalDebt: totalDebt._sum.balance || 0,
+          totalAssets,
+          netWorth,
+          debtToIncomeRatio,
+          lastCalculated: now
+        }
+      })
+    } else {
+      // Create new metrics
+      metrics = await prisma.financialMetrics.create({
+        data: {
+          userId,
+          businessProfileId,
+          monthlyIncome,
+          monthlyExpenses,
+          monthlyBurnRate,
+          totalDebt: totalDebt._sum.balance || 0,
+          totalAssets,
+          netWorth,
+          debtToIncomeRatio,
+          lastCalculated: now
+        }
+      })
+    }
 
     return NextResponse.json({
       success: true,

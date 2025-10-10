@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Bell, Settings, LogOut, Search, Menu } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { BusinessProfileSwitcher } from '@/components/business-profile-switcher'
 
 interface TopNavProps {
   user: any
@@ -45,8 +46,11 @@ export function TopNav({ user, onMenuToggle }: TopNavProps) {
         </div>
       </div>
 
-      {/* Right side - Notifications and User menu */}
+      {/* Right side - Business Switcher, Notifications and User menu */}
       <div className="flex items-center space-x-4">
+        {/* Business Profile Switcher */}
+        <BusinessProfileSwitcher />
+
         {/* Notifications */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

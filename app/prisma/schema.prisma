@@ -57,6 +57,7 @@ model User {
   annualRevenue             Float?
   companySize               CompanySize                @default(SMALL)
   fiscalYearEnd             DateTime?
+  currentBusinessProfileId  String?
   createdAt                 DateTime                   @default(now())
   updatedAt                 DateTime                   @updatedAt
   aiRecommendations         AIRecommendation[]
@@ -70,6 +71,7 @@ model User {
   budgetScenarios           BudgetScenario[]
   businessEntities          BusinessEntity[]
   businessInsights          BusinessInsight[]
+  businessProfiles          BusinessProfile[]
   cashFlows                 CashFlow[]
   cashFlowForecasts         CashFlowForecast[]
   cashForecasts             CashForecast[]
@@ -88,7 +90,7 @@ model User {
   employees                 Employee[]
   estimates                 Estimate[]
   expenseClaims             ExpenseClaim[]
-  financialMetrics          FinancialMetrics?
+  financialMetrics          FinancialMetrics[]
   goals                     Goal[]
   industryBenchmarks        IndustryBenchmark[]
   insurancePolicies         InsurancePolicy[]
@@ -131,6 +133,7 @@ model VerificationToken {
 model Transaction {
   id                       String                    @id @default(cuid())
   userId                   String
+  businessProfileId        String?
   date                     DateTime
   amount                   Float
   description              String
@@ -149,6 +152,7 @@ model Transaction {
   updatedAt                DateTime                  @updatedAt
   multiCurrencyTransaction MultiCurrencyTransaction?
   bankStatement            BankStatement?            @relation(fields: [bankStatementId], references: [id])
+  businessProfile          BusinessProfile?          @relation(fields: [businessProfileId], references: [id])
   categoryRelation         Category?                 @relation(fields: [categoryId], references: [id])
   csvUpload                CsvUpload?                @relation(fields: [csvUploadId], references: [id])
   user                     User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -156,42 +160,49 @@ model Transaction {
 
   @@index([userId, date])
   @@index([userId, category])
+  @@index([userId, businessProfileId])
 }
 
 model Category {
-  id           String        @id @default(cuid())
-  userId       String
-  name         String
-  color        String        @default("#3B82F6")
-  icon         String        @default("folder")
-  budget       Float?
-  type         CategoryType
-  isDefault    Boolean       @default(false)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions Transaction[]
+  id                String        @id @default(cuid())
+  userId            String
+  businessProfileId String?
+  name              String
+  color             String        @default("#3B82F6")
+  icon              String        @default("folder")
+  budget            Float?
+  type              CategoryType
+  isDefault         Boolean       @default(false)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  businessProfile   BusinessProfile? @relation(fields: [businessProfileId], references: [id])
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions      Transaction[]
 
-  @@unique([userId, name])
+  @@unique([userId, businessProfileId, name])
+  @@index([userId, businessProfileId])
 }
 
 model Debt {
-  id             String        @id @default(cuid())
-  userId         String
-  name           String
-  balance        Float
-  interestRate   Float
-  minimumPayment Float
-  dueDate        Int
-  type           DebtType
-  priority       Int           @default(0)
-  isActive       Boolean       @default(true)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  payments       DebtPayment[]
+  id                String        @id @default(cuid())
+  userId            String
+  businessProfileId String?
+  name              String
+  balance           Float
+  interestRate      Float
+  minimumPayment    Float
+  dueDate           Int
+  type              DebtType
+  priority          Int           @default(0)
+  isActive          Boolean       @default(true)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  businessProfile   BusinessProfile? @relation(fields: [businessProfileId], references: [id])
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments          DebtPayment[]
 
   @@index([userId, isActive])
+  @@index([userId, businessProfileId])
 }
 
 model DebtPayment {
@@ -208,39 +219,45 @@ model DebtPayment {
 }
 
 model Goal {
-  id            String    @id @default(cuid())
-  userId        String
-  name          String
-  description   String?
-  targetAmount  Float
-  currentAmount Float     @default(0)
-  targetDate    DateTime?
-  type          GoalType
-  priority      Int       @default(0)
-  isCompleted   Boolean   @default(false)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String    @id @default(cuid())
+  userId            String
+  businessProfileId String?
+  name              String
+  description       String?
+  targetAmount      Float
+  currentAmount     Float     @default(0)
+  targetDate        DateTime?
+  type              GoalType
+  priority          Int       @default(0)
+  isCompleted       Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  businessProfile   BusinessProfile? @relation(fields: [businessProfileId], references: [id])
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isCompleted])
+  @@index([userId, businessProfileId])
 }
 
 model Budget {
-  id        String     @id @default(cuid())
-  userId    String
-  name      String
-  month     Int
-  year      Int
-  amount    Float
-  spent     Float      @default(0)
-  category  String
-  type      BudgetType
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String     @id @default(cuid())
+  userId            String
+  businessProfileId String?
+  name              String
+  month             Int
+  year              Int
+  amount            Float
+  spent             Float      @default(0)
+  category          String
+  type              BudgetType
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  businessProfile   BusinessProfile? @relation(fields: [businessProfileId], references: [id])
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, category, month, year])
+  @@unique([userId, businessProfileId, category, month, year])
   @@index([userId, month, year])
+  @@index([userId, businessProfileId])
 }
 
 model Notification {
@@ -313,7 +330,8 @@ model BankStatement {
 
 model FinancialMetrics {
   id                  String   @id @default(cuid())
-  userId              String   @unique
+  userId              String
+  businessProfileId String?   @unique
   monthlyIncome       Float?
   monthlyExpenses     Float?
   monthlyBurnRate     Float?
@@ -337,12 +355,14 @@ model FinancialMetrics {
   riskScore           Float?
   lastCalculated      DateTime @default(now())
   updatedAt           DateTime @updatedAt
+  businessProfile BusinessProfile? @relation(fields: [businessProfileId], references: [id])
   user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Customer {
   id        String     @id @default(cuid())
   userId    String
+  businessProfileId String?
   name      String
   email     String?
   phone     String?
@@ -357,17 +377,20 @@ model Customer {
   isActive  Boolean    @default(true)
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
+  businessProfile BusinessProfile? @relation(fields: [businessProfileId], references: [id])
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   estimates Estimate[]
   invoices  Invoice[]
   projects  Project[]
 
   @@index([userId, isActive])
+  @@index([userId, businessProfileId])
 }
 
 model Vendor {
   id           String        @id @default(cuid())
   userId       String
+  businessProfileId String?
   name         String
   email        String?
   phone        String?
@@ -385,14 +408,17 @@ model Vendor {
   updatedAt    DateTime      @updatedAt
   bills        Bill[]
   expenses     Transaction[]
+  businessProfile BusinessProfile? @relation(fields: [businessProfileId], references: [id])
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isActive])
+  @@index([userId, businessProfileId])
 }
 
 model Contractor {
   id        String    @id @default(cuid())
   userId    String
+  businessProfileId String?
   name      String
   email     String?
   phone     String?
@@ -409,16 +435,19 @@ model Contractor {
   isActive  Boolean   @default(true)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+  businessProfile BusinessProfile? @relation(fields: [businessProfileId], references: [id])
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   projects  Project[]
   tasks     Task[]
 
   @@index([userId, isActive])
+  @@index([userId, businessProfileId])
 }
 
 model Product {
   id            String         @id @default(cuid())
   userId        String
+  businessProfileId String?
   name          String
   description   String?
   sku           String?
@@ -432,15 +461,18 @@ model Product {
   updatedAt     DateTime       @updatedAt
   estimateItems EstimateItem[]
   invoiceItems  InvoiceItem[]
+  businessProfile BusinessProfile? @relation(fields: [businessProfileId], references: [id])
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isActive])
+  @@index([userId, businessProfileId])
   @@index([userId, category])
 }
 
 model Service {
   id            String         @id @default(cuid())
   userId        String
+  businessProfileId String?
   name          String
   description   String?
   rate          Float
@@ -452,15 +484,18 @@ model Service {
   updatedAt     DateTime       @updatedAt
   estimateItems EstimateItem[]
   invoiceItems  InvoiceItem[]
+  businessProfile BusinessProfile? @relation(fields: [businessProfileId], references: [id])
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isActive])
+  @@index([userId, businessProfileId])
   @@index([userId, category])
 }
 
 model Invoice {
   id            String        @id @default(cuid())
   userId        String
+  businessProfileId String?
   customerId    String
   invoiceNumber String        @unique
   title         String?
@@ -478,11 +513,13 @@ model Invoice {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   customer      Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  businessProfile BusinessProfile? @relation(fields: [businessProfileId], references: [id])
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   items         InvoiceItem[]
   payments      Payment[]
 
   @@index([userId, status])
+  @@index([userId, businessProfileId])
   @@index([userId, dueDate])
 }
 
@@ -504,6 +541,7 @@ model InvoiceItem {
 model Estimate {
   id             String         @id @default(cuid())
   userId         String
+  businessProfileId String?
   customerId     String
   estimateNumber String         @unique
   title          String?
@@ -520,10 +558,12 @@ model Estimate {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   customer       Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  businessProfile BusinessProfile? @relation(fields: [businessProfileId], references: [id])
   user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   items          EstimateItem[]
 
   @@index([userId, status])
+  @@index([userId, businessProfileId])
   @@index([userId, expiryDate])
 }
 
@@ -545,6 +585,7 @@ model EstimateItem {
 model Project {
   id           String        @id @default(cuid())
   userId       String
+  businessProfileId String?
   customerId   String?
   contractorId String?
   name         String
@@ -560,15 +601,18 @@ model Project {
   documents    Document[]
   contractor   Contractor?   @relation(fields: [contractorId], references: [id])
   customer     Customer?     @relation(fields: [customerId], references: [id])
+  businessProfile BusinessProfile? @relation(fields: [businessProfileId], references: [id])
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   tasks        Task[]
 
   @@index([userId, status])
+  @@index([userId, businessProfileId])
 }
 
 model Employee {
   id         String      @id @default(cuid())
   userId     String
+  businessProfileId String?
   firstName  String
   lastName   String
   email      String
@@ -587,11 +631,13 @@ model Employee {
   isActive   Boolean     @default(true)
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
+  businessProfile BusinessProfile? @relation(fields: [businessProfileId], references: [id])
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   paychecks  Paycheck[]
   timesheets Timesheet[]
 
   @@index([userId, isActive])
+  @@index([userId, businessProfileId])
 }
 
 model Paycheck {
@@ -664,6 +710,7 @@ model Document {
 model Bill {
   id          String     @id @default(cuid())
   userId      String
+  businessProfileId String?
   vendorId    String?
   billNumber  String?
   description String
@@ -675,10 +722,12 @@ model Bill {
   notes       String?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+  businessProfile BusinessProfile? @relation(fields: [businessProfileId], references: [id])
   user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   vendor      Vendor?    @relation(fields: [vendorId], references: [id])
 
   @@index([userId, status])
+  @@index([userId, businessProfileId])
   @@index([userId, dueDate])
 }
 
@@ -749,6 +798,7 @@ model Automation {
 model ChartOfAccount {
   id             String             @id @default(cuid())
   userId         String
+  businessProfileId String?
   code           String
   name           String
   type           AccountType
@@ -760,16 +810,19 @@ model ChartOfAccount {
   updatedAt      DateTime           @updatedAt
   parent         ChartOfAccount?    @relation("AccountHierarchy", fields: [parentId], references: [id])
   children       ChartOfAccount[]   @relation("AccountHierarchy")
+  businessProfile BusinessProfile? @relation(fields: [businessProfileId], references: [id])
   user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   journalEntries JournalEntryLine[]
 
   @@unique([userId, code])
   @@index([userId, type])
+  @@index([userId, businessProfileId])
 }
 
 model JournalEntry {
   id          String             @id @default(cuid())
   userId      String
+  businessProfileId String?
   entryNumber String
   date        DateTime
   description String
@@ -778,11 +831,13 @@ model JournalEntry {
   totalCredit Float
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
+  businessProfile BusinessProfile? @relation(fields: [businessProfileId], references: [id])
   user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   lines       JournalEntryLine[]
 
   @@unique([userId, entryNumber])
   @@index([userId, date])
+  @@index([userId, businessProfileId])
 }
 
 model JournalEntryLine {
@@ -799,6 +854,7 @@ model JournalEntryLine {
 model Reconciliation {
   id             String               @id @default(cuid())
   userId         String
+  businessProfileId String?
   accountId      String?
   month          Int
   year           Int
@@ -811,10 +867,12 @@ model Reconciliation {
   reconciledAt   DateTime?
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
+  businessProfile BusinessProfile? @relation(fields: [businessProfileId], references: [id])
   user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, month, year])
   @@index([userId, status])
+  @@index([userId, businessProfileId])
 }
 
 model Payment {
@@ -832,6 +890,7 @@ model Payment {
 model CashFlowForecast {
   id                String         @id @default(cuid())
   userId            String
+  businessProfileId String?
   period            String
   periodType        ForecastPeriod
   startDate         DateTime
@@ -850,10 +909,12 @@ model CashFlowForecast {
   isActive          Boolean        @default(true)
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
+  businessProfile BusinessProfile? @relation(fields: [businessProfileId], references: [id])
   user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, period, scenarioType])
   @@index([userId, startDate])
+  @@index([userId, businessProfileId])
   @@index([userId, scenarioType])
 }
 
@@ -1011,6 +1072,7 @@ model ComplianceTracking {
 model RecurringCharge {
   id              String             @id @default(cuid())
   userId          String
+  businessProfileId String?
   name            String
   description     String?
   amount          Float
@@ -1034,9 +1096,11 @@ model RecurringCharge {
   createdAt       DateTime           @default(now())
   autoPayEnabled  Boolean            @default(false)
   paymentMethod   String?
+  businessProfile BusinessProfile? @relation(fields: [businessProfileId], references: [id])
   user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isActive])
+  @@index([userId, businessProfileId])
   @@index([userId, nextDueDate])
   @@index([userId, category])
   @@index([userId, frequency])
@@ -1167,6 +1231,50 @@ model BusinessEntity {
   @@index([userId, isActive])
 }
 
+model BusinessProfile {
+  id                        String                     @id @default(cuid())
+  userId                    String
+  name                      String
+  type                      BusinessProfileType        @default(BUSINESS)
+  description               String?
+  industry                  String?
+  icon                      String?
+  color                     String?
+  isDefault                 Boolean                    @default(false)
+  isActive                  Boolean                    @default(true)
+  createdAt                 DateTime                   @default(now())
+  updatedAt                 DateTime                   @updatedAt
+  user                      User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions              Transaction[]
+  categories                Category[]
+  budgets                   Budget[]
+  goals                     Goal[]
+  debts                     Debt[]
+  bills                     Bill[]
+  invoices                  Invoice[]
+  estimates                 Estimate[]
+  recurringCharges          RecurringCharge[]
+  chartOfAccounts           ChartOfAccount[]
+  journalEntries            JournalEntry[]
+  reconciliations           Reconciliation[]
+  customers                 Customer[]
+  vendors                   Vendor[]
+  contractors               Contractor[]
+  employees                 Employee[]
+  projects                  Project[]
+  products                  Product[]
+  services                  Service[]
+  investments               Investment[]
+  portfolios                Portfolio[]
+  investmentTransactions    InvestmentTransaction[]
+  cashFlowForecasts         CashFlowForecast[]
+  financialMetrics          FinancialMetrics?
+
+  @@unique([userId, name])
+  @@index([userId, type])
+  @@index([userId, isActive])
+}
+
 model WorkflowRule {
   id           String          @id @default(cuid())
   userId       String
@@ -1244,6 +1352,7 @@ model BudgetScenario {
 model Investment {
   id               String                  @id @default(cuid())
   userId           String
+  businessProfileId String?
   name             String
   type             InvestmentType
   category         InvestmentCategory
@@ -1278,11 +1387,13 @@ model Investment {
   notes            String?
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
+  businessProfile BusinessProfile? @relation(fields: [businessProfileId], references: [id])
   user             User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions     InvestmentTransaction[]
   portfolios       PortfolioInvestment[]
 
   @@index([userId, type])
+  @@index([userId, businessProfileId])
   @@index([userId, category])
   @@index([userId, isActive])
 }
@@ -1290,6 +1401,7 @@ model Investment {
 model Portfolio {
   id                String                @id @default(cuid())
   userId            String
+  businessProfileId String?
   name              String
   description       String?
   type              PortfolioType         @default(GENERAL)
@@ -1312,11 +1424,13 @@ model Portfolio {
   notes             String?
   createdAt         DateTime              @default(now())
   updatedAt         DateTime              @updatedAt
+  businessProfile BusinessProfile? @relation(fields: [businessProfileId], references: [id])
   user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   investments       PortfolioInvestment[]
   rebalanceEvents   PortfolioRebalance[]
 
   @@index([userId, type])
+  @@index([userId, businessProfileId])
   @@index([userId, isActive])
 }
 
@@ -1338,6 +1452,7 @@ model PortfolioInvestment {
 model InvestmentTransaction {
   id              String                    @id @default(cuid())
   userId          String
+  businessProfileId String?
   investmentId    String
   type            InvestmentTransactionType
   quantity        Float
@@ -1354,9 +1469,11 @@ model InvestmentTransaction {
   createdAt       DateTime                  @default(now())
   updatedAt       DateTime                  @updatedAt
   investment      Investment                @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+  businessProfile BusinessProfile? @relation(fields: [businessProfileId], references: [id])
   user            User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, transactionDate])
+  @@index([userId, businessProfileId])
   @@index([userId, type])
 }
 
@@ -1829,6 +1946,11 @@ enum BusinessType {
   PARTNERSHIP
   SOLE_PROPRIETORSHIP
   NONPROFIT
+}
+
+enum BusinessProfileType {
+  PERSONAL
+  BUSINESS
 }
 
 enum CompanySize {
