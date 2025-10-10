@@ -33,101 +33,14 @@ export default function PayrollPage() {
     redirect('/auth/signin')
   }
 
-  // Mock data for demonstration
-  const mockEmployees = [
-    {
-      id: '1',
-      firstName: 'John',
-      lastName: 'Smith',
-      email: 'john.smith@company.com',
-      jobTitle: 'Senior Developer',
-      department: 'Engineering',
-      salary: 95000,
-      hourlyRate: null,
-      hireDate: new Date('2023-03-15'),
-      isActive: true,
-      paychecks: [
-        { id: '1', payPeriodStart: new Date('2024-11-01'), payPeriodEnd: new Date('2024-11-15'), grossPay: 3958.33, netPay: 2850.00 },
-        { id: '2', payPeriodStart: new Date('2024-10-16'), payPeriodEnd: new Date('2024-10-31'), grossPay: 3958.33, netPay: 2850.00 }
-      ]
-    },
-    {
-      id: '2',
-      firstName: 'Sarah',
-      lastName: 'Johnson',
-      email: 'sarah.johnson@company.com',
-      jobTitle: 'Marketing Manager',
-      department: 'Marketing',
-      salary: 75000,
-      hourlyRate: null,
-      hireDate: new Date('2023-07-01'),
-      isActive: true,
-      paychecks: [
-        { id: '3', payPeriodStart: new Date('2024-11-01'), payPeriodEnd: new Date('2024-11-15'), grossPay: 3125.00, netPay: 2280.00 }
-      ]
-    },
-    {
-      id: '3',
-      firstName: 'Mike',
-      lastName: 'Brown',
-      email: 'mike.brown@company.com',
-      jobTitle: 'Part-time Assistant',
-      department: 'Operations',
-      salary: null,
-      hourlyRate: 25,
-      hireDate: new Date('2024-01-15'),
-      isActive: true,
-      paychecks: [
-        { id: '4', payPeriodStart: new Date('2024-11-01'), payPeriodEnd: new Date('2024-11-15'), grossPay: 1000.00, netPay: 800.00 }
-      ]
-    }
-  ]
+  // All data will come from the database - no mock data
+  const mockEmployees: any[] = []
+  const mockPayPeriods: any[] = []
 
-  const mockPayPeriods = [
-    {
-      id: '1',
-      startDate: new Date('2024-11-01'),
-      endDate: new Date('2024-11-15'),
-      payDate: new Date('2024-11-20'),
-      status: 'COMPLETED',
-      employeeCount: 3,
-      totalGross: 8083.33,
-      totalNet: 5930.00,
-      totalTaxes: 1653.33,
-      totalDeductions: 500.00
-    },
-    {
-      id: '2',
-      startDate: new Date('2024-10-16'),
-      endDate: new Date('2024-10-31'),
-      payDate: new Date('2024-11-05'),
-      status: 'COMPLETED',
-      employeeCount: 3,
-      totalGross: 8083.33,
-      totalNet: 5930.00,
-      totalTaxes: 1653.33,
-      totalDeductions: 500.00
-    },
-    {
-      id: '3',
-      startDate: new Date('2024-11-16'),
-      endDate: new Date('2024-11-30'),
-      payDate: new Date('2024-12-05'),
-      status: 'PENDING',
-      employeeCount: 3,
-      totalGross: 0,
-      totalNet: 0,
-      totalTaxes: 0,
-      totalDeductions: 0
-    }
-  ]
-
-  const activeEmployees = mockEmployees.filter(emp => emp.isActive).length
-  const totalPayrollCost = mockEmployees.reduce((sum, emp) => 
-    sum + (emp.salary || 0) + (emp.hourlyRate ? emp.hourlyRate * 2080 : 0), 0
-  )
-  const currentPeriod = mockPayPeriods.find(p => p.status === 'PENDING')
-  const lastPayroll = mockPayPeriods.find(p => p.status === 'COMPLETED')
+  const activeEmployees = 0
+  const totalPayrollCost = 0
+  const currentPeriod = null
+  const lastPayroll = null
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -186,7 +99,6 @@ export default function PayrollPage() {
         </div>
       </div>
 
-      {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card>
           <CardHeader className="pb-2">
@@ -219,10 +131,10 @@ export default function PayrollPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">
-              ${lastPayroll?.totalNet.toLocaleString() || 0}
+              $0
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              {lastPayroll ? format(lastPayroll.payDate, 'MMM d') : 'No payroll yet'}
+              No payroll yet
             </p>
           </CardContent>
         </Card>
@@ -235,7 +147,7 @@ export default function PayrollPage() {
             <div className="flex items-center">
               <Calendar className="h-5 w-5 text-orange-500 mr-2" />
               <div className="text-lg font-bold text-orange-600">
-                {currentPeriod ? format(currentPeriod.payDate, 'MMM d') : 'TBD'}
+                TBD
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-1">Upcoming payment</p>
@@ -263,23 +175,23 @@ export default function PayrollPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">Period:</span>
                       <span className="font-medium">
-                        {format(currentPeriod.startDate, 'MMM d')} - {format(currentPeriod.endDate, 'MMM d, yyyy')}
+                        {(currentPeriod as any)?.startDate ? format((currentPeriod as any).startDate, 'MMM d') : ''} - {(currentPeriod as any)?.endDate ? format((currentPeriod as any).endDate, 'MMM d, yyyy') : ''}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">Pay Date:</span>
-                      <span className="font-medium">{format(currentPeriod.payDate, 'MMM d, yyyy')}</span>
+                      <span className="font-medium">{(currentPeriod as any)?.payDate ? format((currentPeriod as any).payDate, 'MMM d, yyyy') : ''}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">Employees:</span>
-                      <span className="font-medium">{currentPeriod.employeeCount}</span>
+                      <span className="font-medium">{(currentPeriod as any)?.employeeCount || 0}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">Status:</span>
-                      {getStatusBadge(currentPeriod.status)}
+                      {getStatusBadge((currentPeriod as any)?.status || 'N/A')}
                     </div>
                     
-                    {currentPeriod.status === 'PENDING' && (
+                    {(currentPeriod as any)?.status === 'PENDING' && (
                       <div className="pt-4 border-t border-gray-200">
                         <Button 
                           className="w-full"

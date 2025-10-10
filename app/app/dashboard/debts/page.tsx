@@ -27,110 +27,19 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 export default function DebtsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedStrategy, setSelectedStrategy] = useState('avalanche')
+  const itemsPerPage = 10
 
-  // Mock debt data
-  const mockDebts = [
-    {
-      id: '1',
-      name: 'Business Line of Credit',
-      type: 'LINE_OF_CREDIT',
-      creditor: 'First National Bank',
-      originalAmount: 100000,
-      currentBalance: 75000,
-      monthlyPayment: 2500,
-      interestRate: 8.5,
-      minimumPayment: 1500,
-      dueDate: new Date('2025-12-31'),
-      status: 'ACTIVE',
-      priority: 'HIGH',
-      paymentHistory: [
-        { date: new Date('2024-11-01'), amount: 2500, principal: 1800, interest: 700 },
-        { date: new Date('2024-10-01'), amount: 2500, principal: 1750, interest: 750 }
-      ]
-    },
-    {
-      id: '2',
-      name: 'Equipment Loan',
-      type: 'TERM_LOAN',
-      creditor: 'Equipment Finance Corp',
-      originalAmount: 50000,
-      currentBalance: 32000,
-      monthlyPayment: 1200,
-      interestRate: 6.5,
-      minimumPayment: 1200,
-      dueDate: new Date('2026-08-15'),
-      status: 'ACTIVE',
-      priority: 'MEDIUM',
-      paymentHistory: [
-        { date: new Date('2024-11-01'), amount: 1200, principal: 950, interest: 250 },
-        { date: new Date('2024-10-01'), amount: 1200, principal: 925, interest: 275 }
-      ]
-    },
-    {
-      id: '3',
-      name: 'Business Credit Card',
-      type: 'CREDIT_CARD',
-      creditor: 'Chase Business',
-      originalAmount: 25000,
-      currentBalance: 8500,
-      monthlyPayment: 850,
-      interestRate: 18.99,
-      minimumPayment: 250,
-      dueDate: new Date('2024-12-15'),
-      status: 'ACTIVE',
-      priority: 'HIGH',
-      paymentHistory: [
-        { date: new Date('2024-11-01'), amount: 850, principal: 650, interest: 200 },
-        { date: new Date('2024-10-01'), amount: 850, principal: 625, interest: 225 }
-      ]
-    },
-    {
-      id: '4',
-      name: 'Commercial Mortgage',
-      type: 'MORTGAGE',
-      creditor: 'Regional Bank',
-      originalAmount: 300000,
-      currentBalance: 245000,
-      monthlyPayment: 2800,
-      interestRate: 5.25,
-      minimumPayment: 2800,
-      dueDate: new Date('2034-06-01'),
-      status: 'ACTIVE',
-      priority: 'LOW',
-      paymentHistory: [
-        { date: new Date('2024-11-01'), amount: 2800, principal: 1750, interest: 1050 },
-        { date: new Date('2024-10-01'), amount: 2800, principal: 1725, interest: 1075 }
-      ]
-    },
-    {
-      id: '5',
-      name: 'SBA Loan',
-      type: 'SBA_LOAN',
-      creditor: 'Community Bank',
-      originalAmount: 75000,
-      currentBalance: 15000,
-      monthlyPayment: 1500,
-      interestRate: 4.5,
-      minimumPayment: 900,
-      dueDate: new Date('2025-03-30'),
-      status: 'ACTIVE',
-      priority: 'MEDIUM',
-      paymentHistory: [
-        { date: new Date('2024-11-01'), amount: 1500, principal: 1400, interest: 100 },
-        { date: new Date('2024-10-01'), amount: 1500, principal: 1395, interest: 105 }
-      ]
-    }
-  ]
+  // All data will come from the database - no mock data
+  const mockDebts: any[] = []
 
-  const itemsPerPage = 3
   const totalPages = Math.ceil(mockDebts.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
   const currentDebts = mockDebts.slice(startIndex, startIndex + itemsPerPage)
 
-  const totalDebt = mockDebts.reduce((sum, debt) => sum + debt.currentBalance, 0)
-  const totalMonthlyPayments = mockDebts.reduce((sum, debt) => sum + debt.monthlyPayment, 0)
-  const highestInterestRate = Math.max(...mockDebts.map(debt => debt.interestRate))
-  const averageInterestRate = mockDebts.reduce((sum, debt) => sum + debt.interestRate, 0) / mockDebts.length
+  const totalDebt = 0
+  const totalMonthlyPayments = 0
+  const highestInterestRate = 0
+  const averageInterestRate = 0
 
   const getDebtTypeIcon = (type: string) => {
     switch (type) {

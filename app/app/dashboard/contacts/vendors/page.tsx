@@ -129,7 +129,7 @@ export default async function VendorsPage() {
             <CardTitle className="text-sm font-medium text-gray-600">Avg Payment Terms</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600">30</div>
+            <div className="text-2xl font-bold text-purple-600">0</div>
             <p className="text-xs text-gray-500 mt-1">Days average</p>
           </CardContent>
         </Card>

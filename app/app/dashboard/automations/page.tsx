@@ -37,113 +37,14 @@ export default function AutomationsPage() {
     redirect('/auth/signin')
   }
 
-  // Mock data for demonstration
-  const mockAutomations = [
-    {
-      id: '1',
-      name: 'Invoice Payment Reminders',
-      description: 'Send automated payment reminders for overdue invoices',
-      trigger: 'INVOICE_CREATED',
-      action: 'SEND_EMAIL',
-      conditions: { daysOverdue: 7, amount: { min: 100 } },
-      isActive: true,
-      lastRun: new Date('2024-11-15T10:30:00'),
-      runCount: 23,
-      createdAt: new Date('2024-10-01')
-    },
-    {
-      id: '2', 
-      name: 'Monthly Financial Reports',
-      description: 'Generate and distribute monthly financial reports to stakeholders',
-      trigger: 'MONTHLY_REPORT',
-      action: 'GENERATE_REPORT',
-      conditions: { reportType: 'financial', recipients: ['cfo@company.com'] },
-      isActive: true,
-      lastRun: new Date('2024-11-01T09:00:00'),
-      runCount: 3,
-      createdAt: new Date('2024-08-15')
-    },
-    {
-      id: '3',
-      name: 'Project Completion Tasks',
-      description: 'Create invoicing tasks when projects are marked as completed',
-      trigger: 'PROJECT_COMPLETED',
-      action: 'CREATE_TASK',
-      conditions: { taskType: 'invoice_creation', assignee: 'accounting@company.com' },
-      isActive: true,
-      lastRun: new Date('2024-11-10T14:20:00'),
-      runCount: 8,
-      createdAt: new Date('2024-09-01')
-    },
-    {
-      id: '4',
-      name: 'Expense Approval Workflow',
-      description: 'Auto-approve expenses under $50, route larger expenses for review',
-      trigger: 'INVOICE_CREATED',
-      action: 'UPDATE_STATUS',
-      conditions: { maxAmount: 50, category: 'office supplies' },
-      isActive: false,
-      lastRun: new Date('2024-10-25T16:45:00'),
-      runCount: 156,
-      createdAt: new Date('2024-07-01')
-    },
-    {
-      id: '5',
-      name: 'Bill Due Date Notifications',
-      description: 'Send notifications 3 days before bill due dates',
-      trigger: 'BILL_DUE',
-      action: 'SEND_REMINDER',
-      conditions: { daysBefore: 3, amount: { min: 500 } },
-      isActive: true,
-      lastRun: new Date('2024-11-14T08:15:00'),
-      runCount: 45,
-      createdAt: new Date('2024-09-15')
-    }
-  ]
+  // All data will come from the database - no mock data
+  const mockAutomations: any[] = []
+  const mockRuns: any[] = []
 
-  const mockRuns = [
-    {
-      id: '1',
-      automationId: '1',
-      automationName: 'Invoice Payment Reminders',
-      runDate: new Date('2024-11-15T10:30:00'),
-      status: 'SUCCESS',
-      details: 'Sent 3 payment reminders',
-      duration: 1.2
-    },
-    {
-      id: '2',
-      automationId: '5',
-      automationName: 'Bill Due Date Notifications',
-      runDate: new Date('2024-11-14T08:15:00'),
-      status: 'SUCCESS',
-      details: 'Notified about 2 upcoming bill due dates',
-      duration: 0.8
-    },
-    {
-      id: '3',
-      automationId: '3',
-      automationName: 'Project Completion Tasks',
-      runDate: new Date('2024-11-10T14:20:00'),
-      status: 'SUCCESS',
-      details: 'Created invoice task for Website Redesign project',
-      duration: 0.5
-    },
-    {
-      id: '4',
-      automationId: '2',
-      automationName: 'Monthly Financial Reports',
-      runDate: new Date('2024-11-01T09:00:00'),
-      status: 'SUCCESS',
-      details: 'Generated and sent October financial report',
-      duration: 3.2
-    }
-  ]
-
-  const activeAutomations = mockAutomations.filter(a => a.isActive).length
-  const totalRuns = mockAutomations.reduce((sum, a) => sum + a.runCount, 0)
-  const avgRunsPerAutomation = mockAutomations.length > 0 ? Math.round(totalRuns / mockAutomations.length) : 0
-  const timeSaved = totalRuns * 15 // Assuming 15 minutes saved per automation run
+  const activeAutomations = 0
+  const totalRuns = 0
+  const avgRunsPerAutomation = 0
+  const timeSaved = 0
 
   const getTriggerIcon = (trigger: string) => {
     switch (trigger) {
