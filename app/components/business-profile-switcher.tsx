@@ -133,27 +133,17 @@ export function BusinessProfileSwitcher() {
       </DropdownMenu>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[500px]">
           <form onSubmit={handleCreateProfile}>
             <DialogHeader>
-              <DialogTitle>Create New Business Profile</DialogTitle>
+              <DialogTitle>Create New Profile</DialogTitle>
               <DialogDescription>
-                Add a new business or entity to track separately from your personal finances.
+                Add a new personal/household or business profile to manage finances separately.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="name">Business Name *</Label>
-                <Input
-                  id="name"
-                  placeholder="e.g., My E-commerce Store"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="type">Type *</Label>
+                <Label htmlFor="type">Profile Type *</Label>
                 <Select
                   value={formData.type}
                   onValueChange={(value: 'PERSONAL' | 'BUSINESS') =>
@@ -164,25 +154,66 @@ export function BusinessProfileSwitcher() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="PERSONAL">Personal/Household</SelectItem>
-                    <SelectItem value="BUSINESS">Business</SelectItem>
+                    <SelectItem value="PERSONAL">
+                      <div className="flex items-start gap-2 py-1">
+                        <Home className="h-4 w-4 mt-0.5" />
+                        <div>
+                          <div className="font-medium">Personal/Household</div>
+                          <div className="text-xs text-muted-foreground">
+                            Family expenses, personal obligations, household finances
+                          </div>
+                        </div>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="BUSINESS">
+                      <div className="flex items-start gap-2 py-1">
+                        <Building2 className="h-4 w-4 mt-0.5" />
+                        <div>
+                          <div className="font-medium">Business</div>
+                          <div className="text-xs text-muted-foreground">
+                            Company operations, revenue, professional expenses
+                          </div>
+                        </div>
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {formData.type === 'PERSONAL' 
+                    ? 'Includes categories like groceries, utilities, mortgage, childcare, etc.'
+                    : 'Includes categories like payroll, marketing, professional services, etc.'}
+                </p>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="industry">Industry</Label>
+                <Label htmlFor="name">
+                  {formData.type === 'PERSONAL' ? 'Profile Name' : 'Business Name'} *
+                </Label>
                 <Input
-                  id="industry"
-                  placeholder="e.g., E-commerce, Consulting"
-                  value={formData.industry}
-                  onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
+                  id="name"
+                  placeholder={formData.type === 'PERSONAL' ? 'e.g., Family Budget' : 'e.g., My E-commerce Store'}
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
                 />
               </div>
+              {formData.type === 'BUSINESS' && (
+                <div className="grid gap-2">
+                  <Label htmlFor="industry">Industry</Label>
+                  <Input
+                    id="industry"
+                    placeholder="e.g., E-commerce, Consulting, Healthcare"
+                    value={formData.industry}
+                    onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
+                  />
+                </div>
+              )}
               <div className="grid gap-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">Description (Optional)</Label>
                 <Textarea
                   id="description"
-                  placeholder="Brief description of this business..."
+                  placeholder={formData.type === 'PERSONAL' 
+                    ? 'Brief description (e.g., Main household expenses)' 
+                    : 'Brief description of this business...'}
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={3}

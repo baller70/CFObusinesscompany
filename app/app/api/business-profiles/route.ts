@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { createDefaultCategoriesForProfile } from '@/lib/default-categories';
 
 // GET all business profiles for the current user
 export async function GET() {
@@ -65,6 +66,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Name and type are required' }, { status: 400 });
     }
 
+    // Validate type
+    if (type !== 'PERSONAL' && type !== 'BUSINESS') {
+      return NextResponse.json({ error: 'Type must be PERSONAL or BUSINESS' }, { status: 400 });
+    }
+
     // Check if a profile with this name already exists for the user
     const existing = await prisma.businessProfile.findUnique({
       where: {
@@ -91,6 +97,22 @@ export async function POST(request: Request) {
         color,
         isDefault: false,
         isActive: true
+      }
+    });
+
+    // Create default categories based on profile type
+    await createDefaultCategoriesForProfile(prisma, user.id, profile.id, type);
+
+    // Create initial financial metrics for this profile
+    await prisma.financialMetrics.create({
+      data: {
+        userId: user.id,
+        businessProfileId: profile.id,
+        monthlyIncome: 0,
+        monthlyExpenses: 0,
+        totalDebt: 0,
+        totalAssets: 0,
+        netWorth: 0
       }
     });
 
