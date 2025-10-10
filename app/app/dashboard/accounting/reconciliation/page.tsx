@@ -37,45 +37,8 @@ export default async function ReconciliationPage() {
 
   const { reconciliations, reconciliationStats } = await getReconciliationData(session.user.id)
 
-  // Mock data for demonstration
-  const mockReconciliations = [
-    {
-      id: '1',
-      month: 11,
-      year: 2024,
-      openingBalance: 45000,
-      closingBalance: 48500,
-      bankBalance: 48500,
-      status: 'COMPLETED',
-      difference: 0,
-      reconciledAt: new Date('2024-12-01'),
-      notes: 'All transactions matched successfully'
-    },
-    {
-      id: '2', 
-      month: 10,
-      year: 2024,
-      openingBalance: 42000,
-      closingBalance: 45000,
-      bankBalance: 44950,
-      status: 'NEEDS_REVIEW',
-      difference: -50,
-      reconciledAt: null,
-      notes: 'Small discrepancy - need to check outstanding check'
-    },
-    {
-      id: '3',
-      month: 9,
-      year: 2024,
-      openingBalance: 38000,
-      closingBalance: 42000,
-      bankBalance: null,
-      status: 'PENDING',
-      difference: 0,
-      reconciledAt: null,
-      notes: null
-    }
-  ]
+  // Empty reconciliations data - users can add their own
+  const mockReconciliations: any[] = []
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -185,7 +148,7 @@ export default async function ReconciliationPage() {
             <CardTitle className="text-sm font-medium text-gray-600">Avg Time</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">2.5</div>
+            <div className="text-2xl font-bold text-blue-600">0</div>
             <p className="text-xs text-gray-500 mt-1">Hours per reconciliation</p>
           </CardContent>
         </Card>
@@ -309,48 +272,10 @@ export default async function ReconciliationPage() {
               <CardTitle>Automated Matching Rules</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium text-gray-900">Payroll Transactions</h4>
-                      <p className="text-sm text-gray-600">Auto-match payroll deposits and withdrawals</p>
-                    </div>
-                    <Badge variant="default">Active</Badge>
-                  </div>
-                  <div className="mt-2 text-sm text-gray-500">
-                    Matched: 156 transactions this month
-                  </div>
-                </div>
-
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium text-gray-900">Recurring Vendor Payments</h4>
-                      <p className="text-sm text-gray-600">Match payments to known vendor patterns</p>
-                    </div>
-                    <Badge variant="default">Active</Badge>
-                  </div>
-                  <div className="mt-2 text-sm text-gray-500">
-                    Matched: 89 transactions this month
-                  </div>
-                </div>
-
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium text-gray-900">Credit Card Payments</h4>
-                      <p className="text-sm text-gray-600">Identify and categorize credit card payments</p>
-                    </div>
-                    <Badge variant="secondary">Inactive</Badge>
-                  </div>
-                  <div className="mt-2 text-sm text-gray-500">
-                    Configure matching criteria
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6">
+              <div className="text-center py-12">
+                <Calculator className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No matching rules configured</h3>
+                <p className="text-gray-600 mb-4">Set up automated rules to speed up reconciliation</p>
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
                   Add Matching Rule
@@ -370,21 +295,19 @@ export default async function ReconciliationPage() {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Total Reconciliations:</span>
-                    <span className="font-semibold">{mockReconciliations.length}</span>
+                    <span className="font-semibold">0</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Success Rate:</span>
-                    <span className="font-semibold text-green-600">
-                      {Math.round((mockReconciliations.filter(r => r.status === 'COMPLETED').length / mockReconciliations.length) * 100)}%
-                    </span>
+                    <span className="font-semibold text-green-600">0%</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Average Difference:</span>
-                    <span className="font-semibold">$25.50</span>
+                    <span className="font-semibold">$0.00</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Time Saved:</span>
-                    <span className="font-semibold text-blue-600">15+ hours/month</span>
+                    <span className="font-semibold text-blue-600">0 hours/month</span>
                   </div>
                 </div>
               </CardContent>
@@ -398,19 +321,19 @@ export default async function ReconciliationPage() {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Auto-matched:</span>
-                    <span className="font-semibold text-green-600">92%</span>
+                    <span className="font-semibold text-green-600">0%</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Manual review:</span>
-                    <span className="font-semibold text-orange-600">6%</span>
+                    <span className="font-semibold text-orange-600">0%</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Exceptions:</span>
-                    <span className="font-semibold text-red-600">2%</span>
+                    <span className="font-semibold text-red-600">0%</span>
                   </div>
                   <div className="pt-3 border-t border-gray-200">
                     <div className="text-sm text-gray-600">
-                      ML algorithm confidence: <span className="font-semibold text-blue-600">95.8%</span>
+                      ML algorithm confidence: <span className="font-semibold text-blue-600">0%</span>
                     </div>
                   </div>
                 </div>

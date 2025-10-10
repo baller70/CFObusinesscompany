@@ -40,57 +40,12 @@ export default async function JournalEntriesPage() {
 
   const { journalEntries, journalStats } = await getJournalEntriesData(session.user.id)
 
-  // Mock data for demonstration
-  const mockJournalEntries = [
-    {
-      id: '1',
-      entryNumber: 'JE-2024-001',
-      date: new Date('2024-11-15'),
-      description: 'Monthly depreciation entry',
-      reference: 'DEP-NOV-2024',
-      totalDebit: 2500,
-      totalCredit: 2500,
-      lines: [
-        { id: '1', description: 'Depreciation Expense', debitAmount: 2500, creditAmount: 0, account: { code: '5300', name: 'Depreciation Expense' } },
-        { id: '2', description: 'Accumulated Depreciation', debitAmount: 0, creditAmount: 2500, account: { code: '1250', name: 'Accumulated Depreciation' } }
-      ]
-    },
-    {
-      id: '2',
-      entryNumber: 'JE-2024-002',
-      date: new Date('2024-11-10'),
-      description: 'Accrued interest on loan',
-      reference: 'INT-NOV-2024',
-      totalDebit: 450,
-      totalCredit: 450,
-      lines: [
-        { id: '3', description: 'Interest Expense', debitAmount: 450, creditAmount: 0, account: { code: '5400', name: 'Interest Expense' } },
-        { id: '4', description: 'Accrued Interest Payable', debitAmount: 0, creditAmount: 450, account: { code: '2150', name: 'Accrued Interest Payable' } }
-      ]
-    },
-    {
-      id: '3',
-      entryNumber: 'JE-2024-003',
-      date: new Date('2024-11-05'),
-      description: 'Prepaid insurance adjustment',
-      reference: 'INS-NOV-2024',
-      totalDebit: 800,
-      totalCredit: 800,
-      lines: [
-        { id: '5', description: 'Insurance Expense', debitAmount: 800, creditAmount: 0, account: { code: '5500', name: 'Insurance Expense' } },
-        { id: '6', description: 'Prepaid Insurance', debitAmount: 0, creditAmount: 800, account: { code: '1300', name: 'Prepaid Insurance' } }
-      ]
-    }
-  ]
+  // Empty journal entries data - users can add their own
+  const mockJournalEntries: any[] = []
 
-  const thisMonthEntries = mockJournalEntries.filter(entry => {
-    const entryMonth = entry.date.getMonth()
-    const currentMonth = new Date().getMonth()
-    return entryMonth === currentMonth
-  }).length
-
-  const totalDebits = mockJournalEntries.reduce((sum, entry) => sum + entry.totalDebit, 0)
-  const averageEntry = mockJournalEntries.length > 0 ? totalDebits / mockJournalEntries.length : 0
+  const thisMonthEntries = 0
+  const totalDebits = 0
+  const averageEntry = 0
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -253,6 +208,7 @@ export default async function JournalEntriesPage() {
                         <div className="col-span-2 text-right">Credit</div>
                       </div>
                       
+                      {/* @ts-ignore */}
                       {entry.lines.map((line) => (
                         <div key={line.id} className="grid grid-cols-12 gap-4 text-sm py-2 hover:bg-gray-100 rounded">
                           <div className="col-span-1 font-mono text-gray-600">
