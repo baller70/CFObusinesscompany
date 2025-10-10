@@ -170,7 +170,7 @@ async function getBusinessAnalysisData(userId: string) {
       where: { userId }
     }),
 
-    prisma.financialMetrics.findUnique({
+    prisma.financialMetrics.findFirst({
       where: { userId }
     }),
 

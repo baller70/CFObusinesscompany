@@ -188,7 +188,7 @@ async function getBaselineBusinessData(userId: string) {
       where: { userId, isActive: true }
     }),
 
-    prisma.financialMetrics.findUnique({
+    prisma.financialMetrics.findFirst({
       where: { userId }
     }),
 

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../lib/auth";
 import { prisma } from "../../../../lib/db";
+import { getCurrentBusinessProfileId } from "../../../../lib/business-profile-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -14,15 +15,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Get current business profile ID
+    const businessProfileId = await getCurrentBusinessProfileId();
+
     // Get or create financial metrics
-    let financialMetrics = await prisma.financialMetrics.findUnique({
-      where: { userId: session.user.id }
+    let financialMetrics = await prisma.financialMetrics.findFirst({
+      where: { 
+        userId: session.user.id,
+        businessProfileId: businessProfileId || null
+      }
     });
 
-    if (!financialMetrics) {
+    if (!financialMetrics && businessProfileId) {
       financialMetrics = await prisma.financialMetrics.create({
         data: {
           userId: session.user.id,
+          businessProfileId,
           monthlyIncome: 0,
           monthlyExpenses: 0,
           monthlyBurnRate: 0,
@@ -43,6 +51,7 @@ export async function GET(request: NextRequest) {
     const transactions = await prisma.transaction.findMany({
       where: {
         userId: session.user.id,
+        businessProfileId: businessProfileId || null,
         date: {
           gte: startOfMonth,
           lte: endOfMonth,
@@ -62,6 +71,7 @@ export async function GET(request: NextRequest) {
     const totalDebt = await prisma.debt.aggregate({
       where: {
         userId: session.user.id,
+        businessProfileId: businessProfileId || null,
         isActive: true
       },
       _sum: {
@@ -69,13 +79,13 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    const netWorth = (financialMetrics.totalAssets || 0) - (totalDebt._sum.balance || 0);
+    const netWorth = (financialMetrics?.totalAssets || 0) - (totalDebt._sum.balance || 0);
     const monthlyBurnRate = monthlyExpenses - monthlyIncome;
 
-    // Update financial metrics if we have new data
-    if (transactions.length > 0) {
+    // Update financial metrics if we have new data and financialMetrics exists
+    if (transactions.length > 0 && financialMetrics && businessProfileId) {
       await prisma.financialMetrics.update({
-        where: { userId: session.user.id },
+        where: { businessProfileId },
         data: {
           monthlyIncome,
           monthlyExpenses,
@@ -93,9 +103,9 @@ export async function GET(request: NextRequest) {
       monthlyExpenses,
       monthlyBurnRate,
       totalDebt: totalDebt._sum.balance || 0,
-      totalAssets: financialMetrics.totalAssets || 0,
+      totalAssets: financialMetrics?.totalAssets || 0,
       netWorth,
-      emergencyFundGoal: financialMetrics.emergencyFundGoal || 1000,
+      emergencyFundGoal: financialMetrics?.emergencyFundGoal || 1000,
       debtToIncomeRatio: monthlyIncome > 0 ? (totalDebt._sum.balance || 0) / (monthlyIncome * 12) : 0,
     });
 

@@ -27,6 +27,35 @@ async function main() {
 
   console.log('👤 Created test user:', testUser.email);
 
+  // Create default business profile for test user
+  const defaultProfile = await prisma.businessProfile.upsert({
+    where: {
+      userId_name: {
+        userId: testUser.id,
+        name: 'Personal/Household'
+      }
+    },
+    update: {},
+    create: {
+      userId: testUser.id,
+      name: 'Personal/Household',
+      type: 'PERSONAL',
+      description: 'Personal and household expenses',
+      icon: 'Home',
+      color: '#3B82F6',
+      isDefault: true,
+      isActive: true
+    }
+  });
+
+  // Set as current profile
+  await prisma.user.update({
+    where: { id: testUser.id },
+    data: { currentBusinessProfileId: defaultProfile.id }
+  });
+
+  console.log('🏢 Created default business profile');
+
   // Create default categories for test user
   const defaultCategories = [
     { name: "Food & Dining", color: "#FF6B6B", icon: "utensils", type: "EXPENSE" as const },
@@ -49,7 +78,7 @@ async function main() {
       where: {
         userId_businessProfileId_name: {
           userId: testUser.id,
-          businessProfileId: null,
+          businessProfileId: defaultProfile.id,
           name: category.name
         }
       },
@@ -57,7 +86,7 @@ async function main() {
       create: {
         ...category,
         userId: testUser.id,
-        businessProfileId: null,
+        businessProfileId: defaultProfile.id,
         isDefault: true
       }
     });
@@ -141,14 +170,14 @@ async function main() {
 
   // Create financial metrics
   const existingMetrics = await prisma.financialMetrics.findFirst({
-    where: { userId: testUser.id, businessProfileId: null }
+    where: { userId: testUser.id, businessProfileId: defaultProfile.id }
   });
 
   if (!existingMetrics) {
     await prisma.financialMetrics.create({
       data: {
         userId: testUser.id,
-        businessProfileId: null,
+        businessProfileId: defaultProfile.id,
         monthlyIncome: 3500,
         monthlyExpenses: 1343.49,
         monthlyBurnRate: -2156.51,

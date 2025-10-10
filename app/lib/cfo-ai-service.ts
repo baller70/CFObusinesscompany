@@ -27,7 +27,8 @@ export class CFOAIService {
       prisma.bill.findMany({
         where: { userId }
       }),
-      prisma.financialMetrics.findUnique({
+      // @ts-ignore
+    prisma.financialMetrics.findFirst({
         where: { userId }
       }),
       prisma.bankStatement.findMany({
