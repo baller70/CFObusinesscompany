@@ -34,39 +34,35 @@ export class AIBankStatementProcessor {
               }
             }, {
               type: "text", 
-              text: `Extract all transaction data from this bank statement. Return structured JSON with:
-              {
-                "bankInfo": {
-                  "bankName": "bank name",
-                  "accountType": "checking/savings/etc",
-                  "accountNumber": "last 4 digits only",
-                  "statementPeriod": "YYYY-MM-DD to YYYY-MM-DD"
-                },
-                "transactions": [
-                  {
-                    "date": "YYYY-MM-DD",
-                    "description": "transaction description",
-                    "amount": number (positive for credits, negative for debits),
-                    "balance": number,
-                    "type": "debit|credit",
-                    "category": "suggested category",
-                    "merchant": "merchant name if identifiable"
-                  }
-                ],
-                "summary": {
-                  "startingBalance": number,
-                  "endingBalance": number,
-                  "totalCredits": number,
-                  "totalDebits": number,
-                  "transactionCount": number
-                }
-              }
-              
-              Respond with raw JSON only. Do not include code blocks, markdown, or any other formatting.`
+              text: `Extract key transaction data from this bank statement. Be concise.
+
+Return JSON with:
+{
+  "bankInfo": {
+    "bankName": "name",
+    "accountNumber": "last 4 digits",
+    "statementPeriod": "YYYY-MM-DD to YYYY-MM-DD"
+  },
+  "transactions": [
+    {
+      "date": "YYYY-MM-DD",
+      "description": "brief description (max 50 chars)",
+      "amount": number,
+      "type": "debit|credit"
+    }
+  ],
+  "summary": {
+    "startingBalance": number,
+    "endingBalance": number,
+    "transactionCount": number
+  }
+}
+
+Keep descriptions brief. Respond with raw JSON only.`
             }]
           }],
           response_format: { type: "json_object" },
-          max_tokens: 4000,
+          max_tokens: 16000,
         }),
       });
 
@@ -85,7 +81,37 @@ export class AIBankStatementProcessor {
         throw new Error('Invalid API response structure');
       }
 
-      const extractedData = JSON.parse(data.choices[0].message.content);
+      const content = data.choices[0].message.content;
+      console.log(`[AI Processor] Raw AI response content length: ${content?.length || 0} characters`);
+      console.log(`[AI Processor] Raw AI response preview:`, content?.substring(0, 200));
+      
+      if (!content || content.trim().length === 0) {
+        console.error('[AI Processor] Empty response content from AI');
+        throw new Error('AI returned empty response');
+      }
+
+      let extractedData;
+      try {
+        // Try to parse as JSON
+        extractedData = JSON.parse(content);
+      } catch (parseError) {
+        console.error('[AI Processor] JSON parse error:', parseError);
+        console.error('[AI Processor] Content that failed to parse:', content);
+        
+        // Try to extract JSON from markdown code blocks if present
+        const jsonMatch = content.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
+        if (jsonMatch) {
+          console.log('[AI Processor] Found JSON in code block, extracting...');
+          try {
+            extractedData = JSON.parse(jsonMatch[1]);
+          } catch (innerError) {
+            throw new Error(`Failed to parse JSON from code block: ${innerError instanceof Error ? innerError.message : 'Unknown error'}`);
+          }
+        } else {
+          throw new Error(`Invalid JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+        }
+      }
+      
       console.log(`[AI Processor] Successfully extracted data from PDF: ${extractedData.transactions?.length || 0} transactions`);
       
       return extractedData;
@@ -150,7 +176,7 @@ Return JSON with:
 Respond with raw JSON only.`
           }],
           response_format: { type: "json_object" },
-          max_tokens: 4000,
+          max_tokens: 16000,
         }),
       });
 
@@ -169,7 +195,34 @@ Respond with raw JSON only.`
         throw new Error('Invalid API response structure');
       }
 
-      const extractedData = JSON.parse(data.choices[0].message.content);
+      const content = data.choices[0].message.content;
+      console.log(`[AI Processor] Raw AI response content length: ${content?.length || 0} characters`);
+      
+      if (!content || content.trim().length === 0) {
+        console.error('[AI Processor] Empty response content from AI');
+        throw new Error('AI returned empty response');
+      }
+
+      let extractedData;
+      try {
+        extractedData = JSON.parse(content);
+      } catch (parseError) {
+        console.error('[AI Processor] JSON parse error:', parseError);
+        console.error('[AI Processor] Content that failed to parse:', content?.substring(0, 500));
+        
+        const jsonMatch = content.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
+        if (jsonMatch) {
+          console.log('[AI Processor] Found JSON in code block, extracting...');
+          try {
+            extractedData = JSON.parse(jsonMatch[1]);
+          } catch (innerError) {
+            throw new Error(`Failed to parse JSON from code block: ${innerError instanceof Error ? innerError.message : 'Unknown error'}`);
+          }
+        } else {
+          throw new Error(`Invalid JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+        }
+      }
+      
       console.log(`[AI Processor] Successfully processed CSV: ${extractedData.transactions?.length || 0} transactions`);
       
       return extractedData;
@@ -219,7 +272,7 @@ Return JSON:
 Respond with raw JSON only.`
           }],
           response_format: { type: "json_object" },
-          max_tokens: 4000,
+          max_tokens: 16000,
         }),
       });
 
@@ -238,7 +291,34 @@ Respond with raw JSON only.`
         throw new Error('Invalid API response structure');
       }
 
-      const result = JSON.parse(data.choices[0].message.content);
+      const content = data.choices[0].message.content;
+      console.log(`[AI Processor] Raw AI response content length: ${content?.length || 0} characters`);
+      
+      if (!content || content.trim().length === 0) {
+        console.error('[AI Processor] Empty response content from AI');
+        throw new Error('AI returned empty response');
+      }
+
+      let result;
+      try {
+        result = JSON.parse(content);
+      } catch (parseError) {
+        console.error('[AI Processor] JSON parse error:', parseError);
+        console.error('[AI Processor] Content that failed to parse:', content?.substring(0, 500));
+        
+        const jsonMatch = content.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
+        if (jsonMatch) {
+          console.log('[AI Processor] Found JSON in code block, extracting...');
+          try {
+            result = JSON.parse(jsonMatch[1]);
+          } catch (innerError) {
+            throw new Error(`Failed to parse JSON from code block: ${innerError instanceof Error ? innerError.message : 'Unknown error'}`);
+          }
+        } else {
+          throw new Error(`Invalid JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+        }
+      }
+      
       console.log(`[AI Processor] Successfully categorized ${result.categorizedTransactions?.length || 0} transactions`);
       
       return result.categorizedTransactions;
@@ -313,7 +393,7 @@ Provide strategic financial analysis:
 Respond with raw JSON only.`
           }],
           response_format: { type: "json_object" },
-          max_tokens: 4000,
+          max_tokens: 16000,
         }),
       });
 
@@ -332,7 +412,34 @@ Respond with raw JSON only.`
         throw new Error('Invalid API response structure');
       }
 
-      const insights = JSON.parse(data.choices[0].message.content);
+      const content = data.choices[0].message.content;
+      console.log(`[AI Processor] Raw AI response content length: ${content?.length || 0} characters`);
+      
+      if (!content || content.trim().length === 0) {
+        console.error('[AI Processor] Empty response content from AI');
+        throw new Error('AI returned empty response');
+      }
+
+      let insights;
+      try {
+        insights = JSON.parse(content);
+      } catch (parseError) {
+        console.error('[AI Processor] JSON parse error:', parseError);
+        console.error('[AI Processor] Content that failed to parse:', content?.substring(0, 500));
+        
+        const jsonMatch = content.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
+        if (jsonMatch) {
+          console.log('[AI Processor] Found JSON in code block, extracting...');
+          try {
+            insights = JSON.parse(jsonMatch[1]);
+          } catch (innerError) {
+            throw new Error(`Failed to parse JSON from code block: ${innerError instanceof Error ? innerError.message : 'Unknown error'}`);
+          }
+        } else {
+          throw new Error(`Invalid JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+        }
+      }
+      
       console.log(`[AI Processor] Successfully generated financial insights`);
       
       return insights;
