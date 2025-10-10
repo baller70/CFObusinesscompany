@@ -16,9 +16,12 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { email, password, firstName, lastName } = signupSchema.parse(body)
 
+    // Normalize email to lowercase and trim whitespace
+    const normalizedEmail = email.toLowerCase().trim()
+
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
-      where: { email }
+      where: { email: normalizedEmail }
     })
 
     if (existingUser) {
@@ -28,16 +31,16 @@ export async function POST(request: Request) {
       )
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12)
+    // Hash password with consistent salt rounds
+    const hashedPassword = await bcrypt.hash(password, 10)
 
     // Create user
     const user = await prisma.user.create({
       data: {
-        email,
+        email: normalizedEmail,
         password: hashedPassword,
-        firstName,
-        lastName,
+        firstName: firstName.trim(),
+        lastName: lastName?.trim(),
         name: `${firstName} ${lastName || ''}`.trim()
       }
     })
