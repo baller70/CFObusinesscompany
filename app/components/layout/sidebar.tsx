@@ -62,41 +62,101 @@ const personalMenuItems = [
     icon: Home
   },
   {
+    title: 'Net Worth Tracker',
+    href: '/dashboard/personal/net-worth',
+    icon: TrendingUp
+  },
+  {
     title: 'Transactions',
     href: '/dashboard/transactions',
     icon: ArrowUpDown
   },
   {
-    title: 'Budget Planner',
-    href: '/dashboard/budget',
-    icon: PieChart
-  },
-  {
-    title: 'Financial Goals',
-    href: '/dashboard/goals',
-    icon: Target
+    title: 'Budget & Goals',
+    icon: Target,
+    submenu: [
+      { title: 'Budget Planner', href: '/dashboard/budget', icon: PieChart },
+      { title: 'Financial Goals', href: '/dashboard/goals', icon: Target },
+      { title: 'Emergency Fund', href: '/dashboard/personal/emergency-fund', icon: Shield }
+    ]
   },
   {
     title: 'Income & Expenses',
     icon: Wallet,
     submenu: [
       { title: 'Categories', href: '/dashboard/categories', icon: FolderOpen },
+      { title: 'Subscriptions', href: '/dashboard/personal/subscriptions', icon: Repeat },
       { title: 'Recurring Charges', href: '/recurring-charges', icon: Repeat },
+      { title: 'Bills Calendar', href: '/dashboard/personal/bills-calendar', icon: Calendar },
       { title: 'Bills to Pay', href: '/dashboard/expenses/bills', icon: CreditCard }
     ]
   },
   {
-    title: 'Debt Management',
-    href: '/dashboard/debts',
-    icon: CreditCard
+    title: 'Debt & Credit',
+    icon: CreditCard,
+    submenu: [
+      { title: 'Debt Management', href: '/dashboard/debts', icon: CreditCard },
+      { title: 'Credit Score', href: '/dashboard/personal/credit-score', icon: BarChart3 }
+    ]
   },
   {
-    title: 'Savings & Investments',
+    title: 'Investments & Retirement',
     icon: TrendingUp,
     submenu: [
       { title: 'Investment Portfolio', href: '/dashboard/investments/portfolio', icon: PieChart },
       { title: 'Asset Allocation', href: '/dashboard/investments/allocation', icon: Target },
-      { title: 'Performance Analytics', href: '/dashboard/investments/analytics', icon: BarChart3 }
+      { title: 'Performance Analytics', href: '/dashboard/investments/analytics', icon: BarChart3 },
+      { title: 'Retirement Planning', href: '/dashboard/personal/retirement', icon: Coins }
+    ]
+  },
+  {
+    title: 'Cash Flow & Reports',
+    icon: BarChart3,
+    submenu: [
+      { title: 'Cash Flow Forecast', href: '/dashboard/personal/cash-flow', icon: Activity },
+      { title: 'Financial Reports', href: '/dashboard/personal/reports', icon: FileSpreadsheet }
+    ]
+  },
+  {
+    title: 'Tax Management',
+    icon: FileText,
+    submenu: [
+      { title: 'Tax Documents', href: '/dashboard/personal/tax-documents', icon: FileText },
+      { title: 'Tax Planning', href: '/dashboard/personal/tax-planning', icon: Calculator },
+      { title: 'Charitable Giving', href: '/dashboard/personal/charitable-giving', icon: Heart }
+    ]
+  },
+  {
+    title: 'Insurance & Health',
+    icon: Shield,
+    submenu: [
+      { title: 'Insurance Policies', href: '/dashboard/personal/insurance', icon: Shield },
+      { title: 'Healthcare Expenses', href: '/dashboard/personal/healthcare', icon: Heart }
+    ]
+  },
+  {
+    title: 'Family & Education',
+    icon: Users,
+    submenu: [
+      { title: 'Household Members', href: '/dashboard/personal/household', icon: Users },
+      { title: 'Education Savings', href: '/dashboard/personal/education-savings', icon: BookOpen }
+    ]
+  },
+  {
+    title: 'Assets & Property',
+    icon: Briefcase,
+    submenu: [
+      { title: 'Home Inventory', href: '/dashboard/personal/home-inventory', icon: Home },
+      { title: 'Vehicles', href: '/dashboard/personal/vehicles', icon: ShoppingCart },
+      { title: 'Vehicle Expenses', href: '/dashboard/personal/vehicle-expenses', icon: Receipt }
+    ]
+  },
+  {
+    title: 'Shopping & Receipts',
+    icon: ShoppingCart,
+    submenu: [
+      { title: 'Wish Lists', href: '/dashboard/personal/wish-lists', icon: Sparkles },
+      { title: 'Receipt Manager', href: '/dashboard/expenses/receipts', icon: Receipt }
     ]
   },
   {

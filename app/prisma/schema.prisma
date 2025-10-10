@@ -120,6 +120,20 @@ model User {
   transactions              Transaction[]
   vendors                   Vendor[]
   workflowRules             WorkflowRule[]
+  assets                    Asset[]
+  liabilities               Liability[]
+  netWorthSnapshots         NetWorthSnapshot[]
+  subscriptions             Subscription[]
+  taxDocuments              TaxDocument[]
+  retirementAccounts        RetirementAccount[]
+  householdMembers          HouseholdMember[]
+  creditScores              CreditScore[]
+  charitableGivings         CharitableGiving[]
+  homeInventoryItems        HomeInventoryItem[]
+  vehicles                  Vehicle[]
+  educationSavings          EducationSavings[]
+  healthcareExpenses        HealthcareExpense[]
+  wishLists                 WishList[]
 }
 
 model VerificationToken {
@@ -1269,6 +1283,20 @@ model BusinessProfile {
   investmentTransactions    InvestmentTransaction[]
   cashFlowForecasts         CashFlowForecast[]
   financialMetrics          FinancialMetrics?
+  assets                    Asset[]
+  liabilities               Liability[]
+  netWorthSnapshots         NetWorthSnapshot[]
+  subscriptions             Subscription[]
+  taxDocuments              TaxDocument[]
+  retirementAccounts        RetirementAccount[]
+  householdMembers          HouseholdMember[]
+  creditScores              CreditScore[]
+  charitableGivings         CharitableGiving[]
+  homeInventoryItems        HomeInventoryItem[]
+  vehicles                  Vehicle[]
+  educationSavings          EducationSavings[]
+  healthcareExpenses        HealthcareExpense[]
+  wishLists                 WishList[]
 
   @@unique([userId, name])
   @@index([userId, type])
@@ -2684,3 +2712,613 @@ enum ThreatLevel {
   HIGH
   CRITICAL
 }
+
+// Net Worth Tracker Models
+model Asset {
+  id                String        @id @default(cuid())
+  userId            String
+  businessProfileId String?
+  name              String
+  type              AssetType
+  value             Float
+  description       String?
+  purchaseDate      DateTime?
+  purchasePrice     Float?
+  appreciationRate  Float?
+  category          String?
+  location          String?
+  notes             String?
+  isLiquid          Boolean       @default(false)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  businessProfile   BusinessProfile? @relation(fields: [businessProfileId], references: [id])
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, businessProfileId])
+  @@index([userId, type])
+}
+
+model Liability {
+  id                String        @id @default(cuid())
+  userId            String
+  businessProfileId String?
+  name              String
+  type              LiabilityType
+  balance           Float
+  interestRate      Float?
+  minimumPayment    Float?
+  dueDate           DateTime?
+  originalAmount    Float?
+  lender            String?
+  notes             String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  businessProfile   BusinessProfile? @relation(fields: [businessProfileId], references: [id])
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, businessProfileId])
+  @@index([userId, type])
+}
+
+model NetWorthSnapshot {
+  id                String        @id @default(cuid())
+  userId            String
+  businessProfileId String?
+  date              DateTime
+  totalAssets       Float
+  totalLiabilities  Float
+  netWorth          Float
+  assetBreakdown    Json?
+  liabilityBreakdown Json?
+  changeFromPrevious Float?
+  percentageChange  Float?
+  notes             String?
+  createdAt         DateTime      @default(now())
+  businessProfile   BusinessProfile? @relation(fields: [businessProfileId], references: [id])
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, businessProfileId, date])
+}
+
+// Subscription Management
+model Subscription {
+  id                String             @id @default(cuid())
+  userId            String
+  businessProfileId String?
+  name              String
+  description       String?
+  amount            Float
+  category          String
+  provider          String?
+  frequency         RecurringFrequency @default(MONTHLY)
+  nextBillingDate   DateTime
+  lastBillingDate   DateTime?
+  status            SubscriptionStatus @default(ACTIVE)
+  paymentMethod     String?
+  cancellationDate  DateTime?
+  reminderEnabled   Boolean            @default(true)
+  reminderDays      Int                @default(3)
+  autoRenew         Boolean            @default(true)
+  trialEndDate      DateTime?
+  contractEndDate   DateTime?
+  annualCost        Float
+  website           String?
+  loginEmail        String?
+  notes             String?
+  tags              Json?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  businessProfile   BusinessProfile? @relation(fields: [businessProfileId], references: [id])
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, businessProfileId])
+  @@index([userId, status])
+  @@index([userId, nextBillingDate])
+}
+
+// Bill Calendar already handled by existing Bill model + enhancements
+
+// Emergency Fund Tracker (using enhanced Goal model with specific type)
+
+// Tax Documents & Planning
+model TaxDocument {
+  id                String        @id @default(cuid())
+  userId            String
+  businessProfileId String?
+  name              String
+  description       String?
+  taxYear           Int
+  documentType      TaxDocumentType
+  category          TaxDocumentCategory
+  cloudStoragePath  String
+  fileName          String
+  fileSize          Int?
+  uploadDate        DateTime      @default(now())
+  isDeductible      Boolean       @default(false)
+  deductionAmount   Float?
+  notes             String?
+  tags              Json?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  businessProfile   BusinessProfile? @relation(fields: [businessProfileId], references: [id])
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, businessProfileId])
+  @@index([userId, taxYear])
+  @@index([userId, documentType])
+}
+
+// Insurance Manager (InsurancePolicy already exists, but let's enhance it)
+
+// Retirement Planning
+model RetirementAccount {
+  id                String             @id @default(cuid())
+  userId            String
+  businessProfileId String?
+  accountName       String
+  accountType       RetirementAccountType
+  provider          String?
+  accountNumber     String?
+  currentBalance    Float
+  contributionLimit Float?
+  annualContribution Float?
+  employerMatch     Float?
+  vestingPercentage Float?
+  targetBalance     Float?
+  retirementAge     Int?
+  riskProfile       String?
+  assetAllocation   Json?
+  performanceYTD    Float?
+  notes             String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  businessProfile   BusinessProfile? @relation(fields: [businessProfileId], references: [id])
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contributions     RetirementContribution[]
+
+  @@index([userId, businessProfileId])
+  @@index([userId, accountType])
+}
+
+model RetirementContribution {
+  id                  String            @id @default(cuid())
+  retirementAccountId String
+  date                DateTime
+  amount              Float
+  contributionType    ContributionType
+  notes               String?
+  createdAt           DateTime          @default(now())
+  retirementAccount   RetirementAccount @relation(fields: [retirementAccountId], references: [id], onDelete: Cascade)
+
+  @@index([retirementAccountId, date])
+}
+
+// Receipt Manager (Receipt model already exists)
+
+// Cash Flow Forecast (CashFlowForecast already exists)
+
+// Family/Household Members
+model HouseholdMember {
+  id                String        @id @default(cuid())
+  userId            String
+  businessProfileId String?
+  firstName         String
+  lastName          String
+  relationship      String
+  birthDate         DateTime?
+  dependentStatus   Boolean       @default(false)
+  isActive          Boolean       @default(true)
+  email             String?
+  phone             String?
+  notes             String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  businessProfile   BusinessProfile? @relation(fields: [businessProfileId], references: [id])
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, businessProfileId])
+}
+
+// Financial Reports (generated from existing data)
+
+// Credit Score Monitoring
+model CreditScore {
+  id                String        @id @default(cuid())
+  userId            String
+  businessProfileId String?
+  score             Int
+  provider          String?
+  scoreDate         DateTime
+  scoreType         CreditScoreType @default(FICO)
+  factors           Json?
+  accounts          Int?
+  inquiries         Int?
+  derogatory        Int?
+  avgAccountAge     Int?
+  creditUtilization Float?
+  totalDebt         Float?
+  paymentHistory    Float?
+  notes             String?
+  createdAt         DateTime      @default(now())
+  businessProfile   BusinessProfile? @relation(fields: [businessProfileId], references: [id])
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, businessProfileId, scoreDate])
+}
+
+// Charitable Giving Tracker
+model CharitableGiving {
+  id                String        @id @default(cuid())
+  userId            String
+  businessProfileId String?
+  organizationName  String
+  amount            Float
+  date              DateTime
+  donationType      DonationType
+  taxDeductible     Boolean       @default(true)
+  receiptNumber     String?
+  cloudStoragePath  String?
+  category          String?
+  recurring         Boolean       @default(false)
+  frequency         RecurringFrequency?
+  nextDonationDate  DateTime?
+  taxYear           Int
+  notes             String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  businessProfile   BusinessProfile? @relation(fields: [businessProfileId], references: [id])
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, businessProfileId])
+  @@index([userId, taxYear])
+  @@index([userId, date])
+}
+
+// Home Inventory
+model HomeInventoryItem {
+  id                String        @id @default(cuid())
+  userId            String
+  businessProfileId String?
+  name              String
+  description       String?
+  category          HomeInventoryCategory
+  purchaseDate      DateTime?
+  purchasePrice     Float?
+  currentValue      Float?
+  location          String?
+  brand             String?
+  model             String?
+  serialNumber      String?
+  warrantyExpiration DateTime?
+  cloudStoragePath  String?
+  receiptPath       String?
+  notes             String?
+  tags              Json?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  businessProfile   BusinessProfile? @relation(fields: [businessProfileId], references: [id])
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, businessProfileId])
+  @@index([userId, category])
+}
+
+// Vehicle Expenses
+model Vehicle {
+  id                String        @id @default(cuid())
+  userId            String
+  businessProfileId String?
+  make              String
+  model             String
+  year              Int
+  vin               String?
+  licensePlate      String?
+  purchaseDate      DateTime?
+  purchasePrice     Float?
+  currentValue      Float?
+  mileage           Int?
+  color             String?
+  fuelType          String?
+  insurancePolicy   String?
+  registrationExpiry DateTime?
+  inspectionExpiry  DateTime?
+  notes             String?
+  isActive          Boolean       @default(true)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  businessProfile   BusinessProfile? @relation(fields: [businessProfileId], references: [id])
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses          VehicleExpense[]
+
+  @@index([userId, businessProfileId])
+  @@index([userId, isActive])
+}
+
+model VehicleExpense {
+  id                String        @id @default(cuid())
+  vehicleId         String
+  date              DateTime
+  type              VehicleExpenseType
+  amount            Float
+  mileage           Int?
+  vendor            String?
+  description       String?
+  receiptPath       String?
+  notes             String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  vehicle           Vehicle       @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, date])
+  @@index([vehicleId, type])
+}
+
+// Education Savings
+model EducationSavings {
+  id                String        @id @default(cuid())
+  userId            String
+  businessProfileId String?
+  beneficiaryName   String
+  accountType       EducationAccountType
+  provider          String?
+  accountNumber     String?
+  currentBalance    Float
+  targetAmount      Float?
+  targetDate        DateTime?
+  annualContribution Float?
+  stateSponsored    Boolean       @default(false)
+  taxBenefits       Json?
+  investmentOptions Json?
+  notes             String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  businessProfile   BusinessProfile? @relation(fields: [businessProfileId], references: [id])
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contributions     EducationContribution[]
+
+  @@index([userId, businessProfileId])
+  @@index([userId, accountType])
+}
+
+model EducationContribution {
+  id                  String            @id @default(cuid())
+  educationSavingsId  String
+  date                DateTime
+  amount              Float
+  contributionType    ContributionType
+  notes               String?
+  createdAt           DateTime          @default(now())
+  educationSavings    EducationSavings  @relation(fields: [educationSavingsId], references: [id], onDelete: Cascade)
+
+  @@index([educationSavingsId, date])
+}
+
+// Healthcare Expenses
+model HealthcareExpense {
+  id                String        @id @default(cuid())
+  userId            String
+  businessProfileId String?
+  date              DateTime
+  provider          String
+  type              HealthcareExpenseType
+  amount            Float
+  insuranceCovered  Float?
+  outOfPocket       Float
+  description       String?
+  diagnosis         String?
+  prescription      String?
+  receiptPath       String?
+  claimNumber       String?
+  claimStatus       String?
+  taxDeductible     Boolean       @default(true)
+  hsaEligible       Boolean       @default(false)
+  notes             String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  businessProfile   BusinessProfile? @relation(fields: [businessProfileId], references: [id])
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, businessProfileId])
+  @@index([userId, date])
+  @@index([userId, type])
+}
+
+// Shopping Lists/Wish Lists
+model WishList {
+  id                String        @id @default(cuid())
+  userId            String
+  businessProfileId String?
+  name              String
+  description       String?
+  category          String?
+  priority          Priority      @default(MEDIUM)
+  targetAmount      Float?
+  savedAmount       Float         @default(0)
+  targetDate        DateTime?
+  isActive          Boolean       @default(true)
+  notes             String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  businessProfile   BusinessProfile? @relation(fields: [businessProfileId], references: [id])
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items             WishListItem[]
+
+  @@index([userId, businessProfileId])
+  @@index([userId, isActive])
+}
+
+model WishListItem {
+  id                String        @id @default(cuid())
+  wishListId        String
+  name              String
+  description       String?
+  estimatedCost     Float
+  url               String?
+  imageUrl          String?
+  priority          Priority      @default(MEDIUM)
+  isPurchased       Boolean       @default(false)
+  purchasedDate     DateTime?
+  actualCost        Float?
+  notes             String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  wishList          WishList      @relation(fields: [wishListId], references: [id], onDelete: Cascade)
+
+  @@index([wishListId, isPurchased])
+}
+
+// Enums for new models
+enum AssetType {
+  REAL_ESTATE
+  VEHICLE
+  INVESTMENT
+  BANK_ACCOUNT
+  RETIREMENT
+  CASH
+  JEWELRY
+  ART
+  BUSINESS
+  OTHER
+}
+
+enum LiabilityType {
+  MORTGAGE
+  AUTO_LOAN
+  STUDENT_LOAN
+  CREDIT_CARD
+  PERSONAL_LOAN
+  BUSINESS_LOAN
+  MEDICAL_DEBT
+  TAX_DEBT
+  OTHER
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  PAUSED
+  TRIAL
+  EXPIRED
+}
+
+enum TaxDocumentType {
+  W2
+  W4
+  FORM_1099
+  FORM_1040
+  SCHEDULE_C
+  SCHEDULE_E
+  CHARITABLE_RECEIPT
+  RECEIPT
+  INVOICE
+  BANK_STATEMENT
+  INVESTMENT_STATEMENT
+  PROPERTY_TAX
+  OTHER
+}
+
+enum TaxDocumentCategory {
+  INCOME
+  DEDUCTION
+  CREDIT
+  PAYMENT
+  WITHHOLDING
+  ESTIMATED_TAX
+  OTHER
+}
+
+enum RetirementAccountType {
+  TRADITIONAL_401K
+  ROTH_401K
+  TRADITIONAL_IRA
+  ROTH_IRA
+  SEP_IRA
+  SIMPLE_IRA
+  PENSION
+  ANNUITY
+  OTHER
+}
+
+enum ContributionType {
+  EMPLOYEE
+  EMPLOYER
+  ROLLOVER
+  CONVERSION
+  OTHER
+}
+
+enum CreditScoreType {
+  FICO
+  VANTAGE
+  EQUIFAX
+  EXPERIAN
+  TRANSUNION
+  OTHER
+}
+
+enum DonationType {
+  CASH
+  CHECK
+  CREDIT_CARD
+  STOCK
+  PROPERTY
+  GOODS
+  OTHER
+}
+
+enum HomeInventoryCategory {
+  ELECTRONICS
+  FURNITURE
+  APPLIANCES
+  JEWELRY
+  ART
+  COLLECTIBLES
+  TOOLS
+  SPORTING_GOODS
+  CLOTHING
+  BOOKS
+  KITCHEN
+  OUTDOOR
+  OTHER
+}
+
+enum VehicleExpenseType {
+  GAS
+  MAINTENANCE
+  REPAIR
+  INSURANCE
+  REGISTRATION
+  INSPECTION
+  PARKING
+  TOLLS
+  CAR_WASH
+  ACCESSORIES
+  OTHER
+}
+
+enum EducationAccountType {
+  PLAN_529
+  COVERDELL_ESA
+  UGMA
+  UTMA
+  SAVINGS_ACCOUNT
+  INVESTMENT_ACCOUNT
+  OTHER
+}
+
+enum HealthcareExpenseType {
+  DOCTOR_VISIT
+  SPECIALIST
+  HOSPITAL
+  SURGERY
+  PRESCRIPTION
+  DENTAL
+  VISION
+  THERAPY
+  MEDICAL_EQUIPMENT
+  INSURANCE_PREMIUM
+  LAB_WORK
+  IMAGING
+  OTHER
+}
+
