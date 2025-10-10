@@ -1,15 +1,14 @@
 generator client {
-    provider = "prisma-client-js"
-    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
-    output = "/home/ubuntu/cfo_budgeting_app/app/node_modules/.prisma/client"
+  provider      = "prisma-client-js"
+  output        = "/home/ubuntu/cfo_budgeting_app/app/node_modules/.prisma/client"
+  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
 }
 
 datasource db {
-    provider = "postgresql"
-    url      = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
-// NextAuth.js required models
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -37,105 +36,88 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  firstName     String?
-  lastName      String?
-  companyName   String?
-  jobTitle      String?
-  phone         String?
-  address       String?
-  city          String?
-  state         String?
-  country       String?
-  zipCode       String?
-  businessType  BusinessType @default(SMALL_BUSINESS)
-  industry      String?
-  annualRevenue Float?
-  companySize   CompanySize @default(SMALL)
-  fiscalYearEnd DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  accounts           Account[]
-  sessions           Session[]
-  transactions       Transaction[]
-  categories         Category[]
-  debts              Debt[]
-  goals              Goal[]
-  budgets            Budget[]
-  notifications      Notification[]
-  csvUploads         CsvUpload[]
-  bankStatements     BankStatement[]
-  financialMetrics   FinancialMetrics?
-  
-  // Business entities
-  customers          Customer[]
-  vendors            Vendor[]
-  contractors        Contractor[]
-  products           Product[]
-  services           Service[]
-  invoices           Invoice[]
-  estimates          Estimate[]
-  projects           Project[]
-  employees          Employee[]
-  tasks              Task[]
-  documents          Document[]
-  bills              Bill[]
-  expenseClaims      ExpenseClaim[]
-  receipts           Receipt[]
-  automations        Automation[]
-  chartOfAccounts    ChartOfAccount[]
-  journalEntries     JournalEntry[]
-  reconciliations    Reconciliation[]
-
-  // Advanced Financial Features
-  cashFlowForecasts  CashFlowForecast[]
-  taxOptimizations   TaxOptimization[]
-  businessInsights   BusinessInsight[]
-  aiRecommendations  AIRecommendation[]
-  scenarioAnalyses   ScenarioAnalysis[]
-  complianceTracking ComplianceTracking[]
-  creditApplications CreditApplication[]
-  industryBenchmarks IndustryBenchmark[]
-  predictiveModels   PredictiveModel[]
-  businessEntities   BusinessEntity[]
-  workflowRules      WorkflowRule[]
-  kpiTargets         KPITarget[]
-  budgetScenarios    BudgetScenario[]
-  recurringCharges   RecurringCharge[]
-  
-  // Premium Investment Management
-  investments           Investment[]
-  portfolios            Portfolio[]
-  investmentTransactions InvestmentTransaction[]
+  id                        String                     @id @default(cuid())
+  name                      String?
+  email                     String                     @unique
+  emailVerified             DateTime?
+  image                     String?
+  password                  String?
+  firstName                 String?
+  lastName                  String?
+  companyName               String?
+  jobTitle                  String?
+  phone                     String?
+  address                   String?
+  city                      String?
+  state                     String?
+  country                   String?
+  zipCode                   String?
+  businessType              BusinessType               @default(SMALL_BUSINESS)
+  industry                  String?
+  annualRevenue             Float?
+  companySize               CompanySize                @default(SMALL)
+  fiscalYearEnd             DateTime?
+  createdAt                 DateTime                   @default(now())
+  updatedAt                 DateTime                   @updatedAt
+  aiRecommendations         AIRecommendation[]
+  accounts                  Account[]
+  automations               Automation[]
+  bankStatements            BankStatement[]
+  bills                     Bill[]
+  boardMeetings             BoardMeeting[]
+  boardMembers              BoardMember[]
+  budgets                   Budget[]
+  budgetScenarios           BudgetScenario[]
+  businessEntities          BusinessEntity[]
+  businessInsights          BusinessInsight[]
+  cashFlows                 CashFlow[]
+  cashFlowForecasts         CashFlowForecast[]
+  cashForecasts             CashForecast[]
+  cashPositions             CashPosition[]
+  categories                Category[]
+  chartOfAccounts           ChartOfAccount[]
+  competitiveAnalyses       CompetitiveAnalysis[]
+  complianceTracking        ComplianceTracking[]
+  contractors               Contractor[]
+  creditApplications        CreditApplication[]
+  csvUploads                CsvUpload[]
+  customReports             CustomReport[]
+  customers                 Customer[]
+  debts                     Debt[]
+  documents                 Document[]
+  employees                 Employee[]
+  estimates                 Estimate[]
+  expenseClaims             ExpenseClaim[]
+  financialMetrics          FinancialMetrics?
+  goals                     Goal[]
+  industryBenchmarks        IndustryBenchmark[]
+  insurancePolicies         InsurancePolicy[]
+  investments               Investment[]
+  investmentTransactions    InvestmentTransaction[]
+  investorUpdates           InvestorUpdate[]
+  invoices                  Invoice[]
+  journalEntries            JournalEntry[]
+  kpiTargets                KPITarget[]
+  marketData                MarketData[]
   multiCurrencyTransactions MultiCurrencyTransaction[]
-  
-  // Treasury & Cash Management  
-  cashPositions         CashPosition[]
-  cashFlows             CashFlow[]
-  cashForecasts         CashForecast[]
-  
-  // Risk Management
-  riskAssessments       RiskAssessment[]
-  insurancePolicies     InsurancePolicy[]
-  
-  // Board & Investor Management
-  boardMembers          BoardMember[]
-  boardMeetings         BoardMeeting[]
-  investorUpdates       InvestorUpdate[]
-  shareholders          Shareholder[]
-  
-  // Advanced Reporting
-  customReports         CustomReport[]
-  
-  // Market Intelligence
-  marketData            MarketData[]
-  competitiveAnalyses   CompetitiveAnalysis[]
+  notifications             Notification[]
+  portfolios                Portfolio[]
+  predictiveModels          PredictiveModel[]
+  products                  Product[]
+  projects                  Project[]
+  receipts                  Receipt[]
+  reconciliations           Reconciliation[]
+  recurringCharges          RecurringCharge[]
+  riskAssessments           RiskAssessment[]
+  scenarioAnalyses          ScenarioAnalysis[]
+  services                  Service[]
+  sessions                  Session[]
+  shareholders              Shareholder[]
+  tasks                     Task[]
+  taxOptimizations          TaxOptimization[]
+  transactions              Transaction[]
+  vendors                   Vendor[]
+  workflowRules             WorkflowRule[]
 }
 
 model VerificationToken {
@@ -146,50 +128,47 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// Core Financial Models
 model Transaction {
-  id            String   @id @default(cuid())
-  userId        String
-  date          DateTime
-  amount        Float
-  description   String
-  merchant      String?
-  category      String
-  categoryId    String?
-  vendorId      String?
-  type          TransactionType // INCOME, EXPENSE, TRANSFER
-  account       String?
-  csvUploadId   String?
-  bankStatementId String?
-  isRecurring   Boolean  @default(false)
-  aiCategorized Boolean  @default(false) // Indicates if AI categorized this
-  confidence    Float?   // AI confidence score (0-1)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  categoryRelation Category?   @relation(fields: [categoryId], references: [id])
-  csvUpload     CsvUpload?     @relation(fields: [csvUploadId], references: [id])
-  bankStatement BankStatement? @relation(fields: [bankStatementId], references: [id])
-  vendor        Vendor?        @relation(fields: [vendorId], references: [id])
+  id                       String                    @id @default(cuid())
+  userId                   String
+  date                     DateTime
+  amount                   Float
+  description              String
+  merchant                 String?
+  category                 String
+  categoryId               String?
+  vendorId                 String?
+  type                     TransactionType
+  account                  String?
+  csvUploadId              String?
+  bankStatementId          String?
+  isRecurring              Boolean                   @default(false)
+  aiCategorized            Boolean                   @default(false)
+  confidence               Float?
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
   multiCurrencyTransaction MultiCurrencyTransaction?
+  bankStatement            BankStatement?            @relation(fields: [bankStatementId], references: [id])
+  categoryRelation         Category?                 @relation(fields: [categoryId], references: [id])
+  csvUpload                CsvUpload?                @relation(fields: [csvUploadId], references: [id])
+  user                     User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendor                   Vendor?                   @relation(fields: [vendorId], references: [id])
 
   @@index([userId, date])
   @@index([userId, category])
 }
 
 model Category {
-  id          String   @id @default(cuid())
-  userId      String
-  name        String
-  color       String   @default("#3B82F6")
-  icon        String   @default("folder")
-  budget      Float?
-  type        CategoryType // EXPENSE, INCOME
-  isDefault   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
+  id           String        @id @default(cuid())
+  userId       String
+  name         String
+  color        String        @default("#3B82F6")
+  icon         String        @default("folder")
+  budget       Float?
+  type         CategoryType
+  isDefault    Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions Transaction[]
 
@@ -197,21 +176,20 @@ model Category {
 }
 
 model Debt {
-  id            String   @id @default(cuid())
-  userId        String
-  name          String
-  balance       Float
-  interestRate  Float
+  id             String        @id @default(cuid())
+  userId         String
+  name           String
+  balance        Float
+  interestRate   Float
   minimumPayment Float
-  dueDate       Int      // Day of month (1-31)
-  type          DebtType // CREDIT_CARD, STUDENT_LOAN, MORTGAGE, PERSONAL_LOAN, OTHER
-  priority      Int      @default(0)
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  payments DebtPayment[]
+  dueDate        Int
+  type           DebtType
+  priority       Int           @default(0)
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments       DebtPayment[]
 
   @@index([userId, isActive])
 }
@@ -224,27 +202,25 @@ model DebtPayment {
   principal Float?
   interest  Float?
   createdAt DateTime @default(now())
-
-  debt Debt @relation(fields: [debtId], references: [id], onDelete: Cascade)
+  debt      Debt     @relation(fields: [debtId], references: [id], onDelete: Cascade)
 
   @@index([debtId, date])
 }
 
 model Goal {
-  id           String   @id @default(cuid())
-  userId       String
-  name         String
-  description  String?
-  targetAmount Float
-  currentAmount Float   @default(0)
-  targetDate   DateTime?
-  type         GoalType // EMERGENCY_FUND, DEBT_PAYOFF, SAVINGS, INVESTMENT, OTHER
-  priority     Int      @default(0)
-  isCompleted  Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String    @id @default(cuid())
+  userId        String
+  name          String
+  description   String?
+  targetAmount  Float
+  currentAmount Float     @default(0)
+  targetDate    DateTime?
+  type          GoalType
+  priority      Int       @default(0)
+  isCompleted   Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isCompleted])
 }
@@ -253,16 +229,15 @@ model Budget {
   id        String     @id @default(cuid())
   userId    String
   name      String
-  month     Int        // 1-12
+  month     Int
   year      Int
   amount    Float
   spent     Float      @default(0)
   category  String
-  type      BudgetType // MONTHLY, WEEKLY, YEARLY
+  type      BudgetType
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, category, month, year])
   @@index([userId, month, year])
@@ -271,7 +246,7 @@ model Budget {
 model Notification {
   id        String           @id @default(cuid())
   userId    String
-  type      NotificationType // BILL_REMINDER, BUDGET_ALERT, GOAL_PROGRESS, DEBT_REMINDER, OTHER
+  type      NotificationType
   title     String
   message   String
   isRead    Boolean          @default(false)
@@ -279,29 +254,27 @@ model Notification {
   dueDate   DateTime?
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isRead])
   @@index([userId, dueDate])
 }
 
 model CsvUpload {
-  id            String   @id @default(cuid())
-  userId        String
-  fileName      String
-  originalName  String
+  id               String        @id @default(cuid())
+  userId           String
+  fileName         String
+  originalName     String
   cloudStoragePath String
-  recordCount   Int      @default(0)
-  processedCount Int     @default(0)
-  status        UploadStatus // PENDING, PROCESSING, COMPLETED, FAILED
-  mappingConfig Json?    // Column mapping configuration
-  errorLog      String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions Transaction[]
+  recordCount      Int           @default(0)
+  processedCount   Int           @default(0)
+  status           UploadStatus
+  mappingConfig    Json?
+  errorLog         String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions     Transaction[]
 
   @@index([userId, status])
 }
@@ -312,25 +285,24 @@ model BankStatement {
   fileName         String
   originalName     String
   cloudStoragePath String
-  fileType         StatementFileType   // CSV, PDF
+  fileType         StatementFileType
   fileSize         Int?
-  sourceType       StatementSourceType @default(BANK) // BANK, CREDIT_CARD
+  sourceType       StatementSourceType @default(BANK)
   bankName         String?
   accountType      String?
-  accountNumber    String?             // Last 4 digits only for security
-  creditLimit      Float?              // For credit card statements
-  statementPeriod  String?             // e.g., "2024-01-01 to 2024-01-31"
+  accountNumber    String?
+  creditLimit      Float?
+  statementPeriod  String?
   status           UploadStatus        @default(PENDING)
   processingStage  ProcessingStage     @default(UPLOADED)
   recordCount      Int                 @default(0)
   processedCount   Int                 @default(0)
   errorLog         String?
-  aiAnalysis       Json?               // AI insights and recommendations
-  extractedData    Json?               // Raw extracted data
-  mappingConfig    Json?               // Column mapping for CSV
+  aiAnalysis       Json?
+  extractedData    Json?
+  mappingConfig    Json?
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
-
   user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions     Transaction[]
 
@@ -340,190 +312,182 @@ model BankStatement {
 }
 
 model FinancialMetrics {
-  id                String   @id @default(cuid())
-  userId            String   @unique
-  monthlyIncome     Float?
-  monthlyExpenses   Float?
-  monthlyBurnRate   Float?
-  totalDebt         Float?   @default(0)
-  totalAssets       Float?   @default(0)
-  netWorth          Float?
-  emergencyFundGoal Float?
-  debtToIncomeRatio Float?
-  profitMargin      Float?
-  workingCapital    Float?
-  currentRatio      Float?
-  quickRatio        Float?
-  debtToEquityRatio Float?
-  returnOnAssets    Float?
-  returnOnEquity    Float?
-  grossMargin       Float?
-  operatingMargin   Float?
-  cashFlowFromOps   Float?
-  freeCashFlow      Float?
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  monthlyIncome       Float?
+  monthlyExpenses     Float?
+  monthlyBurnRate     Float?
+  totalDebt           Float?   @default(0)
+  totalAssets         Float?   @default(0)
+  netWorth            Float?
+  emergencyFundGoal   Float?
+  debtToIncomeRatio   Float?
+  profitMargin        Float?
+  workingCapital      Float?
+  currentRatio        Float?
+  quickRatio          Float?
+  debtToEquityRatio   Float?
+  returnOnAssets      Float?
+  returnOnEquity      Float?
+  grossMargin         Float?
+  operatingMargin     Float?
+  cashFlowFromOps     Float?
+  freeCashFlow        Float?
   businessCreditScore Int?
-  riskScore         Float?
-  lastCalculated    DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  riskScore           Float?
+  lastCalculated      DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// Business Models
 model Customer {
-  id          String   @id @default(cuid())
-  userId      String
-  name        String
-  email       String?
-  phone       String?
-  address     String?
-  city        String?
-  state       String?
-  country     String?
-  zipCode     String?
-  taxId       String?
-  website     String?
-  notes       String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  invoices    Invoice[]
-  estimates   Estimate[]
-  projects    Project[]
+  id        String     @id @default(cuid())
+  userId    String
+  name      String
+  email     String?
+  phone     String?
+  address   String?
+  city      String?
+  state     String?
+  country   String?
+  zipCode   String?
+  taxId     String?
+  website   String?
+  notes     String?
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  estimates Estimate[]
+  invoices  Invoice[]
+  projects  Project[]
 
   @@index([userId, isActive])
 }
 
 model Vendor {
-  id          String   @id @default(cuid())
-  userId      String
-  name        String
-  email       String?
-  phone       String?
-  address     String?
-  city        String?
-  state       String?
-  country     String?
-  zipCode     String?
-  taxId       String?
-  website     String?
-  notes       String?
+  id           String        @id @default(cuid())
+  userId       String
+  name         String
+  email        String?
+  phone        String?
+  address      String?
+  city         String?
+  state        String?
+  country      String?
+  zipCode      String?
+  taxId        String?
+  website      String?
+  notes        String?
   paymentTerms String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bills       Bill[]
-  expenses    Transaction[]
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  bills        Bill[]
+  expenses     Transaction[]
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isActive])
 }
 
 model Contractor {
-  id          String   @id @default(cuid())
-  userId      String
-  name        String
-  email       String?
-  phone       String?
-  address     String?
-  city        String?
-  state       String?
-  country     String?
-  zipCode     String?
-  taxId       String?
-  rate        Float?
-  rateType    RateType @default(HOURLY) // HOURLY, DAILY, PROJECT
-  specialty   String?
-  notes       String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  projects    Project[]
-  tasks       Task[]
+  id        String    @id @default(cuid())
+  userId    String
+  name      String
+  email     String?
+  phone     String?
+  address   String?
+  city      String?
+  state     String?
+  country   String?
+  zipCode   String?
+  taxId     String?
+  rate      Float?
+  rateType  RateType  @default(HOURLY)
+  specialty String?
+  notes     String?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projects  Project[]
+  tasks     Task[]
 
   @@index([userId, isActive])
 }
 
 model Product {
-  id          String   @id @default(cuid())
-  userId      String
-  name        String
-  description String?
-  sku         String?
-  price       Float
-  cost        Float?
-  category    String?
-  unit        String?
-  taxable     Boolean  @default(true)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  invoiceItems InvoiceItem[]
+  id            String         @id @default(cuid())
+  userId        String
+  name          String
+  description   String?
+  sku           String?
+  price         Float
+  cost          Float?
+  category      String?
+  unit          String?
+  taxable       Boolean        @default(true)
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   estimateItems EstimateItem[]
+  invoiceItems  InvoiceItem[]
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isActive])
   @@index([userId, category])
 }
 
 model Service {
-  id          String   @id @default(cuid())
-  userId      String
-  name        String
-  description String?
-  rate        Float
-  unit        String   @default("hour") // hour, day, project
-  category    String?
-  taxable     Boolean  @default(true)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  invoiceItems InvoiceItem[]
+  id            String         @id @default(cuid())
+  userId        String
+  name          String
+  description   String?
+  rate          Float
+  unit          String         @default("hour")
+  category      String?
+  taxable       Boolean        @default(true)
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   estimateItems EstimateItem[]
+  invoiceItems  InvoiceItem[]
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isActive])
   @@index([userId, category])
 }
 
 model Invoice {
-  id           String        @id @default(cuid())
-  userId       String
-  customerId   String
-  invoiceNumber String       @unique
-  title        String?
-  description  String?
-  issueDate    DateTime
-  dueDate      DateTime
-  subtotal     Float
-  taxRate      Float         @default(0)
-  taxAmount    Float         @default(0)
-  total        Float
-  amountPaid   Float         @default(0)
-  status       InvoiceStatus @default(DRAFT)
-  terms        String?
-  notes        String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  customer     Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  items        InvoiceItem[]
-  payments     Payment[]
+  id            String        @id @default(cuid())
+  userId        String
+  customerId    String
+  invoiceNumber String        @unique
+  title         String?
+  description   String?
+  issueDate     DateTime
+  dueDate       DateTime
+  subtotal      Float
+  taxRate       Float         @default(0)
+  taxAmount     Float         @default(0)
+  total         Float
+  amountPaid    Float         @default(0)
+  status        InvoiceStatus @default(DRAFT)
+  terms         String?
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  customer      Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items         InvoiceItem[]
+  payments      Payment[]
 
   @@index([userId, status])
   @@index([userId, dueDate])
 }
 
 model InvoiceItem {
-  id          String  @id @default(cuid())
+  id          String   @id @default(cuid())
   invoiceId   String
   productId   String?
   serviceId   String?
@@ -532,41 +496,39 @@ model InvoiceItem {
   rate        Float
   amount      Float
   createdAt   DateTime @default(now())
-
-  invoice Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  product Product? @relation(fields: [productId], references: [id])
-  service Service? @relation(fields: [serviceId], references: [id])
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product     Product? @relation(fields: [productId], references: [id])
+  service     Service? @relation(fields: [serviceId], references: [id])
 }
 
 model Estimate {
-  id           String         @id @default(cuid())
-  userId       String
-  customerId   String
-  estimateNumber String       @unique
-  title        String?
-  description  String?
-  issueDate    DateTime
-  expiryDate   DateTime?
-  subtotal     Float
-  taxRate      Float          @default(0)
-  taxAmount    Float          @default(0)
-  total        Float
-  status       EstimateStatus @default(DRAFT)
-  terms        String?
-  notes        String?
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-
-  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  customer     Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  items        EstimateItem[]
+  id             String         @id @default(cuid())
+  userId         String
+  customerId     String
+  estimateNumber String         @unique
+  title          String?
+  description    String?
+  issueDate      DateTime
+  expiryDate     DateTime?
+  subtotal       Float
+  taxRate        Float          @default(0)
+  taxAmount      Float          @default(0)
+  total          Float
+  status         EstimateStatus @default(DRAFT)
+  terms          String?
+  notes          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  customer       Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items          EstimateItem[]
 
   @@index([userId, status])
   @@index([userId, expiryDate])
 }
 
 model EstimateItem {
-  id          String  @id @default(cuid())
+  id          String   @id @default(cuid())
   estimateId  String
   productId   String?
   serviceId   String?
@@ -575,133 +537,126 @@ model EstimateItem {
   rate        Float
   amount      Float
   createdAt   DateTime @default(now())
-
-  estimate Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
-  product  Product? @relation(fields: [productId], references: [id])
-  service  Service? @relation(fields: [serviceId], references: [id])
+  estimate    Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  product     Product? @relation(fields: [productId], references: [id])
+  service     Service? @relation(fields: [serviceId], references: [id])
 }
 
 model Project {
-  id          String        @id @default(cuid())
-  userId      String
-  customerId  String?
+  id           String        @id @default(cuid())
+  userId       String
+  customerId   String?
   contractorId String?
-  name        String
-  description String?
-  startDate   DateTime?
-  endDate     DateTime?
-  budget      Float?
-  status      ProjectStatus @default(PLANNING)
-  priority    Priority      @default(MEDIUM)
-  notes       String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  customer    Customer?   @relation(fields: [customerId], references: [id])
-  contractor  Contractor? @relation(fields: [contractorId], references: [id])
-  tasks       Task[]
-  documents   Document[]
+  name         String
+  description  String?
+  startDate    DateTime?
+  endDate      DateTime?
+  budget       Float?
+  status       ProjectStatus @default(PLANNING)
+  priority     Priority      @default(MEDIUM)
+  notes        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  documents    Document[]
+  contractor   Contractor?   @relation(fields: [contractorId], references: [id])
+  customer     Customer?     @relation(fields: [customerId], references: [id])
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks        Task[]
 
   @@index([userId, status])
 }
 
 model Employee {
-  id          String   @id @default(cuid())
-  userId      String
-  firstName   String
-  lastName    String
-  email       String
-  phone       String?
-  address     String?
-  city        String?
-  state       String?
-  country     String?
-  zipCode     String?
-  ssn         String?
-  hireDate    DateTime
-  salary      Float?
-  hourlyRate  Float?
-  jobTitle    String?
-  department  String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  paychecks   Paycheck[]
-  timesheets  Timesheet[]
+  id         String      @id @default(cuid())
+  userId     String
+  firstName  String
+  lastName   String
+  email      String
+  phone      String?
+  address    String?
+  city       String?
+  state      String?
+  country    String?
+  zipCode    String?
+  ssn        String?
+  hireDate   DateTime
+  salary     Float?
+  hourlyRate Float?
+  jobTitle   String?
+  department String?
+  isActive   Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paychecks  Paycheck[]
+  timesheets Timesheet[]
 
   @@index([userId, isActive])
 }
 
 model Paycheck {
-  id          String   @id @default(cuid())
-  employeeId  String
+  id             String   @id @default(cuid())
+  employeeId     String
   payPeriodStart DateTime
-  payPeriodEnd DateTime
-  grossPay    Float
-  netPay      Float
-  taxes       Float
-  deductions  Float
-  createdAt   DateTime @default(now())
-
-  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  payPeriodEnd   DateTime
+  grossPay       Float
+  netPay         Float
+  taxes          Float
+  deductions     Float
+  createdAt      DateTime @default(now())
+  employee       Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 }
 
 model Timesheet {
-  id         String   @id @default(cuid())
-  employeeId String
-  date       DateTime
+  id          String   @id @default(cuid())
+  employeeId  String
+  date        DateTime
   hoursWorked Float
   description String?
-  approved   Boolean  @default(false)
-  createdAt  DateTime @default(now())
-
-  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  approved    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 }
 
 model Task {
-  id           String     @id @default(cuid())
-  userId       String
-  projectId    String?
-  contractorId String?
-  title        String
-  description  String?
-  priority     Priority   @default(MEDIUM)
-  status       TaskStatus @default(TODO)
-  dueDate      DateTime?
-  completedAt  DateTime?
+  id             String      @id @default(cuid())
+  userId         String
+  projectId      String?
+  contractorId   String?
+  title          String
+  description    String?
+  priority       Priority    @default(MEDIUM)
+  status         TaskStatus  @default(TODO)
+  dueDate        DateTime?
+  completedAt    DateTime?
   estimatedHours Float?
   actualHours    Float?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project    Project?    @relation(fields: [projectId], references: [id])
-  contractor Contractor? @relation(fields: [contractorId], references: [id])
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  contractor     Contractor? @relation(fields: [contractorId], references: [id])
+  project        Project?    @relation(fields: [projectId], references: [id])
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, status])
   @@index([userId, dueDate])
 }
 
 model Document {
-  id              String       @id @default(cuid())
-  userId          String
-  projectId       String?
-  name            String
-  description     String?
-  fileName        String
+  id               String           @id @default(cuid())
+  userId           String
+  projectId        String?
+  name             String
+  description      String?
+  fileName         String
   cloudStoragePath String
-  fileSize        Int?
-  mimeType        String?
-  category        DocumentCategory @default(OTHER)
-  isPublic        Boolean      @default(false)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project Project? @relation(fields: [projectId], references: [id])
+  fileSize         Int?
+  mimeType         String?
+  category         DocumentCategory @default(OTHER)
+  isPublic         Boolean          @default(false)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  project          Project?         @relation(fields: [projectId], references: [id])
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, category])
 }
@@ -720,16 +675,15 @@ model Bill {
   notes       String?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
-
-  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  vendor Vendor? @relation(fields: [vendorId], references: [id])
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendor      Vendor?    @relation(fields: [vendorId], references: [id])
 
   @@index([userId, status])
   @@index([userId, dueDate])
 }
 
 model ExpenseClaim {
-  id          String            @id @default(cuid())
+  id          String             @id @default(cuid())
   userId      String
   title       String
   description String?
@@ -741,35 +695,33 @@ model ExpenseClaim {
   notes       String?
   approvedAt  DateTime?
   paidAt      DateTime?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, status])
   @@index([userId, date])
 }
 
 model Receipt {
-  id              String   @id @default(cuid())
-  userId          String
-  vendor          String?
-  amount          Float
-  date            DateTime
-  category        String?
-  description     String?
+  id               String   @id @default(cuid())
+  userId           String
+  vendor           String?
+  amount           Float
+  date             DateTime
+  category         String?
+  description      String?
   cloudStoragePath String?
-  ocrText         String?
-  ocrData         Json?    // Structured OCR data
-  aiAnalysis      Json?    // AI insights from receipt
-  processed       Boolean  @default(false)
-  confidence      Float?   // OCR confidence score
-  taxDeductible   Boolean  @default(false)
-  businessExpense Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ocrText          String?
+  ocrData          Json?
+  aiAnalysis       Json?
+  processed        Boolean  @default(false)
+  confidence       Float?
+  taxDeductible    Boolean  @default(false)
+  businessExpense  Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, date])
   @@index([userId, processed])
@@ -777,40 +729,38 @@ model Receipt {
 }
 
 model Automation {
-  id          String          @id @default(cuid())
+  id          String            @id @default(cuid())
   userId      String
   name        String
   description String?
   trigger     AutomationTrigger
   action      AutomationAction
   conditions  Json?
-  isActive    Boolean         @default(true)
+  isActive    Boolean           @default(true)
   lastRun     DateTime?
-  runCount    Int             @default(0)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  runCount    Int               @default(0)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isActive])
 }
 
 model ChartOfAccount {
-  id          String      @id @default(cuid())
-  userId      String
-  code        String
-  name        String
-  type        AccountType
-  parentId    String?
-  description String?
-  balance     Float       @default(0)
-  isActive    Boolean     @default(true)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-
-  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parent         ChartOfAccount?  @relation("AccountHierarchy", fields: [parentId], references: [id])
-  children       ChartOfAccount[] @relation("AccountHierarchy")
+  id             String             @id @default(cuid())
+  userId         String
+  code           String
+  name           String
+  type           AccountType
+  parentId       String?
+  description    String?
+  balance        Float              @default(0)
+  isActive       Boolean            @default(true)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  parent         ChartOfAccount?    @relation("AccountHierarchy", fields: [parentId], references: [id])
+  children       ChartOfAccount[]   @relation("AccountHierarchy")
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   journalEntries JournalEntryLine[]
 
   @@unique([userId, code])
@@ -818,7 +768,7 @@ model ChartOfAccount {
 }
 
 model JournalEntry {
-  id          String   @id @default(cuid())
+  id          String             @id @default(cuid())
   userId      String
   entryNumber String
   date        DateTime
@@ -826,96 +776,81 @@ model JournalEntry {
   reference   String?
   totalDebit  Float
   totalCredit Float
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  user  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lines JournalEntryLine[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lines       JournalEntryLine[]
 
   @@unique([userId, entryNumber])
   @@index([userId, date])
 }
 
 model JournalEntryLine {
-  id              String  @id @default(cuid())
-  journalEntryId  String
-  accountId       String
-  description     String?
-  debitAmount     Float   @default(0)
-  creditAmount    Float   @default(0)
-
-  journalEntry JournalEntry   @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
-  account      ChartOfAccount @relation(fields: [accountId], references: [id])
+  id             String         @id @default(cuid())
+  journalEntryId String
+  accountId      String
+  description    String?
+  debitAmount    Float          @default(0)
+  creditAmount   Float          @default(0)
+  account        ChartOfAccount @relation(fields: [accountId], references: [id])
+  journalEntry   JournalEntry   @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
 }
 
 model Reconciliation {
-  id              String              @id @default(cuid())
-  userId          String
-  accountId       String?
-  month           Int
-  year            Int
-  openingBalance  Float
-  closingBalance  Float
-  bankBalance     Float?
-  status          ReconciliationStatus @default(PENDING)
-  difference      Float               @default(0)
-  notes           String?
-  reconciledAt    DateTime?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String               @id @default(cuid())
+  userId         String
+  accountId      String?
+  month          Int
+  year           Int
+  openingBalance Float
+  closingBalance Float
+  bankBalance    Float?
+  status         ReconciliationStatus @default(PENDING)
+  difference     Float                @default(0)
+  notes          String?
+  reconciledAt   DateTime?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, month, year])
   @@index([userId, status])
 }
 
 model Payment {
-  id        String      @id @default(cuid())
+  id        String        @id @default(cuid())
   invoiceId String
   amount    Float
   date      DateTime
   method    PaymentMethod @default(BANK_TRANSFER)
   reference String?
   notes     String?
-  createdAt DateTime    @default(now())
-
-  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+  invoice   Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 }
 
-// Advanced Financial Features
-
 model CashFlowForecast {
-  id          String   @id @default(cuid())
-  userId      String
-  period      String   // "2024-Q1", "2024-01", etc.
-  periodType  ForecastPeriod
-  startDate   DateTime
-  endDate     DateTime
-  
-  // Forecasted amounts
-  projectedIncome    Float @default(0)
-  projectedExpenses  Float @default(0)
-  projectedCashFlow  Float @default(0)
-  openingBalance     Float @default(0)
-  closingBalance     Float @default(0)
-  
-  // Confidence and scenarios
-  confidence         Float    @default(0.5)
-  scenarioType       ScenarioType @default(REALISTIC)
-  
-  // Breakdown data
-  incomeBreakdown    Json?    // Category-wise income projections
-  expenseBreakdown   Json?    // Category-wise expense projections
-  
-  // Metadata
-  modelVersion       String?
-  generatedAt        DateTime @default(now())
-  isActive          Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String         @id @default(cuid())
+  userId            String
+  period            String
+  periodType        ForecastPeriod
+  startDate         DateTime
+  endDate           DateTime
+  projectedIncome   Float          @default(0)
+  projectedExpenses Float          @default(0)
+  projectedCashFlow Float          @default(0)
+  openingBalance    Float          @default(0)
+  closingBalance    Float          @default(0)
+  confidence        Float          @default(0.5)
+  scenarioType      ScenarioType   @default(REALISTIC)
+  incomeBreakdown   Json?
+  expenseBreakdown  Json?
+  modelVersion      String?
+  generatedAt       DateTime       @default(now())
+  isActive          Boolean        @default(true)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, period, scenarioType])
   @@index([userId, startDate])
@@ -923,75 +858,55 @@ model CashFlowForecast {
 }
 
 model TaxOptimization {
-  id              String   @id @default(cuid())
-  userId          String
-  taxYear         Int
-  quarter         Int?     // 1,2,3,4 for quarterly estimates
-  
-  // Tax calculations
-  estimatedTaxableIncome Float @default(0)
-  estimatedTaxLiability  Float @default(0)
-  currentTaxPaid         Float @default(0)
-  quarterlyEstimate      Float @default(0)
-  
-  // Deductions and credits
-  standardDeduction      Float @default(0)
-  itemizedDeductions     Json? // Breakdown by category
-  businessDeductions     Json? // Business-specific deductions
-  availableCredits       Json? // Tax credits
-  
-  // Optimization suggestions
-  recommendations        Json? // AI-generated recommendations
-  potentialSavings       Float @default(0)
-  implementationSteps    Json? // Action items
-  
-  // Compliance tracking
-  documentsRequired      Json? // List of required documents
-  deadlines             Json? // Important tax deadlines
-  filingStatus          TaxFilingStatus?
-  
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-
-  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                     String           @id @default(cuid())
+  userId                 String
+  taxYear                Int
+  quarter                Int?
+  estimatedTaxableIncome Float            @default(0)
+  estimatedTaxLiability  Float            @default(0)
+  currentTaxPaid         Float            @default(0)
+  quarterlyEstimate      Float            @default(0)
+  standardDeduction      Float            @default(0)
+  itemizedDeductions     Json?
+  businessDeductions     Json?
+  availableCredits       Json?
+  recommendations        Json?
+  potentialSavings       Float            @default(0)
+  implementationSteps    Json?
+  documentsRequired      Json?
+  deadlines              Json?
+  filingStatus           TaxFilingStatus?
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+  user                   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, taxYear, quarter])
   @@index([userId, taxYear])
 }
 
 model BusinessInsight {
-  id          String      @id @default(cuid())
+  id          String          @id @default(cuid())
   userId      String
   type        InsightType
   category    InsightCategory
   title       String
   description String
-  
-  // Insight data
   value       Float?
   percentage  Float?
   trend       Trend?
-  timeframe   String?     // "last_30_days", "MTD", "YTD", etc.
-  
-  // Context and analysis
-  context     Json?       // Supporting data and context
-  analysis    String?     // AI analysis explanation
-  confidence  Float       @default(0.5)
-  
-  // Action items
-  actionable  Boolean     @default(false)
-  priority    Priority    @default(MEDIUM)
-  suggestions Json?       // Specific action suggestions
-  
-  // Metadata
-  source      String?     // Data source or model that generated this
-  isStale     Boolean     @default(false)
+  timeframe   String?
+  context     Json?
+  analysis    String?
+  confidence  Float           @default(0.5)
+  actionable  Boolean         @default(false)
+  priority    Priority        @default(MEDIUM)
+  suggestions Json?
+  source      String?
+  isStale     Boolean         @default(false)
   staleAt     DateTime?
-  
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, type])
   @@index([userId, priority])
@@ -999,44 +914,32 @@ model BusinessInsight {
 }
 
 model AIRecommendation {
-  id              String      @id @default(cuid())
-  userId          String
-  type            RecommendationType
-  category        RecommendationCategory
-  title           String
-  description     String
-  
-  // Impact analysis
-  impactLevel     ImpactLevel
+  id               String                 @id @default(cuid())
+  userId           String
+  type             RecommendationType
+  category         RecommendationCategory
+  title            String
+  description      String
+  impactLevel      ImpactLevel
   potentialSavings Float?
   potentialRevenue Float?
-  riskLevel       RiskLevel   @default(LOW)
-  timeToImplement String?     // "1 week", "1 month", etc.
-  
-  // Implementation
-  steps           Json        // Step-by-step implementation guide
-  requirements    Json?       // Prerequisites or requirements
-  resources       Json?       // Needed resources
-  
-  // Status tracking
-  status          RecommendationStatus @default(PENDING)
-  implementedAt   DateTime?
-  rejectedAt      DateTime?
-  rejectionReason String?
-  
-  // Validation
-  confidence      Float       @default(0.5)
-  dataSupporting  Json?       // Supporting data and analysis
-  
-  // Priority and urgency
-  priority        Priority    @default(MEDIUM)
-  urgencyLevel    UrgencyLevel @default(NORMAL)
-  dueDate         DateTime?
-  
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-
-  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  riskLevel        RiskLevel              @default(LOW)
+  timeToImplement  String?
+  steps            Json
+  requirements     Json?
+  resources        Json?
+  status           RecommendationStatus   @default(PENDING)
+  implementedAt    DateTime?
+  rejectedAt       DateTime?
+  rejectionReason  String?
+  confidence       Float                  @default(0.5)
+  dataSupporting   Json?
+  priority         Priority               @default(MEDIUM)
+  urgencyLevel     UrgencyLevel           @default(NORMAL)
+  dueDate          DateTime?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  user             User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, status])
   @@index([userId, priority])
@@ -1044,85 +947,61 @@ model AIRecommendation {
 }
 
 model ScenarioAnalysis {
-  id              String       @id @default(cuid())
-  userId          String
-  name            String
-  description     String?
-  scenarioType    ScenarioType @default(REALISTIC)
-  
-  // Scenario parameters
-  timeHorizon     String       // "3_months", "1_year", "3_years"
-  startDate       DateTime
-  endDate         DateTime
-  
-  // Base assumptions
-  revenueGrowth   Float?       // % growth rate
-  expenseGrowth   Float?       // % growth rate
-  inflationRate   Float?       // Expected inflation
-  customVariables Json?        // Custom scenario variables
-  
-  // Results
-  projectedRevenue   Float?
-  projectedExpenses  Float?
-  projectedProfit    Float?
-  projectedCashFlow  Float?
-  breakEvenPoint     DateTime?
-  
-  // Analysis
-  riskFactors        Json?    // Identified risks
-  opportunities      Json?    // Identified opportunities  
-  recommendations    Json?    // Scenario-specific recommendations
-  
-  // Comparison with other scenarios
-  comparisonData     Json?    // Comparison metrics
-  
-  isActive           Boolean  @default(true)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String       @id @default(cuid())
+  userId            String
+  name              String
+  description       String?
+  scenarioType      ScenarioType @default(REALISTIC)
+  timeHorizon       String
+  startDate         DateTime
+  endDate           DateTime
+  revenueGrowth     Float?
+  expenseGrowth     Float?
+  inflationRate     Float?
+  customVariables   Json?
+  projectedRevenue  Float?
+  projectedExpenses Float?
+  projectedProfit   Float?
+  projectedCashFlow Float?
+  breakEvenPoint    DateTime?
+  riskFactors       Json?
+  opportunities     Json?
+  recommendations   Json?
+  comparisonData    Json?
+  isActive          Boolean      @default(true)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, scenarioType])
   @@index([userId, startDate])
 }
 
 model ComplianceTracking {
-  id              String          @id @default(cuid())
-  userId          String
-  complianceType  ComplianceType
-  title           String
-  description     String?
-  
-  // Requirements
-  requirements    Json            // List of compliance requirements
-  regulations     Json?           // Applicable regulations
-  industry        String?         // Industry-specific compliance
-  
-  // Status tracking
-  status          ComplianceStatus @default(PENDING)
-  completedItems  Json?           // Completed compliance items
-  pendingItems    Json?           // Pending items
-  overdue         Boolean         @default(false)
-  
-  // Deadlines
-  dueDate         DateTime?
-  lastReviewDate  DateTime?
-  nextReviewDate  DateTime?
-  frequency       ComplianceFrequency?
-  
-  // Documentation
-  documents       Json?           // Required/submitted documents
-  evidence        Json?           // Evidence of compliance
-  notes           String?
-  
-  // Risk assessment
-  riskLevel       RiskLevel       @default(LOW)
-  penalties       Json?           // Potential penalties for non-compliance
-  
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-
-  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String               @id @default(cuid())
+  userId         String
+  complianceType ComplianceType
+  title          String
+  description    String?
+  requirements   Json
+  regulations    Json?
+  industry       String?
+  status         ComplianceStatus     @default(PENDING)
+  completedItems Json?
+  pendingItems   Json?
+  overdue        Boolean              @default(false)
+  dueDate        DateTime?
+  lastReviewDate DateTime?
+  nextReviewDate DateTime?
+  frequency      ComplianceFrequency?
+  documents      Json?
+  evidence       Json?
+  notes          String?
+  riskLevel      RiskLevel            @default(LOW)
+  penalties      Json?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, status])
   @@index([userId, dueDate])
@@ -1130,46 +1009,33 @@ model ComplianceTracking {
 }
 
 model RecurringCharge {
-  id              String           @id @default(cuid())
+  id              String             @id @default(cuid())
   userId          String
   name            String
   description     String?
   amount          Float
   category        String
   frequency       RecurringFrequency @default(MONTHLY)
-  
-  // Billing details
   nextDueDate     DateTime
   lastPaidDate    DateTime?
   vendor          String?
-  billingCycle    Int              @default(1) // e.g., every 1 month, every 2 weeks
-  
-  // Notification settings
-  reminderEnabled Boolean          @default(true)
-  reminderDays    Int              @default(3) // days before due date
-  
-  // Status tracking
-  isActive        Boolean          @default(true)
-  isPaused        Boolean          @default(false)
+  billingCycle    Int                @default(1)
+  reminderEnabled Boolean            @default(true)
+  reminderDays    Int                @default(3)
+  isActive        Boolean            @default(true)
+  isPaused        Boolean            @default(false)
   pausedUntil     DateTime?
-  
-  // Financial tracking
-  annualAmount    Float            // calculated field
-  taxDeductible   Boolean          @default(false)
-  businessExpense Boolean          @default(true)
-  
-  // Metadata
+  annualAmount    Float
+  taxDeductible   Boolean            @default(false)
+  businessExpense Boolean            @default(true)
   notes           String?
-  tags            Json?            // flexible tagging system
-  lastUpdated     DateTime         @updatedAt
-  createdAt       DateTime         @default(now())
-  
-  // Auto-pay settings
-  autoPayEnabled  Boolean          @default(false)
+  tags            Json?
+  lastUpdated     DateTime           @updatedAt
+  createdAt       DateTime           @default(now())
+  autoPayEnabled  Boolean            @default(false)
   paymentMethod   String?
-  
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId, isActive])
   @@index([userId, nextDueDate])
   @@index([userId, category])
@@ -1177,238 +1043,172 @@ model RecurringCharge {
 }
 
 model CreditApplication {
-  id                String           @id @default(cuid())
-  userId            String
-  type              CreditType
-  lender            String?
-  productName       String?
-  
-  // Application details
-  requestedAmount   Float
-  purpose           String
-  termLength        Int?             // in months
-  collateral        String?
-  
-  // Business information
-  businessRevenue   Float?
-  businessExpenses  Float?
-  businessAge       Int?             // in months
-  
-  // Status tracking
-  status            ApplicationStatus @default(DRAFT)
-  applicationDate   DateTime?
-  approvalDate      DateTime?
-  decisionAmount    Float?
-  interestRate      Float?
-  
-  // Requirements and documents
-  requirements      Json?            // Required documents/info
-  submittedDocs     Json?            // Submitted documentation
-  
-  // Analysis and recommendations
-  eligibilityScore  Float?           // 0-1 score
-  recommendations   Json?            // Improvement suggestions
-  alternativeOptions Json?           // Alternative financing options
-  
-  notes             String?
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-
-  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                 String            @id @default(cuid())
+  userId             String
+  type               CreditType
+  lender             String?
+  productName        String?
+  requestedAmount    Float
+  purpose            String
+  termLength         Int?
+  collateral         String?
+  businessRevenue    Float?
+  businessExpenses   Float?
+  businessAge        Int?
+  status             ApplicationStatus @default(DRAFT)
+  applicationDate    DateTime?
+  approvalDate       DateTime?
+  decisionAmount     Float?
+  interestRate       Float?
+  requirements       Json?
+  submittedDocs      Json?
+  eligibilityScore   Float?
+  recommendations    Json?
+  alternativeOptions Json?
+  notes              String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, status])
   @@index([userId, type])
 }
 
 model IndustryBenchmark {
-  id              String   @id @default(cuid())
+  id              String      @id @default(cuid())
   userId          String
   industry        String
   companySize     CompanySize
   region          String?
-  
-  // Financial benchmarks
   avgRevenue      Float?
   avgProfit       Float?
   avgExpenses     Float?
-  
-  // Ratios benchmarks
   avgProfitMargin Float?
   avgCurrentRatio Float?
   avgDebtToEquity Float?
   avgROA          Float?
   avgROE          Float?
-  
-  // Operational benchmarks
   avgEmployees    Int?
   avgCustomers    Int?
   avgProjects     Int?
-  
-  // Performance metrics
   revenueGrowth   Float?
   customerGrowth  Float?
   marketShare     Float?
-  
-  // Comparison with user
-  userPerformance Json?    // How user compares to benchmarks
-  gaps            Json?    // Areas for improvement
-  strengths       Json?    // User's strengths vs industry
-  
-  // Data source and validity
+  userPerformance Json?
+  gaps            Json?
+  strengths       Json?
   dataSource      String?
   dataDate        DateTime
-  isActive        Boolean  @default(true)
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isActive        Boolean     @default(true)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, industry, companySize])
   @@index([userId, industry])
 }
 
 model PredictiveModel {
-  id              String      @id @default(cuid())
+  id              String    @id @default(cuid())
   userId          String
   modelType       ModelType
   name            String
   description     String?
-  
-  // Model configuration
-  features        Json        // Input features used
-  parameters      Json        // Model parameters
-  algorithm       String?     // ML algorithm used
-  
-  // Training data
-  trainingData    Json?       // Training dataset info
-  trainingPeriod  String?     // Period of training data
-  dataQuality     Float?      // Data quality score
-  
-  // Model performance
-  accuracy        Float?      // Model accuracy
-  precision       Float?      // Precision score
-  recall          Float?      // Recall score
+  features        Json
+  parameters      Json
+  algorithm       String?
+  trainingData    Json?
+  trainingPeriod  String?
+  dataQuality     Float?
+  accuracy        Float?
+  precision       Float?
+  recall          Float?
   lastTrained     DateTime?
-  
-  // Predictions
-  predictions     Json?       // Current predictions
-  confidenceLevel Float?      // Overall confidence
-  
-  // Metadata
-  version         String      @default("1.0")
-  isActive        Boolean     @default(true)
-  
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-
-  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  predictions     Json?
+  confidenceLevel Float?
+  version         String    @default("1.0")
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, modelType])
   @@index([userId, isActive])
 }
 
 model BusinessEntity {
-  id              String           @id @default(cuid())
-  userId          String
-  name            String
-  type            EntityType
-  
-  // Registration details
+  id                 String           @id @default(cuid())
+  userId             String
+  name               String
+  type               EntityType
   registrationNumber String?
-  taxId           String?
-  registrationDate DateTime?
-  registrationState String?
-  
-  // Contact information
-  address         String?
-  city            String?
-  state           String?
-  country         String?
-  zipCode         String?
-  phone           String?
-  email           String?
-  
-  // Financial details
-  annualRevenue   Float?
-  employees       Int?
-  fiscalYearEnd   DateTime?
-  
-  // Relationships
-  parentEntityId  String?
-  isActive        Boolean          @default(true)
-  
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parentEntity    BusinessEntity?  @relation("EntityHierarchy", fields: [parentEntityId], references: [id])
-  childEntities   BusinessEntity[] @relation("EntityHierarchy")
+  taxId              String?
+  registrationDate   DateTime?
+  registrationState  String?
+  address            String?
+  city               String?
+  state              String?
+  country            String?
+  zipCode            String?
+  phone              String?
+  email              String?
+  annualRevenue      Float?
+  employees          Int?
+  fiscalYearEnd      DateTime?
+  parentEntityId     String?
+  isActive           Boolean          @default(true)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  parentEntity       BusinessEntity?  @relation("EntityHierarchy", fields: [parentEntityId], references: [id])
+  childEntities      BusinessEntity[] @relation("EntityHierarchy")
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, type])
   @@index([userId, isActive])
 }
 
 model WorkflowRule {
-  id          String          @id @default(cuid())
-  userId      String
-  name        String
-  description String?
-  
-  // Rule configuration
-  trigger     WorkflowTrigger
-  conditions  Json            // Trigger conditions
-  actions     Json            // Actions to perform
-  
-  // Execution
-  isActive    Boolean         @default(true)
-  lastRun     DateTime?
-  runCount    Int             @default(0)
-  successCount Int            @default(0)
-  
-  // Schedule (for scheduled triggers)
-  schedule    String?         // Cron expression
-  nextRun     DateTime?
-  
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-
-  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String          @id @default(cuid())
+  userId       String
+  name         String
+  description  String?
+  trigger      WorkflowTrigger
+  conditions   Json
+  actions      Json
+  isActive     Boolean         @default(true)
+  lastRun      DateTime?
+  runCount     Int             @default(0)
+  successCount Int             @default(0)
+  schedule     String?
+  nextRun      DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isActive])
   @@index([userId, trigger])
 }
 
 model KPITarget {
-  id          String      @id @default(cuid())
-  userId      String
-  name        String
-  description String?
-  kpiType     KPIType
-  
-  // Target configuration
-  targetValue Float
-  currentValue Float       @default(0)
-  unit        String?      // "$", "%", "count", etc.
-  
-  // Time tracking
-  period      String       // "monthly", "quarterly", "yearly"
-  startDate   DateTime
-  endDate     DateTime
-  
-  // Status
-  status      TargetStatus @default(IN_PROGRESS)
-  progress    Float        @default(0) // 0-100%
-  
-  // Analysis
-  trend       Trend?
-  lastUpdate  DateTime?
-  isAchievable Boolean?    // AI prediction
-  
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String       @id @default(cuid())
+  userId       String
+  name         String
+  description  String?
+  kpiType      KPIType
+  targetValue  Float
+  currentValue Float        @default(0)
+  unit         String?
+  period       String
+  startDate    DateTime
+  endDate      DateTime
+  status       TargetStatus @default(IN_PROGRESS)
+  progress     Float        @default(0)
+  trend        Trend?
+  lastUpdate   DateTime?
+  isAchievable Boolean?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, status])
   @@index([userId, kpiType])
@@ -1420,94 +1220,67 @@ model BudgetScenario {
   name            String
   description     String?
   scenarioType    ScenarioType @default(REALISTIC)
-  
-  // Budget parameters
-  period          String       // "2024", "2024-Q1", etc.
+  period          String
   startDate       DateTime
   endDate         DateTime
-  
-  // Budget allocations
-  categoryBudgets Json         // Budget by category
+  categoryBudgets Json
   totalBudget     Float
-  contingency     Float        @default(0) // Emergency buffer
-  
-  // Performance tracking
+  contingency     Float        @default(0)
   actualSpending  Float        @default(0)
-  variance        Float        @default(0) // budget vs actual
+  variance        Float        @default(0)
   variancePercent Float        @default(0)
-  
-  // Analysis
-  riskFactors     Json?        // Budget risks
-  opportunities   Json?        // Savings opportunities
-  recommendations Json?        // Budget optimization suggestions
-  
+  riskFactors     Json?
+  opportunities   Json?
+  recommendations Json?
   isActive        Boolean      @default(true)
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
-
   user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, scenarioType])
   @@index([userId, startDate])
 }
 
-// Premium Investment Management Features
 model Investment {
-  id              String           @id @default(cuid())
-  userId          String
-  name            String
-  type            InvestmentType
-  category        InvestmentCategory
-  symbol          String?          // Stock symbol or identifier
-  
-  // Investment details
-  currentValue    Float
-  originalCost    Float
-  quantity        Float?
-  pricePerShare   Float?
-  currency        String           @default("USD")
-  
-  // Performance metrics
-  totalReturn     Float?           // Absolute return
-  totalReturnPct  Float?           // Percentage return
-  annualizedReturn Float?          // Annualized return
-  beta            Float?           // Risk measure
-  dividendYield   Float?
-  
-  // Risk metrics
-  volatility      Float?
-  maxDrawdown     Float?
-  sharpeRatio     Float?
-  
-  // Dates and status
-  purchaseDate    DateTime
-  maturityDate    DateTime?
-  lastUpdated     DateTime         @default(now())
-  isActive        Boolean          @default(true)
-  
-  // Portfolio allocation
-  targetAllocation Float?          // Target % of portfolio
-  actualAllocation Float?          // Actual % of portfolio
-  
-  // Analysis and tracking
+  id               String                  @id @default(cuid())
+  userId           String
+  name             String
+  type             InvestmentType
+  category         InvestmentCategory
+  symbol           String?
+  currentValue     Float
+  originalCost     Float
+  quantity         Float?
+  pricePerShare    Float?
+  currency         String                  @default("USD")
+  totalReturn      Float?
+  totalReturnPct   Float?
+  annualizedReturn Float?
+  beta             Float?
+  dividendYield    Float?
+  volatility       Float?
+  maxDrawdown      Float?
+  sharpeRatio      Float?
+  purchaseDate     DateTime
+  maturityDate     DateTime?
+  lastUpdated      DateTime                @default(now())
+  isActive         Boolean                 @default(true)
+  targetAllocation Float?
+  actualAllocation Float?
   benchmarkIndex   String?
   benchmarkReturn  Float?
-  riskRating       RiskRating      @default(MEDIUM)
+  riskRating       RiskRating              @default(MEDIUM)
   sector           String?
   geography        String?
-  
-  // Recommendations
-  action           InvestmentAction? // BUY, SELL, HOLD, REBALANCE
+  action           InvestmentAction?
   targetPrice      Float?
   stopLoss         Float?
-  
-  notes           String?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  portfolios      PortfolioInvestment[]
-  transactions    InvestmentTransaction[]
+  notes            String?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  user             User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions     InvestmentTransaction[]
+  portfolios       PortfolioInvestment[]
 
   @@index([userId, type])
   @@index([userId, category])
@@ -1515,155 +1288,118 @@ model Investment {
 }
 
 model Portfolio {
-  id              String           @id @default(cuid())
-  userId          String
-  name            String
-  description     String?
-  type            PortfolioType    @default(GENERAL)
-  
-  // Performance metrics
-  totalValue      Float            @default(0)
-  totalCost       Float            @default(0)
-  totalReturn     Float            @default(0)
-  totalReturnPct  Float            @default(0)
-  
-  // Risk metrics
-  expectedReturn  Float?
-  volatility      Float?
-  sharpeRatio     Float?
-  beta            Float?
-  
-  // Allocation targets
-  equityTarget    Float?           // Target % in equities
-  bondTarget      Float?           // Target % in bonds
-  cashTarget      Float?           // Target % in cash
-  alternativeTarget Float?         // Target % in alternatives
-  
-  // Status and dates
-  isActive        Boolean          @default(true)
-  lastRebalanced  DateTime?
-  nextRebalance   DateTime?
-  
-  // Currency and location
-  baseCurrency    String           @default("USD")
-  
-  notes           String?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  investments     PortfolioInvestment[]
-  rebalanceEvents PortfolioRebalance[]
+  id                String                @id @default(cuid())
+  userId            String
+  name              String
+  description       String?
+  type              PortfolioType         @default(GENERAL)
+  totalValue        Float                 @default(0)
+  totalCost         Float                 @default(0)
+  totalReturn       Float                 @default(0)
+  totalReturnPct    Float                 @default(0)
+  expectedReturn    Float?
+  volatility        Float?
+  sharpeRatio       Float?
+  beta              Float?
+  equityTarget      Float?
+  bondTarget        Float?
+  cashTarget        Float?
+  alternativeTarget Float?
+  isActive          Boolean               @default(true)
+  lastRebalanced    DateTime?
+  nextRebalance     DateTime?
+  baseCurrency      String                @default("USD")
+  notes             String?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  investments       PortfolioInvestment[]
+  rebalanceEvents   PortfolioRebalance[]
 
   @@index([userId, type])
   @@index([userId, isActive])
 }
 
 model PortfolioInvestment {
-  id            String    @id @default(cuid())
+  id            String     @id @default(cuid())
   portfolioId   String
   investmentId  String
-  allocation    Float     // Percentage allocation in portfolio
-  targetWeight  Float?    // Target weight in portfolio
-  currentWeight Float?    // Current weight in portfolio
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  portfolio     Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  allocation    Float
+  targetWeight  Float?
+  currentWeight Float?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
   investment    Investment @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+  portfolio     Portfolio  @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
 
   @@unique([portfolioId, investmentId])
 }
 
 model InvestmentTransaction {
-  id             String              @id @default(cuid())
-  userId         String
-  investmentId   String
-  type           InvestmentTransactionType
-  
-  // Transaction details
-  quantity       Float
-  price          Float
-  totalAmount    Float
-  fees           Float               @default(0)
-  tax            Float               @default(0)
-  
-  // Currency
-  currency       String              @default("USD")
-  exchangeRate   Float?              // If different from base currency
-  
-  // Dates and references
+  id              String                    @id @default(cuid())
+  userId          String
+  investmentId    String
+  type            InvestmentTransactionType
+  quantity        Float
+  price           Float
+  totalAmount     Float
+  fees            Float                     @default(0)
+  tax             Float                     @default(0)
+  currency        String                    @default("USD")
+  exchangeRate    Float?
   transactionDate DateTime
-  settlementDate DateTime?
-  referenceId    String?
-  
-  notes          String?
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
-
-  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  investment     Investment          @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+  settlementDate  DateTime?
+  referenceId     String?
+  notes           String?
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+  investment      Investment                @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+  user            User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, transactionDate])
   @@index([userId, type])
 }
 
 model PortfolioRebalance {
-  id              String     @id @default(cuid())
-  portfolioId     String
-  rebalanceDate   DateTime
-  reason          String?    // Why rebalancing was triggered
-  
-  // Pre-rebalance state
-  preRebalanceValue Float
-  preRebalanceAllocation Json
-  
-  // Post-rebalance state  
-  postRebalanceValue Float
+  id                      String    @id @default(cuid())
+  portfolioId             String
+  rebalanceDate           DateTime
+  reason                  String?
+  preRebalanceValue       Float
+  preRebalanceAllocation  Json
+  postRebalanceValue      Float
   postRebalanceAllocation Json
-  
-  // Rebalance actions
-  actions         Json       // List of buy/sell actions
-  totalCost       Float      @default(0)
-  
-  // Performance impact
-  expectedImpact  String?
-  
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
-
-  portfolio       Portfolio  @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  actions                 Json
+  totalCost               Float     @default(0)
+  expectedImpact          String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  portfolio               Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
 
   @@index([portfolioId, rebalanceDate])
 }
 
-// Multi-Currency Support
 model Currency {
-  id              String     @id @default(cuid())
-  code            String     @unique // USD, EUR, GBP, etc.
-  name            String     // US Dollar, Euro, British Pound
-  symbol          String     // $, €, £
-  decimals        Int        @default(2)
-  isActive        Boolean    @default(true)
-  
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
-
-  exchangeRates   ExchangeRate[]
+  id            String         @id @default(cuid())
+  code          String         @unique
+  name          String
+  symbol        String
+  decimals      Int            @default(2)
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  exchangeRates ExchangeRate[]
 }
 
 model ExchangeRate {
-  id              String     @id @default(cuid())
-  fromCurrency    String
-  toCurrency      String
-  rate            Float
-  date            DateTime
-  source          String?    // Source of the exchange rate
-  
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
-
+  id               String   @id @default(cuid())
+  fromCurrency     String
+  toCurrency       String
+  rate             Float
+  date             DateTime
+  source           String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
   fromCurrencyData Currency @relation(fields: [fromCurrency], references: [code])
 
   @@unique([fromCurrency, toCurrency, date])
@@ -1672,104 +1408,71 @@ model ExchangeRate {
 }
 
 model MultiCurrencyTransaction {
-  id                String    @id @default(cuid())
-  userId            String
-  transactionId     String    @unique
-  
-  // Original currency
-  originalAmount    Float
-  originalCurrency  String
-  
-  // Base currency (user's default)
-  baseAmount        Float
-  baseCurrency      String
-  
-  // Exchange rate used
-  exchangeRate      Float
-  exchangeRateDate  DateTime
-  
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transaction       Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  id               String      @id @default(cuid())
+  userId           String
+  transactionId    String      @unique
+  originalAmount   Float
+  originalCurrency String
+  baseAmount       Float
+  baseCurrency     String
+  exchangeRate     Float
+  exchangeRateDate DateTime
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  transaction      Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, originalCurrency])
 }
 
-// Treasury & Cash Management
 model CashPosition {
-  id              String     @id @default(cuid())
-  userId          String
-  accountName     String
-  accountType     CashAccountType
-  bankName        String?
-  
-  // Balances
-  currentBalance  Float
-  availableBalance Float?    // Available for use (after holds, etc.)
-  currency        String     @default("USD")
-  
-  // Interest and fees
-  interestRate    Float?
-  monthlyFees     Float?
-  minimumBalance  Float?
-  
-  // Cash management
-  targetBalance   Float?     // Optimal balance to maintain
-  sweepAccount    String?    // Account to sweep excess cash to
-  
-  // Risk and compliance
-  fdic            Boolean    @default(false) // FDIC insured
-  riskRating      RiskRating @default(LOW)
-  
-  // Status
-  isActive        Boolean    @default(true)
-  lastReconciled  DateTime?
-  
-  notes           String?
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
-
-  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  cashFlows       CashFlow[]
+  id               String          @id @default(cuid())
+  userId           String
+  accountName      String
+  accountType      CashAccountType
+  bankName         String?
+  currentBalance   Float
+  availableBalance Float?
+  currency         String          @default("USD")
+  interestRate     Float?
+  monthlyFees      Float?
+  minimumBalance   Float?
+  targetBalance    Float?
+  sweepAccount     String?
+  fdic             Boolean         @default(false)
+  riskRating       RiskRating      @default(LOW)
+  isActive         Boolean         @default(true)
+  lastReconciled   DateTime?
+  notes            String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  cashFlows        CashFlow[]
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, accountType])
   @@index([userId, isActive])
 }
 
 model CashFlow {
-  id              String       @id @default(cuid())
-  userId          String
-  cashPositionId  String?
-  
-  // Cash flow details
-  amount          Float
-  type            CashFlowType
-  category        CashFlowCategory
-  description     String
-  
-  // Timing
-  date            DateTime
-  isRecurring     Boolean      @default(false)
-  frequency       RecurringFrequency?
-  
-  // Source/destination
-  counterparty    String?
-  reference       String?
-  
-  // Status
-  status          CashFlowStatus @default(PROJECTED)
-  confidence      Float?       // Confidence in projection (0-1)
-  
-  // Currency
-  currency        String       @default("USD")
-  
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-
-  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  cashPosition    CashPosition? @relation(fields: [cashPositionId], references: [id])
+  id             String              @id @default(cuid())
+  userId         String
+  cashPositionId String?
+  amount         Float
+  type           CashFlowType
+  category       CashFlowCategory
+  description    String
+  date           DateTime
+  isRecurring    Boolean             @default(false)
+  frequency      RecurringFrequency?
+  counterparty   String?
+  reference      String?
+  status         CashFlowStatus      @default(PROJECTED)
+  confidence     Float?
+  currency       String              @default("USD")
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  cashPosition   CashPosition?       @relation(fields: [cashPositionId], references: [id])
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, type])
   @@index([userId, date])
@@ -1777,75 +1480,54 @@ model CashFlow {
 }
 
 model CashForecast {
-  id                String           @id @default(cuid())
+  id                String   @id @default(cuid())
   userId            String
   forecastDate      DateTime
-  horizon           Int              // Days ahead
-  
-  // Forecast amounts
+  horizon           Int
   openingBalance    Float
   projectedInflows  Float
   projectedOutflows Float
   closingBalance    Float
-  
-  // Analysis
-  minimumBalance    Float?           // Lowest projected balance
-  maximumBalance    Float?           // Highest projected balance
-  riskDays          Json?            // Days with cash flow risk
-  
-  // Confidence and model
-  confidence        Float            @default(0.5)
+  minimumBalance    Float?
+  maximumBalance    Float?
+  riskDays          Json?
+  confidence        Float    @default(0.5)
   modelVersion      String?
-  
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-
-  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, forecastDate])
   @@index([userId, forecastDate])
 }
 
-// Risk Management System
 model RiskAssessment {
-  id                String       @id @default(cuid())
-  userId            String
-  name              String
-  type              RiskType
-  category          RiskCategory
-  
-  // Risk details
-  description       String
-  probability       Float        // 0-1 scale
-  impact            Float        // Financial impact ($)
-  riskScore         Float        // Calculated risk score
-  riskLevel         RiskLevel
-  
-  // Mitigation
-  mitigationPlan    String?
-  mitigationCost    Float?
-  residualRisk      Float?
-  
-  // Status and timing
-  status            RiskStatus   @default(IDENTIFIED)
-  identifiedDate    DateTime     @default(now())
-  reviewDate        DateTime?
-  nextReviewDate    DateTime?
-  
-  // Ownership
-  owner             String?      // Who is responsible
-  reviewer          String?      // Who reviews this risk
-  
-  // Documentation
-  evidence          Json?        // Supporting evidence
-  controls          Json?        // Risk controls in place
-  
-  notes             String?
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
-
-  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  incidents         RiskIncident[]
+  id             String         @id @default(cuid())
+  userId         String
+  name           String
+  type           RiskType
+  category       RiskCategory
+  description    String
+  probability    Float
+  impact         Float
+  riskScore      Float
+  riskLevel      RiskLevel
+  mitigationPlan String?
+  mitigationCost Float?
+  residualRisk   Float?
+  status         RiskStatus     @default(IDENTIFIED)
+  identifiedDate DateTime       @default(now())
+  reviewDate     DateTime?
+  nextReviewDate DateTime?
+  owner          String?
+  reviewer       String?
+  evidence       Json?
+  controls       Json?
+  notes          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  incidents      RiskIncident[]
 
   @@index([userId, type])
   @@index([userId, riskLevel])
@@ -1853,209 +1535,149 @@ model RiskAssessment {
 }
 
 model RiskIncident {
-  id              String         @id @default(cuid())
-  riskId          String
-  title           String
-  description     String
-  
-  // Incident details
-  incidentDate    DateTime
-  discoveredDate  DateTime       @default(now())
-  severity        IncidentSeverity
-  actualImpact    Float?         // Actual financial impact
-  
-  // Response
-  responseActions Json?          // Actions taken
-  lessonsLearned  String?
+  id                 String           @id @default(cuid())
+  riskId             String
+  title              String
+  description        String
+  incidentDate       DateTime
+  discoveredDate     DateTime         @default(now())
+  severity           IncidentSeverity
+  actualImpact       Float?
+  responseActions    Json?
+  lessonsLearned     String?
   preventiveMeasures String?
-  
-  // Status
-  status          IncidentStatus @default(OPEN)
-  resolvedDate    DateTime?
-  
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-
-  risk            RiskAssessment @relation(fields: [riskId], references: [id], onDelete: Cascade)
+  status             IncidentStatus   @default(OPEN)
+  resolvedDate       DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  risk               RiskAssessment   @relation(fields: [riskId], references: [id], onDelete: Cascade)
 
   @@index([riskId, incidentDate])
   @@index([status])
 }
 
 model InsurancePolicy {
-  id                String         @id @default(cuid())
+  id                String        @id @default(cuid())
   userId            String
   policyName        String
   policyNumber      String?
   insuranceProvider String
   type              InsuranceType
-  
-  // Coverage details
   coverageAmount    Float
   deductible        Float?
-  premium           Float          // Annual premium
-  
-  // Policy period
+  premium           Float
   effectiveDate     DateTime
   expirationDate    DateTime
-  autoRenewal       Boolean        @default(false)
-  
-  // Claims and usage
-  claimsHistory     Json?          // Historical claims
-  claimsCount       Int            @default(0)
+  autoRenewal       Boolean       @default(false)
+  claimsHistory     Json?
+  claimsCount       Int           @default(0)
   lastClaimDate     DateTime?
-  
-  // Risk assessment
-  riskCovered       Json?          // Types of risks covered
-  exclusions        Json?          // What's not covered
-  
-  // Financial tracking
-  totalPaid         Float          @default(0) // Total premiums paid
-  totalClaims       Float          @default(0) // Total claims received
-  
-  isActive          Boolean        @default(true)
+  riskCovered       Json?
+  exclusions        Json?
+  totalPaid         Float         @default(0)
+  totalClaims       Float         @default(0)
+  isActive          Boolean       @default(true)
   notes             String?
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-
-  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, type])
   @@index([userId, expirationDate])
   @@index([userId, isActive])
 }
 
-// Board & Investor Management
 model BoardMember {
-  id              String           @id @default(cuid())
-  userId          String
-  name            String
-  email           String
-  phone           String?
-  
-  // Role and background
-  position        String           // Chairman, CEO, Independent Director, etc.
-  biography       String?
-  expertise       Json?            // Areas of expertise
-  
-  // Board details
-  appointmentDate DateTime
-  termExpiry      DateTime?
-  isActive        Boolean          @default(true)
-  isIndependent   Boolean          @default(false)
-  
-  // Committee memberships
-  committees      Json?            // Audit, Compensation, etc.
-  
-  // Communication preferences
-  preferredContact String?         // email, phone, etc.
-  timezone        String?
-  
-  notes           String?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  boardMeetings   BoardMeetingAttendee[]
+  id               String                 @id @default(cuid())
+  userId           String
+  name             String
+  email            String
+  phone            String?
+  position         String
+  biography        String?
+  expertise        Json?
+  appointmentDate  DateTime
+  termExpiry       DateTime?
+  isActive         Boolean                @default(true)
+  isIndependent    Boolean                @default(false)
+  committees       Json?
+  preferredContact String?
+  timezone         String?
+  notes            String?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  boardMeetings    BoardMeetingAttendee[]
+  user             User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isActive])
   @@index([userId, position])
 }
 
 model BoardMeeting {
-  id              String             @id @default(cuid())
-  userId          String
-  title           String
-  description     String?
-  
-  // Meeting details
-  meetingDate     DateTime
-  duration        Int?               // Minutes
-  location        String?
-  isVirtual       Boolean            @default(false)
-  meetingLink     String?
-  
-  // Agenda and materials
-  agenda          Json?              // Meeting agenda items
-  materials       Json?              // Board materials/documents
-  presentations   Json?              // Presentation materials
-  
-  // Minutes and outcomes
-  minutes         String?
-  decisions       Json?              // Key decisions made
-  actionItems     Json?              // Follow-up actions
-  
-  // Status
-  status          MeetingStatus      @default(SCHEDULED)
-  completedAt     DateTime?
-  
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-
-  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  attendees       BoardMeetingAttendee[]
+  id            String                 @id @default(cuid())
+  userId        String
+  title         String
+  description   String?
+  meetingDate   DateTime
+  duration      Int?
+  location      String?
+  isVirtual     Boolean                @default(false)
+  meetingLink   String?
+  agenda        Json?
+  materials     Json?
+  presentations Json?
+  minutes       String?
+  decisions     Json?
+  actionItems   Json?
+  status        MeetingStatus          @default(SCHEDULED)
+  completedAt   DateTime?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  user          User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attendees     BoardMeetingAttendee[]
 
   @@index([userId, meetingDate])
   @@index([userId, status])
 }
 
 model BoardMeetingAttendee {
-  id              String       @id @default(cuid())
-  meetingId       String
-  boardMemberId   String
-  
-  // Attendance
-  status          AttendanceStatus @default(INVITED)
-  attendedAt      DateTime?
-  leftAt          DateTime?
-  
-  // Participation
-  comments        String?
-  votes           Json?        // Votes on various matters
-  
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-
-  meeting         BoardMeeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
-  boardMember     BoardMember  @relation(fields: [boardMemberId], references: [id], onDelete: Cascade)
+  id            String           @id @default(cuid())
+  meetingId     String
+  boardMemberId String
+  status        AttendanceStatus @default(INVITED)
+  attendedAt    DateTime?
+  leftAt        DateTime?
+  comments      String?
+  votes         Json?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  boardMember   BoardMember      @relation(fields: [boardMemberId], references: [id], onDelete: Cascade)
+  meeting       BoardMeeting     @relation(fields: [meetingId], references: [id], onDelete: Cascade)
 
   @@unique([meetingId, boardMemberId])
 }
 
 model InvestorUpdate {
-  id              String           @id @default(cuid())
-  userId          String
-  title           String
-  content         String
-  
-  // Update details
-  period          String           // "Q1 2024", "January 2024", etc.
-  updateType      InvestorUpdateType
-  
-  // Key metrics
-  keyMetrics      Json             // Financial and operational metrics
-  highlights      Json?            // Key achievements
-  challenges      Json?            // Current challenges
-  
-  // Forward looking
-  outlook         String?
-  nextMilestones  Json?
-  
-  // Distribution
-  recipientList   Json             // List of recipients
-  sentAt          DateTime?
-  openRate        Float?           // Email open rate
-  
-  // Attachments
-  attachments     Json?            // Supporting documents
-  
-  status          UpdateStatus     @default(DRAFT)
-  publishedAt     DateTime?
-  
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String             @id @default(cuid())
+  userId         String
+  title          String
+  content        String
+  period         String
+  updateType     InvestorUpdateType
+  keyMetrics     Json
+  highlights     Json?
+  challenges     Json?
+  outlook        String?
+  nextMilestones Json?
+  recipientList  Json
+  sentAt         DateTime?
+  openRate       Float?
+  attachments    Json?
+  status         UpdateStatus       @default(DRAFT)
+  publishedAt    DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, period])
   @@index([userId, updateType])
@@ -2063,82 +1685,57 @@ model InvestorUpdate {
 }
 
 model Shareholder {
-  id              String           @id @default(cuid())
-  userId          String
-  name            String
-  email           String?
-  phone           String?
-  
-  // Shareholding details
-  sharesOwned     Float
-  shareClass      String?          // Common, Preferred, etc.
-  ownershipPct    Float
-  
-  // Investment details
-  investmentDate  DateTime?
-  investmentAmount Float?
-  currentValue    Float?
-  
-  // Shareholder type
-  investorType    InvestorType     // ANGEL, VC, PE, STRATEGIC, EMPLOYEE, etc.
-  isAccredited    Boolean          @default(false)
-  
-  // Contact and preferences
-  preferredContact String?
-  communicationFreq String?        // Monthly, Quarterly, etc.
-  
-  // Status
-  isActive        Boolean          @default(true)
-  
-  notes           String?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String       @id @default(cuid())
+  userId            String
+  name              String
+  email             String?
+  phone             String?
+  sharesOwned       Float
+  shareClass        String?
+  ownershipPct      Float
+  investmentDate    DateTime?
+  investmentAmount  Float?
+  currentValue      Float?
+  investorType      InvestorType
+  isAccredited      Boolean      @default(false)
+  preferredContact  String?
+  communicationFreq String?
+  isActive          Boolean      @default(true)
+  notes             String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, investorType])
   @@index([userId, isActive])
 }
 
-// Advanced Reporting Engine
 model CustomReport {
-  id              String           @id @default(cuid())
-  userId          String
-  name            String
-  description     String?
-  category        ReportCategory
-  
-  // Report configuration
-  reportType      ReportType
-  dataSource      Json             // Data sources and tables
-  filters         Json             // Report filters
-  grouping        Json?            // How to group data
-  sorting         Json?            // Sorting preferences
-  
-  // Visualization
-  chartType       ChartType?
-  visualization   Json?            // Chart/visualization config
-  
-  // Output format
-  outputFormat    OutputFormat     @default(PDF)
-  pageLayout      PageLayout       @default(PORTRAIT)
-  
-  // Scheduling
-  isScheduled     Boolean          @default(false)
-  schedule        Json?            // Cron schedule
-  recipients      Json?            // Email recipients
-  lastGenerated   DateTime?
-  nextGeneration  DateTime?
-  
-  // Template
-  template        Json?            // Report template
-  
-  isActive        Boolean          @default(true)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  generations     ReportGeneration[]
+  id             String             @id @default(cuid())
+  userId         String
+  name           String
+  description    String?
+  category       ReportCategory
+  reportType     ReportType
+  dataSource     Json
+  filters        Json
+  grouping       Json?
+  sorting        Json?
+  chartType      ChartType?
+  visualization  Json?
+  outputFormat   OutputFormat       @default(PDF)
+  pageLayout     PageLayout         @default(PORTRAIT)
+  isScheduled    Boolean            @default(false)
+  schedule       Json?
+  recipients     Json?
+  lastGenerated  DateTime?
+  nextGeneration DateTime?
+  template       Json?
+  isActive       Boolean            @default(true)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  generations    ReportGeneration[]
 
   @@index([userId, category])
   @@index([userId, reportType])
@@ -2146,68 +1743,45 @@ model CustomReport {
 }
 
 model ReportGeneration {
-  id              String       @id @default(cuid())
-  reportId        String
-  
-  // Generation details
-  generatedAt     DateTime     @default(now())
-  parameters      Json?        // Parameters used for this generation
-  
-  // Output
-  cloudStoragePath String?      // Path to generated report file
-  fileSize        Int?
-  pageCount       Int?
-  
-  // Status and performance
-  status          GenerationStatus @default(PENDING)
-  errorMessage    String?
-  executionTime   Int?         // Milliseconds
-  
-  // Distribution
-  emailsSent      Int          @default(0)
-  downloadCount   Int          @default(0)
-  
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-
-  report          CustomReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  id               String           @id @default(cuid())
+  reportId         String
+  generatedAt      DateTime         @default(now())
+  parameters       Json?
+  cloudStoragePath String?
+  fileSize         Int?
+  pageCount        Int?
+  status           GenerationStatus @default(PENDING)
+  errorMessage     String?
+  executionTime    Int?
+  emailsSent       Int              @default(0)
+  downloadCount    Int              @default(0)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  report           CustomReport     @relation(fields: [reportId], references: [id], onDelete: Cascade)
 
   @@index([reportId, generatedAt])
   @@index([status])
 }
 
-// Market Intelligence
 model MarketData {
-  id              String           @id @default(cuid())
-  userId          String
-  industry        String
-  region          String?
-  
-  // Market metrics
-  marketSize      Float?           // Total addressable market
-  growthRate      Float?           // Annual growth rate
-  
-  // Competitive data
-  competitors     Json?            // List of competitors
-  marketShare     Json?            // Market share data
-  
-  // Economic indicators
-  economicData    Json?            // Relevant economic indicators
-  
-  // Trends
-  trends          Json?            // Market trends
-  opportunities   Json?            // Market opportunities
-  threats         Json?            // Market threats
-  
-  // Data source and freshness
-  dataSource      String?
-  dataDate        DateTime
-  confidence      Float?           // Data confidence score
-  
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String   @id @default(cuid())
+  userId        String
+  industry      String
+  region        String?
+  marketSize    Float?
+  growthRate    Float?
+  competitors   Json?
+  marketShare   Json?
+  economicData  Json?
+  trends        Json?
+  opportunities Json?
+  threats       Json?
+  dataSource    String?
+  dataDate      DateTime
+  confidence    Float?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, industry, region])
   @@index([userId, industry])
@@ -2215,54 +1789,39 @@ model MarketData {
 }
 
 model CompetitiveAnalysis {
-  id                String       @id @default(cuid())
-  userId            String
-  competitorName    String
-  industry          String
-  
-  // Company details
-  description       String?
-  website           String?
-  employees         Int?
-  foundedYear       Int?
-  
-  // Financial data (if available)
-  estimatedRevenue  Float?
-  fundingRaised     Float?
-  valuation         Float?
-  
-  // Competitive positioning
-  strengths         Json?
-  weaknesses        Json?
-  marketPosition    String?
-  targetMarket      Json?
-  
-  // Product/service comparison
-  products          Json?        // Their product offerings
-  pricing           Json?        // Pricing information
-  features          Json?        // Feature comparison
-  
-  // Analysis
-  threatLevel       ThreatLevel  @default(MEDIUM)
-  competitiveGap    Json?        // Where we're ahead/behind
-  recommendations   Json?        // Strategic recommendations
-  
-  // Data freshness
-  lastUpdated       DateTime
-  dataSource        String?
-  
-  isActive          Boolean      @default(true)
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
-
-  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String      @id @default(cuid())
+  userId           String
+  competitorName   String
+  industry         String
+  description      String?
+  website          String?
+  employees        Int?
+  foundedYear      Int?
+  estimatedRevenue Float?
+  fundingRaised    Float?
+  valuation        Float?
+  strengths        Json?
+  weaknesses       Json?
+  marketPosition   String?
+  targetMarket     Json?
+  products         Json?
+  pricing          Json?
+  features         Json?
+  threatLevel      ThreatLevel @default(MEDIUM)
+  competitiveGap   Json?
+  recommendations  Json?
+  lastUpdated      DateTime
+  dataSource       String?
+  isActive         Boolean     @default(true)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, competitorName])
   @@index([userId, industry])
   @@index([userId, threatLevel])
 }
 
-// Enums
 enum BusinessType {
   SMALL_BUSINESS
   CORPORATION
@@ -2273,10 +1832,10 @@ enum BusinessType {
 }
 
 enum CompanySize {
-  MICRO          // 1-9 employees
-  SMALL          // 10-49 employees  
-  MEDIUM         // 50-249 employees
-  LARGE          // 250+ employees
+  MICRO
+  SMALL
+  MEDIUM
+  LARGE
 }
 
 enum ForecastPeriod {
@@ -2431,11 +1990,11 @@ enum ComplianceFrequency {
 enum RecurringFrequency {
   DAILY
   WEEKLY
-  BIWEEKLY     // every 2 weeks
+  BIWEEKLY
   MONTHLY
-  BIMONTHLY    // every 2 months
+  BIMONTHLY
   QUARTERLY
-  SEMIANNUALLY // every 6 months
+  SEMIANNUALLY
   ANNUALLY
   CUSTOM
 }
@@ -2722,7 +2281,6 @@ enum ProcessingStage {
   FAILED
 }
 
-// Premium Feature Enums
 enum InvestmentType {
   STOCK
   BOND
