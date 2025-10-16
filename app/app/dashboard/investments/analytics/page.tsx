@@ -4,175 +4,241 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { BarChart3, TrendingUp, TrendingDown, Activity, Calendar } from 'lucide-react'
+import { TrendingUp, TrendingDown, BarChart3, DollarSign, Activity } from 'lucide-react'
+
+interface Investment {
+  id: string
+  name: string
+  symbol?: string
+  currentValue: number
+  originalCost: number
+  totalReturn?: number
+  totalReturnPct?: number
+  type: string
+}
 
 export default function PerformanceAnalyticsPage() {
   const { data: session } = useSession() || {}
-  const [loading, setLoading] = useState(false)
-  const [timeframe, setTimeframe] = useState('1M')
+  const [loading, setLoading] = useState(true)
+  const [summary, setSummary] = useState({
+    totalValue: 0,
+    totalCost: 0,
+    totalReturn: 0,
+    totalReturnPct: 0,
+    investmentCount: 0
+  })
+  const [topPerformers, setTopPerformers] = useState<Investment[]>([])
+  const [bottomPerformers, setBottomPerformers] = useState<Investment[]>([])
+  const [performanceByType, setPerformanceByType] = useState<any[]>([])
+
+  useEffect(() => {
+    if (session?.user?.id) {
+      fetchAnalytics()
+    }
+  }, [session?.user?.id])
+
+  const fetchAnalytics = async () => {
+    try {
+      const response = await fetch('/api/investments/analytics')
+      if (response.ok) {
+        const data = await response.json()
+        setSummary(data.summary || {})
+        setTopPerformers(data.topPerformers || [])
+        setBottomPerformers(data.bottomPerformers || [])
+        setPerformanceByType(data.performanceByType || [])
+      }
+    } catch (error) {
+      console.error('Error fetching analytics:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6 animate-pulse">
+        <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-32 bg-gray-200 rounded"></div>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Performance Analytics</h1>
-          <p className="text-muted-foreground mt-1">
-            Track and analyze your investment performance over time
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {['1M', '3M', '6M', '1Y', 'All'].map((tf) => (
-            <Button
-              key={tf}
-              variant={timeframe === tf ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setTimeframe(tf)}
-            >
-              {tf}
-            </Button>
-          ))}
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold">Performance Analytics</h1>
+        <p className="text-muted-foreground mt-1">
+          Track and analyze your investment performance
+        </p>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Return</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Total Value</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$0</div>
-            <p className="text-xs text-muted-foreground">0% return</p>
+            <div className="text-2xl font-bold text-green-600">
+              ${summary.totalValue.toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {summary.investmentCount} investment{summary.investmentCount !== 1 ? 's' : ''}
+            </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Annualized Return</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${summary.totalCost.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">Original investment</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Return</CardTitle>
+            {summary.totalReturn >= 0 ? (
+              <TrendingUp className="h-4 w-4 text-green-600" />
+            ) : (
+              <TrendingDown className="h-4 w-4 text-red-600" />
+            )}
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${summary.totalReturn >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              ${summary.totalReturn.toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {summary.totalReturnPct.toFixed(2)}% return
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Performance</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0%</div>
-            <p className="text-xs text-muted-foreground">No data available</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Best Performer</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">-</div>
-            <p className="text-xs text-muted-foreground">No investments</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Worst Performer</CardTitle>
-            <TrendingDown className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">-</div>
-            <p className="text-xs text-muted-foreground">No investments</p>
+            <div className="text-2xl font-bold">
+              {summary.totalReturnPct.toFixed(1)}%
+            </div>
+            <p className="text-xs text-muted-foreground">Overall return rate</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="returns">Returns</TabsTrigger>
-          <TabsTrigger value="risk">Risk Analysis</TabsTrigger>
-          <TabsTrigger value="comparison">Benchmark Comparison</TabsTrigger>
-        </TabsList>
+      {/* Performance by Type */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Performance by Investment Type</CardTitle>
+          <CardDescription>
+            Compare returns across different investment categories
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {performanceByType.length > 0 ? (
+            <div className="space-y-4">
+              {performanceByType.map((type) => (
+                <div key={type.type} className="flex justify-between items-center p-4 border rounded-lg">
+                  <div>
+                    <div className="font-medium">{type.type}</div>
+                    <div className="text-sm text-muted-foreground">{type.count} holdings</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-semibold">${type.totalValue.toLocaleString()}</div>
+                    <div className={`text-sm ${type.totalReturn >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {type.totalReturn >= 0 ? '+' : ''}${type.totalReturn.toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-muted-foreground py-8">No performance data available</p>
+          )}
+        </CardContent>
+      </Card>
 
-        <TabsContent value="overview" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Performance Overview</CardTitle>
-              <CardDescription>
-                Comprehensive view of your investment performance
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <BarChart3 className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Performance Data</h3>
-                <p className="text-muted-foreground mb-4 max-w-md">
-                  Start tracking your investments to see detailed performance analytics and insights
-                </p>
-                <Button>Add Your First Investment</Button>
+      {/* Top and Bottom Performers */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-green-600" />
+              Top Performers
+            </CardTitle>
+            <CardDescription>Best performing investments</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {topPerformers.length > 0 ? (
+              <div className="space-y-3">
+                {topPerformers.map((inv, index) => (
+                  <div key={inv.id} className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                    <div>
+                      <div className="font-medium">{inv.name}</div>
+                      <div className="text-sm text-muted-foreground">{inv.symbol || inv.type}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-semibold text-green-600">
+                        +{(inv.totalReturnPct || 0).toFixed(2)}%
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        ${inv.currentValue.toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+            ) : (
+              <p className="text-center text-muted-foreground py-8">No data available</p>
+            )}
+          </CardContent>
+        </Card>
 
-        <TabsContent value="returns" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Returns Analysis</CardTitle>
-              <CardDescription>
-                Detailed breakdown of investment returns over time
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <TrendingUp className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Return Data</h3>
-                <p className="text-muted-foreground mb-4 max-w-md">
-                  Add investments to track returns and analyze performance trends
-                </p>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingDown className="h-5 w-5 text-orange-600" />
+              Needs Attention
+            </CardTitle>
+            <CardDescription>Lower performing investments</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {bottomPerformers.length > 0 ? (
+              <div className="space-y-3">
+                {bottomPerformers.map((inv, index) => (
+                  <div key={inv.id} className="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
+                    <div>
+                      <div className="font-medium">{inv.name}</div>
+                      <div className="text-sm text-muted-foreground">{inv.symbol || inv.type}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className={`font-semibold ${(inv.totalReturnPct || 0) < 0 ? 'text-red-600' : 'text-orange-600'}`}>
+                        {(inv.totalReturnPct || 0) >= 0 ? '+' : ''}{(inv.totalReturnPct || 0).toFixed(2)}%
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        ${inv.currentValue.toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="risk" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Risk Analysis</CardTitle>
-              <CardDescription>
-                Evaluate volatility and risk metrics for your portfolio
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Activity className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Risk Data</h3>
-                <p className="text-muted-foreground mb-4 max-w-md">
-                  Risk metrics will appear once you have investment data
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="comparison" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Benchmark Comparison</CardTitle>
-              <CardDescription>
-                Compare your portfolio performance against market benchmarks
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <BarChart3 className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Comparison Data</h3>
-                <p className="text-muted-foreground mb-4 max-w-md">
-                  Compare against S&P 500, NASDAQ, and other benchmarks once you add investments
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            ) : (
+              <p className="text-center text-muted-foreground py-8">No data available</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

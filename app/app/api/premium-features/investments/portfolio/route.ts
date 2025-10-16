@@ -24,33 +24,34 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Get portfolios
     const portfolios = await prisma.portfolio.findMany({
       where: { userId: session.user.id },
-      include: {
-        investments: {
-          include: {
-            investment: true
-          }
-        },
-        rebalanceEvents: {
-          orderBy: { rebalanceDate: 'desc' },
-          take: 5
-        }
-      },
       orderBy: { createdAt: 'desc' }
     })
 
-    // Calculate portfolio performance metrics
-    const portfoliosWithMetrics = portfolios.map(portfolio => ({
-      ...portfolio,
-      totalInvestments: portfolio.investments.length,
-      performanceScore: Math.random() * 100, // This would be calculated based on actual performance
-      riskScore: Math.random() * 100,
-      diversificationScore: Math.random() * 100
-    }))
+    // Get investments for each portfolio
+    const portfoliosWithInvestments = await Promise.all(
+      portfolios.map(async (portfolio) => {
+        const investments = await prisma.investment.findMany({
+          where: {
+            userId: session.user.id,
+            businessProfileId: portfolio.businessProfileId
+          }
+        })
+
+        return {
+          ...portfolio,
+          totalInvestments: investments.length,
+          performanceScore: Math.min(100, Math.max(0, 50 + portfolio.totalReturnPct * 2)),
+          riskScore: calculateRiskScore(investments),
+          diversificationScore: calculateDiversificationScore(investments)
+        }
+      })
+    )
 
     return NextResponse.json({
-      portfolios: portfoliosWithMetrics,
+      portfolios: portfoliosWithInvestments,
       summary: {
         totalPortfolios: portfolios.length,
         totalValue: portfolios.reduce((sum, p) => sum + p.totalValue, 0),
@@ -64,6 +65,34 @@ export async function GET() {
     console.error('Error fetching portfolios:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
+}
+
+function calculateRiskScore(investments: any[]): number {
+  if (investments.length === 0) return 0
+  
+  // Calculate based on risk ratings
+  const riskWeights = { LOW: 20, MEDIUM: 50, HIGH: 80 }
+  const avgRisk = investments.reduce((sum, inv) => {
+    const weight = riskWeights[inv.riskRating as keyof typeof riskWeights] || 50
+    return sum + weight
+  }, 0) / investments.length
+  
+  return Math.round(avgRisk)
+}
+
+function calculateDiversificationScore(investments: any[]): number {
+  if (investments.length === 0) return 0
+  
+  // Count unique types and sectors
+  const uniqueTypes = new Set(investments.map(inv => inv.type))
+  const uniqueSectors = new Set(investments.map(inv => inv.sector))
+  
+  // Score based on diversification
+  const typeScore = Math.min(100, uniqueTypes.size * 20)
+  const sectorScore = Math.min(100, uniqueSectors.size * 15)
+  const countScore = Math.min(100, investments.length * 10)
+  
+  return Math.round((typeScore + sectorScore + countScore) / 3)
 }
 
 export async function POST(request: NextRequest) {
