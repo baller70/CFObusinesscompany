@@ -12,9 +12,34 @@ import { format } from 'date-fns'
 import Link from 'next/link'
 
 async function getBillsData(userId: string) {
+  // Get user with active profile
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      businessProfiles: {
+        where: { isActive: true },
+        take: 1
+      }
+    }
+  })
+
+  const activeProfileId = user?.businessProfiles[0]?.id
+
+  // Build where clause to filter by active profile
+  const whereClause: any = {
+    userId
+  }
+
+  if (activeProfileId) {
+    whereClause.OR = [
+      { businessProfileId: activeProfileId },
+      { businessProfileId: null } // Include bills without profile assignment
+    ]
+  }
+
   const [bills, vendors, billStats] = await Promise.all([
     prisma.bill.findMany({
-      where: { userId },
+      where: whereClause,
       include: { vendor: true },
       orderBy: { dueDate: 'asc' }
     }),
@@ -23,7 +48,7 @@ async function getBillsData(userId: string) {
     }),
     prisma.bill.groupBy({
       by: ['status'],
-      where: { userId },
+      where: whereClause,
       _count: { _all: true },
       _sum: { amount: true }
     })
