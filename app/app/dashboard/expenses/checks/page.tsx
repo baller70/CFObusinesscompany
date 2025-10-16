@@ -16,7 +16,7 @@ export default async function PrintChecksPage() {
     redirect('/auth/signin')
   }
 
-  // Mock data for demonstration
+  // Initialize check statistics (real data will be pulled from database when check feature is implemented)
   const checkData = {
     totalChecks: 0,
     pendingChecks: 0,
