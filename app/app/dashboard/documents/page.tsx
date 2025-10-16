@@ -31,12 +31,21 @@ import { toast } from 'sonner'
 import { useEffect, useState } from 'react'
 import { useSecureFileAccess } from '@/hooks/use-secure-file-access'
 import { PasswordVerificationDialog } from '@/components/password-verification-dialog'
+import { DocumentVersionDialog } from '@/components/document-version-dialog'
+import { DocumentShareDialog } from '@/components/document-share-dialog'
+import { DocumentRetentionDialog } from '@/components/document-retention-dialog'
 
 export default function DocumentsPage() {
   const { data: session, status } = useSession() || {}
   const [documents, setDocuments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<any>({})
+  
+  // Dialog states
+  const [versionDialogOpen, setVersionDialogOpen] = useState(false)
+  const [shareDialogOpen, setShareDialogOpen] = useState(false)
+  const [retentionDialogOpen, setRetentionDialogOpen] = useState(false)
+  const [selectedDocument, setSelectedDocument] = useState<any>(null)
   
   const {
     isDialogOpen,
@@ -124,6 +133,31 @@ export default function DocumentsPage() {
         title="Verify Your Identity"
         description="For security purposes, please re-enter your password to download this document."
       />
+      
+      {selectedDocument && (
+        <>
+          <DocumentVersionDialog
+            open={versionDialogOpen}
+            onOpenChange={setVersionDialogOpen}
+            documentId={selectedDocument.id}
+            documentName={selectedDocument.name}
+          />
+          
+          <DocumentShareDialog
+            open={shareDialogOpen}
+            onOpenChange={setShareDialogOpen}
+            documentId={selectedDocument.id}
+            documentName={selectedDocument.name}
+          />
+          
+          <DocumentRetentionDialog
+            open={retentionDialogOpen}
+            onOpenChange={setRetentionDialogOpen}
+            documentId={selectedDocument.id}
+            documentName={selectedDocument.name}
+          />
+        </>
+      )}
       
       <div className="p-6 max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
@@ -276,7 +310,7 @@ export default function DocumentsPage() {
                           </div>
                         </div>
 
-                        <div className="flex items-center space-x-2 ml-4">
+                        <div className="flex flex-wrap items-center gap-2 ml-4">
                           <Button 
                             variant="outline" 
                             size="sm"
@@ -296,18 +330,29 @@ export default function DocumentsPage() {
                             }}
                           >
                             <Lock className="h-3 w-3 mr-1" />
-                            Secure Download
+                            Download
                           </Button>
                           <Button 
                             variant="outline" 
                             size="sm"
                             onClick={() => {
-                              toast.info(`Share dialog for ${document.name} would open here`)
-                              // In a real app, this would open sharing options
+                              setSelectedDocument(document)
+                              setShareDialogOpen(true)
                             }}
                           >
                             <Share2 className="h-3 w-3 mr-1" />
                             Share
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              setSelectedDocument(document)
+                              setVersionDialogOpen(true)
+                            }}
+                          >
+                            <Clock className="h-3 w-3 mr-1" />
+                            Versions
                           </Button>
                         </div>
                       </div>
@@ -438,9 +483,14 @@ export default function DocumentsPage() {
               <Button 
                 variant="outline" 
                 size="sm"
+                disabled={documents.length === 0}
                 onClick={() => {
-                  toast.info('Security configuration would open here')
-                  // In a real app, this would open security settings
+                  if (documents.length > 0) {
+                    setSelectedDocument(documents[0])
+                    setShareDialogOpen(true)
+                  } else {
+                    toast.info('Upload a document first to use secure sharing')
+                  }
                 }}
               >
                 Configure Security
@@ -458,9 +508,14 @@ export default function DocumentsPage() {
               <Button 
                 variant="outline" 
                 size="sm"
+                disabled={documents.length === 0}
                 onClick={() => {
-                  toast.info('Version history would be displayed here')
-                  // In a real app, this would show document version history
+                  if (documents.length > 0) {
+                    setSelectedDocument(documents[0])
+                    setVersionDialogOpen(true)
+                  } else {
+                    toast.info('Upload a document first to view version history')
+                  }
                 }}
               >
                 View Versions
@@ -478,9 +533,14 @@ export default function DocumentsPage() {
               <Button 
                 variant="outline" 
                 size="sm"
+                disabled={documents.length === 0}
                 onClick={() => {
-                  toast.info('Retention policy setup would open here')
-                  // In a real app, this would open retention policy configuration
+                  if (documents.length > 0) {
+                    setSelectedDocument(documents[0])
+                    setRetentionDialogOpen(true)
+                  } else {
+                    toast.info('Upload a document first to setup retention policies')
+                  }
                 }}
               >
                 Setup Retention

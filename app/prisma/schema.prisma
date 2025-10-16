@@ -733,12 +733,51 @@ model Document {
   mimeType         String?
   category         DocumentCategory @default(OTHER)
   isPublic         Boolean          @default(false)
+  version          Int              @default(1)
+  retentionPolicyEnabled Boolean     @default(false)
+  retentionPolicyYears Int?
+  retentionExpiry  DateTime?
+  complianceCategory String?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
   project          Project?         @relation(fields: [projectId], references: [id])
   user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  versions         DocumentVersion[]
+  shares           DocumentShare[]
 
   @@index([userId, category])
+}
+
+model DocumentVersion {
+  id               String   @id @default(cuid())
+  documentId       String
+  version          Int
+  fileName         String
+  cloudStoragePath String
+  fileSize         Int?
+  changeDescription String?
+  createdAt        DateTime @default(now())
+  createdBy        String
+  document         Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId, version])
+}
+
+model DocumentShare {
+  id            String    @id @default(cuid())
+  documentId    String
+  sharedBy      String
+  sharedWith    String?
+  shareToken    String    @unique
+  expiresAt     DateTime?
+  maxDownloads  Int?
+  downloadCount Int       @default(0)
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  document      Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([shareToken])
 }
 
 model Bill {
