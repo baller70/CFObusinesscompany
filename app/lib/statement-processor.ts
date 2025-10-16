@@ -53,12 +53,33 @@ export async function processStatement(statementId: string) {
       throw new Error('No cloud storage path found');
     }
 
-    console.log(`[Processing] Downloading file from S3: ${statement.cloudStoragePath}`);
-    const signedUrl = await downloadFile(statement.cloudStoragePath);
-    const fileResponse = await fetch(signedUrl);
+    console.log(`[Processing] Downloading file from storage: ${statement.cloudStoragePath}`);
     
-    if (!fileResponse.ok) {
-      throw new Error(`Failed to download file from storage: ${fileResponse.statusText}`);
+    let arrayBuffer: ArrayBuffer;
+    let csvContent: string | undefined;
+    
+    // Check if this is a local file (for testing)
+    if (statement.cloudStoragePath.startsWith('local://')) {
+      const fs = await import('fs');
+      const localPath = statement.cloudStoragePath.replace('local://', '');
+      console.log(`[Processing] Reading local file: ${localPath}`);
+      const fileBuffer = fs.readFileSync(localPath);
+      arrayBuffer = fileBuffer.buffer.slice(fileBuffer.byteOffset, fileBuffer.byteOffset + fileBuffer.byteLength);
+      if (statement.fileType === 'CSV') {
+        csvContent = fileBuffer.toString('utf-8');
+      }
+    } else {
+      const signedUrl = await downloadFile(statement.cloudStoragePath);
+      const fileResponse = await fetch(signedUrl);
+      
+      if (!fileResponse.ok) {
+        throw new Error(`Failed to download file from storage: ${fileResponse.statusText}`);
+      }
+      
+      arrayBuffer = await fileResponse.arrayBuffer();
+      if (statement.fileType === 'CSV') {
+        csvContent = await fileResponse.text();
+      }
     }
 
     let extractedData: any;
@@ -66,14 +87,12 @@ export async function processStatement(statementId: string) {
     if (statement.fileType === 'PDF') {
       // Process PDF
       console.log(`[Processing] Extracting data from PDF`);
-      const arrayBuffer = await fileResponse.arrayBuffer();
       const base64Content = Buffer.from(arrayBuffer).toString('base64');
       extractedData = await aiProcessor.extractDataFromPDF(base64Content, statement.fileName || 'statement.pdf');
     } else {
       // Process CSV
       console.log(`[Processing] Processing CSV data`);
-      const csvContent = await fileResponse.text();
-      extractedData = await aiProcessor.processCSVData(csvContent);
+      extractedData = await aiProcessor.processCSVData(csvContent!);
     }
 
     if (!extractedData || !extractedData.transactions) {

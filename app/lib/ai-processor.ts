@@ -238,97 +238,91 @@ Respond with raw JSON only.`
   async categorizeTransactions(transactions: any[]): Promise<any[]> {
     console.log(`[AI Processor] Categorizing ${transactions.length} transactions`);
     
-    try {
-      const response = await fetch('https://apps.abacus.ai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`
-        },
-        body: JSON.stringify({
-          model: 'gpt-4.1-mini',
-          messages: [{
-            role: "user",
-            content: `Categorize these financial transactions using professional accounting categories. For each transaction, provide the best category and confidence score:
+    // Process in batches to avoid token limits
+    const batchSize = 20;
+    const allCategorized: any[] = [];
+    
+    for (let i = 0; i < transactions.length; i += batchSize) {
+      const batch = transactions.slice(i, i + batchSize);
+      console.log(`[AI Processor] Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(transactions.length/batchSize)} (${batch.length} transactions)`);
+      
+      try {
+        const response = await fetch('https://apps.abacus.ai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`
+          },
+          body: JSON.stringify({
+            model: 'gpt-4.1-mini',
+            messages: [{
+              role: "user",
+              content: `Categorize these financial transactions. For each, provide category and confidence:
 
-${JSON.stringify(transactions, null, 2)}
+${JSON.stringify(batch, null, 2)}
 
-Available categories: Food & Dining, Transportation, Shopping, Entertainment, Bills & Utilities, Healthcare, Education, Travel, Income, Transfers, Fees & Charges, Groceries, Gas & Fuel, Restaurants, Insurance, Rent/Mortgage, Phone, Internet, Subscriptions, ATM, Interest, Dividends, Salary, Freelance, Business, Other
+Categories: Food & Dining, Transportation, Shopping, Entertainment, Bills & Utilities, Healthcare, Education, Travel, Income, Transfers, Fees & Charges, Groceries, Gas & Fuel, Restaurants, Insurance, Rent/Mortgage, Phone, Internet, Subscriptions, ATM, Interest, Dividends, Salary, Freelance, Business, Other
 
 Return JSON:
 {
   "categorizedTransactions": [
     {
       "originalTransaction": original_transaction_object,
-      "suggestedCategory": "category name",
+      "suggestedCategory": "category",
       "confidence": 0.95,
-      "reasoning": "brief explanation",
-      "merchant": "cleaned merchant name",
-      "isRecurring": true/false
+      "reasoning": "brief",
+      "merchant": "merchant name",
+      "isRecurring": false
     }
   ]
 }
 
-Respond with raw JSON only.`
-          }],
-          response_format: { type: "json_object" },
-          max_tokens: 16000,
-        }),
-      });
+Raw JSON only.`
+            }],
+            response_format: { type: "json_object" },
+            max_tokens: 8000,
+          }),
+        });
 
-      console.log(`[AI Processor] Categorization API response status: ${response.status}`);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[AI Processor] API error response:', errorText);
-        throw new Error(`API request failed with status ${response.status}: ${errorText}`);
-      }
-
-      const data = await response.json();
-      
-      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-        console.error('[AI Processor] Invalid API response structure:', JSON.stringify(data));
-        throw new Error('Invalid API response structure');
-      }
-
-      const content = data.choices[0].message.content;
-      console.log(`[AI Processor] Raw AI response content length: ${content?.length || 0} characters`);
-      
-      if (!content || content.trim().length === 0) {
-        console.error('[AI Processor] Empty response content from AI');
-        throw new Error('AI returned empty response');
-      }
-
-      let result;
-      try {
-        result = JSON.parse(content);
-      } catch (parseError) {
-        console.error('[AI Processor] JSON parse error:', parseError);
-        console.error('[AI Processor] Content that failed to parse:', content?.substring(0, 500));
-        
-        const jsonMatch = content.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
-        if (jsonMatch) {
-          console.log('[AI Processor] Found JSON in code block, extracting...');
-          try {
-            result = JSON.parse(jsonMatch[1]);
-          } catch (innerError) {
-            throw new Error(`Failed to parse JSON from code block: ${innerError instanceof Error ? innerError.message : 'Unknown error'}`);
-          }
-        } else {
-          throw new Error(`Invalid JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`[AI Processor] Batch ${i/batchSize + 1} API error:`, errorText);
+          throw new Error(`API request failed with status ${response.status}`);
         }
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
+        
+        if (!content) {
+          throw new Error('Empty response from AI');
+        }
+
+        let result;
+        try {
+          result = JSON.parse(content);
+        } catch (parseError) {
+          // Try to extract JSON from code blocks
+          const jsonMatch = content.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
+          if (jsonMatch) {
+            result = JSON.parse(jsonMatch[1]);
+          } else {
+            throw new Error(`Invalid JSON in response`);
+          }
+        }
+        
+        if (result.categorizedTransactions && Array.isArray(result.categorizedTransactions)) {
+          allCategorized.push(...result.categorizedTransactions);
+          console.log(`[AI Processor] Batch ${Math.floor(i/batchSize) + 1} completed: ${result.categorizedTransactions.length} transactions`);
+        }
+        
+      } catch (error) {
+        console.error(`[AI Processor] Error processing batch ${Math.floor(i/batchSize) + 1}:`, error);
+        // Continue with next batch instead of failing completely
       }
-      
-      console.log(`[AI Processor] Successfully categorized ${result.categorizedTransactions?.length || 0} transactions`);
-      
-      return result.categorizedTransactions;
-    } catch (error) {
-      console.error('[AI Processor] Categorization error:', error);
-      if (error instanceof Error) {
-        throw new Error(`Failed to categorize transactions: ${error.message}`);
-      }
-      throw new Error('Failed to categorize transactions: Unknown error');
     }
+    
+    console.log(`[AI Processor] Successfully categorized ${allCategorized.length} transactions total`);
+    return allCategorized;
   }
 
   async generateFinancialInsights(transactions: any[], userProfile: any): Promise<any> {

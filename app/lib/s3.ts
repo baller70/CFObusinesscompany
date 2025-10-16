@@ -36,6 +36,12 @@ export async function uploadFileWithKey(buffer: Buffer, key: string, contentType
 }
 
 export async function downloadFile(key: string): Promise<string> {
+  // Check if this is a local file (for testing)
+  if (key.startsWith('local://')) {
+    // Return the local file path as a file:// URL
+    return key.replace('local://', 'file://');
+  }
+  
   const command = new GetObjectCommand({
     Bucket: bucketName,
     Key: key,
@@ -47,6 +53,13 @@ export async function downloadFile(key: string): Promise<string> {
 }
 
 export async function downloadFileBuffer(key: string): Promise<Buffer> {
+  // Check if this is a local file (for testing)
+  if (key.startsWith('local://')) {
+    const fs = require('fs');
+    const localPath = key.replace('local://', '');
+    return fs.readFileSync(localPath);
+  }
+  
   const command = new GetObjectCommand({
     Bucket: bucketName,
     Key: key,
