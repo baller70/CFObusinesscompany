@@ -6,12 +6,7 @@ import { Button } from '@/components/ui/button'
 import { FileSpreadsheet, Download, Calendar } from 'lucide-react'
 
 export default function ReportsPage() {
-  const reports = [
-    { id: 1, name: 'Monthly Spending Summary', type: 'Monthly', lastGenerated: '2024-01-15' },
-    { id: 2, name: 'Year-over-Year Comparison', type: 'Annual', lastGenerated: '2024-01-01' },
-    { id: 3, name: 'Net Worth Statement', type: 'Quarterly', lastGenerated: '2024-01-10' },
-    { id: 4, name: 'Income & Expense Report', type: 'Monthly', lastGenerated: '2024-01-15' }
-  ]
+  const reports: any[] = [] // No mock data - users must generate reports
 
   return (
     <div className="space-y-6">
@@ -47,22 +42,30 @@ export default function ReportsPage() {
           <CardTitle>Recent Reports</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {reports.map((report) => (
-              <div key={report.id} className="flex justify-between items-center p-4 border rounded-lg hover:bg-accent">
-                <div>
-                  <p className="font-medium">{report.name}</p>
-                  <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    {new Date(report.lastGenerated).toLocaleDateString()}
-                  </p>
+          {reports.length === 0 ? (
+            <div className="text-center py-12">
+              <FileSpreadsheet className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No reports generated yet</h3>
+              <p className="text-muted-foreground">Generate your first report to see it appear here</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {reports.map((report) => (
+                <div key={report.id} className="flex justify-between items-center p-4 border rounded-lg hover:bg-accent">
+                  <div>
+                    <p className="font-medium">{report.name}</p>
+                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {new Date(report.lastGenerated).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <Button variant="outline" size="sm">
+                    <Download className="h-4 w-4" />
+                  </Button>
                 </div>
-                <Button variant="outline" size="sm">
-                  <Download className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

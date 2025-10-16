@@ -62,21 +62,7 @@ export default function NewProjectPage() {
     }
   ])
 
-  const clients = [
-    { id: 'acme-corp', name: 'Acme Corporation' },
-    { id: 'tech-solutions', name: 'Tech Solutions Inc' },
-    { id: 'global-systems', name: 'Global Systems Ltd' },
-    { id: 'startup-xyz', name: 'StartupXYZ' },
-    { id: 'manufacturing-plus', name: 'Manufacturing Plus' }
-  ]
 
-  const teamMemberOptions = [
-    { id: 'john-smith', name: 'John Smith' },
-    { id: 'sarah-johnson', name: 'Sarah Johnson' },
-    { id: 'mike-brown', name: 'Mike Brown' },
-    { id: 'lisa-davis', name: 'Lisa Davis' },
-    { id: 'robert-wilson', name: 'Robert Wilson' }
-  ]
 
   const handleInputChange = (field: keyof ProjectFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -179,19 +165,14 @@ export default function NewProjectPage() {
               </div>
 
               <div>
-                <Label htmlFor="client">Client *</Label>
-                <Select value={formData.client} onValueChange={(value) => handleInputChange('client', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select client" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clients.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="client">Client Name *</Label>
+                <Input 
+                  id="client" 
+                  value={formData.client}
+                  onChange={(e) => handleInputChange('client', e.target.value)}
+                  placeholder="Enter client name"
+                  required
+                />
               </div>
             </div>
 
@@ -322,18 +303,11 @@ export default function NewProjectPage() {
                 {teamMembers.map((member, index) => (
                   <div key={member.id} className="grid grid-cols-12 gap-4 p-4 border-b last:border-b-0">
                     <div className="col-span-4">
-                      <Select value={member.member} onValueChange={(value) => updateTeamMember(member.id, 'member', value)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select team member" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {teamMemberOptions.map((option) => (
-                            <SelectItem key={option.id} value={option.id}>
-                              {option.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Input 
+                        value={member.member}
+                        onChange={(e) => updateTeamMember(member.id, 'member', e.target.value)}
+                        placeholder="Team member name"
+                      />
                     </div>
                     <div className="col-span-3">
                       <Select value={member.role} onValueChange={(value) => updateTeamMember(member.id, 'role', value)}>

@@ -6,8 +6,6 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { ChartOfAccountsClient } from '@/components/accounting/chart-of-accounts-client'
 
-// Mock data is used for demonstration purposes
-
 export default async function ChartOfAccountsPage() {
   const session = await getServerSession(authOptions)
   
@@ -16,7 +14,7 @@ export default async function ChartOfAccountsPage() {
   }
 
   // Empty accounts data - users can add their own
-  const mockAccounts = {
+  const accounts = {
     ASSET: [],
     LIABILITY: [],
     EQUITY: [],
@@ -24,5 +22,5 @@ export default async function ChartOfAccountsPage() {
     EXPENSE: []
   }
 
-  return <ChartOfAccountsClient mockAccounts={mockAccounts} />
+  return <ChartOfAccountsClient mockAccounts={accounts} />
 }

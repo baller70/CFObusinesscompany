@@ -33,59 +33,8 @@ export default function ReportsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [showFilters, setShowFilters] = useState(false)
 
-  // Mock reports data
-  const mockReports = [
-    {
-      id: '1',
-      name: 'Profit & Loss Statement',
-      type: 'P&L',
-      description: 'Comprehensive profit and loss analysis',
-      period: 'November 2024',
-      createdAt: new Date('2024-11-01'),
-      status: 'Ready',
-      size: '2.4 MB'
-    },
-    {
-      id: '2',
-      name: 'Cash Flow Statement',
-      type: 'CASH_FLOW',
-      description: 'Cash inflows and outflows analysis',
-      period: 'November 2024',
-      createdAt: new Date('2024-11-05'),
-      status: 'Ready',
-      size: '1.8 MB'
-    },
-    {
-      id: '3',
-      name: 'Balance Sheet',
-      type: 'BALANCE',
-      description: 'Assets, liabilities, and equity snapshot',
-      period: 'October 2024',
-      createdAt: new Date('2024-10-31'),
-      status: 'Ready',
-      size: '3.2 MB'
-    },
-    {
-      id: '4',
-      name: 'Tax Summary Report',
-      type: 'TAX',
-      description: 'Quarterly tax obligations and deductions',
-      period: 'Q3 2024',
-      createdAt: new Date('2024-09-30'),
-      status: 'Processing',
-      size: '1.1 MB'
-    },
-    {
-      id: '5',
-      name: 'Expense Analysis',
-      type: 'EXPENSE',
-      description: 'Detailed breakdown of business expenses',
-      period: 'November 2024',
-      createdAt: new Date('2024-11-10'),
-      status: 'Ready',
-      size: '2.8 MB'
-    }
-  ]
+  // No reports - users must generate them
+  const mockReports: any[] = []
 
   const reportTypes = [
     { value: 'p-l', label: 'Profit & Loss', icon: <TrendingUp className="h-4 w-4" /> },
@@ -284,97 +233,109 @@ export default function ReportsPage() {
               <CardTitle>Recent Reports</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {currentReports.map((report) => (
-                  <div key={report.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
-                    <div className="flex items-center space-x-4">
-                      <FileSpreadsheet className="h-8 w-8 text-blue-500" />
-                      <div>
-                        <h4 className="font-semibold text-gray-900">{report.name}</h4>
-                        <p className="text-sm text-gray-600">{report.description}</p>
-                        <div className="flex items-center space-x-3 mt-1">
-                          {getStatusBadge(report.status)}
-                          <span className="text-xs text-gray-500">
-                            {format(report.createdAt, 'MMM d, yyyy')} • {report.size}
-                          </span>
+              {mockReports.length === 0 ? (
+                <div className="text-center py-12">
+                  <FileSpreadsheet className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No reports generated yet</h3>
+                  <p className="text-gray-600 mb-4">Generate your first report to see it appear here</p>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-4">
+                    {currentReports.map((report) => (
+                      <div key={report.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                        <div className="flex items-center space-x-4">
+                          <FileSpreadsheet className="h-8 w-8 text-blue-500" />
+                          <div>
+                            <h4 className="font-semibold text-gray-900">{report.name}</h4>
+                            <p className="text-sm text-gray-600">{report.description}</p>
+                            <div className="flex items-center space-x-3 mt-1">
+                              {getStatusBadge(report.status)}
+                              <span className="text-xs text-gray-500">
+                                {format(report.createdAt, 'MMM d, yyyy')} • {report.size}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleDownloadReport(report.name)}
+                          >
+                            <Download className="h-3 w-3 mr-1" />
+                            Download
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleShareReport(report.name)}
+                          >
+                            <Share2 className="h-3 w-3 mr-1" />
+                            Share
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handlePrintReport(report.name)}
+                          >
+                            <Printer className="h-3 w-3 mr-1" />
+                            Print
+                          </Button>
                         </div>
                       </div>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleDownloadReport(report.name)}
-                      >
-                        <Download className="h-3 w-3 mr-1" />
-                        Download
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleShareReport(report.name)}
-                      >
-                        <Share2 className="h-3 w-3 mr-1" />
-                        Share
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handlePrintReport(report.name)}
-                      >
-                        <Printer className="h-3 w-3 mr-1" />
-                        Print
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Pagination */}
-              <div className="mt-6 flex justify-center">
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious 
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          if (currentPage > 1) setCurrentPage(currentPage - 1)
-                        }}
-                        className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                      />
-                    </PaginationItem>
-                    
-                    {[...Array(totalPages)].map((_, index) => (
-                      <PaginationItem key={index}>
-                        <PaginationLink 
-                          href="#"
-                          onClick={(e) => {
-                            e.preventDefault()
-                            setCurrentPage(index + 1)
-                          }}
-                          isActive={currentPage === index + 1}
-                          className="cursor-pointer"
-                        >
-                          {index + 1}
-                        </PaginationLink>
-                      </PaginationItem>
                     ))}
-                    
-                    <PaginationItem>
-                      <PaginationNext 
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          if (currentPage < totalPages) setCurrentPage(currentPage + 1)
-                        }}
-                        className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
-              </div>
+                  </div>
+
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="mt-6 flex justify-center">
+                      <Pagination>
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious 
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                if (currentPage > 1) setCurrentPage(currentPage - 1)
+                              }}
+                              className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                            />
+                          </PaginationItem>
+                          
+                          {[...Array(totalPages)].map((_, index) => (
+                            <PaginationItem key={index}>
+                              <PaginationLink 
+                                href="#"
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  setCurrentPage(index + 1)
+                                }}
+                                isActive={currentPage === index + 1}
+                                className="cursor-pointer"
+                              >
+                                {index + 1}
+                              </PaginationLink>
+                            </PaginationItem>
+                          ))}
+                          
+                          <PaginationItem>
+                            <PaginationNext 
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                if (currentPage < totalPages) setCurrentPage(currentPage + 1)
+                              }}
+                              className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    </div>
+                  )}
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

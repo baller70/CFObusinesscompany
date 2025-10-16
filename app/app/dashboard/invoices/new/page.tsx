@@ -46,13 +46,7 @@ export default function NewInvoicePage() {
     terms: 'Payment is due within 30 days of invoice date.'
   })
 
-  const customers = [
-    { id: 'acme-corp', name: 'Acme Corporation' },
-    { id: 'tech-solutions', name: 'Tech Solutions Inc' },
-    { id: 'global-systems', name: 'Global Systems Ltd' },
-    { id: 'startup-xyz', name: 'StartupXYZ' },
-    { id: 'manufacturing-plus', name: 'Manufacturing Plus' }
-  ]
+
 
   const updateItem = (index: number, field: keyof InvoiceItem, value: string | number) => {
     const newItems = [...formData.items]
@@ -147,22 +141,14 @@ export default function NewInvoicePage() {
             {/* Customer and Invoice Number */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="customer">Customer *</Label>
-                <Select 
-                  value={formData.customer} 
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, customer: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select customer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {customers.map((customer) => (
-                      <SelectItem key={customer.id} value={customer.id}>
-                        {customer.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="customer">Customer Name *</Label>
+                <Input 
+                  id="customer" 
+                  value={formData.customer}
+                  onChange={(e) => setFormData(prev => ({ ...prev, customer: e.target.value }))}
+                  placeholder="Enter customer name"
+                  required
+                />
               </div>
 
               <div className="space-y-2">
