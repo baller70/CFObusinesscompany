@@ -12,13 +12,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import DashboardWithCFO from '@/components/dashboard/dashboard-with-cfo'
 import DashboardContent from '@/components/dashboard/dashboard-content'
 import { TrendingUp, FileText, Calendar, Users } from 'lucide-react'
+import { getCurrentBusinessProfileId } from '@/lib/business-profile-utils'
 
 async function getDashboardData(userId: string) {
   const currentDate = new Date()
   
+  // Get current business profile ID
+  const businessProfileId = await getCurrentBusinessProfileId()
+  
   // Get the most recent transaction to determine the last active month
   const mostRecentTransaction = await prisma.transaction.findFirst({
-    where: { userId },
+    where: { 
+      userId,
+      businessProfileId: businessProfileId || undefined
+    },
     orderBy: { date: 'desc' },
     select: { date: true }
   })
@@ -41,7 +48,10 @@ async function getDashboardData(userId: string) {
       where: { id: userId }
     }),
     prisma.transaction.findMany({
-      where: { userId },
+      where: { 
+        userId,
+        businessProfileId: businessProfileId || undefined
+      },
       take: 10,
       orderBy: { date: 'desc' },
       include: { 
@@ -52,6 +62,7 @@ async function getDashboardData(userId: string) {
     prisma.budget.findMany({
       where: { 
         userId,
+        businessProfileId: businessProfileId || undefined,
         month: targetMonth + 1,
         year: targetYear
       },
@@ -60,7 +71,10 @@ async function getDashboardData(userId: string) {
       }
     }),
     prisma.bankStatement.findMany({
-      where: { userId },
+      where: { 
+        userId,
+        businessProfileId: businessProfileId || undefined
+      },
       take: 5,
       orderBy: { createdAt: 'desc' },
       include: {
@@ -79,7 +93,8 @@ async function getDashboardData(userId: string) {
   const incomeTransactions = await prisma.transaction.aggregate({
     where: {
       userId,
-      category: 'Income',
+      businessProfileId: businessProfileId || undefined,
+      type: 'INCOME',
       date: { 
         gte: firstDayOfMonth,
         lte: lastDayOfMonth
@@ -91,14 +106,15 @@ async function getDashboardData(userId: string) {
   const expenseTransactions = await prisma.transaction.aggregate({
     where: {
       userId,
-      category: { not: 'Income' },
+      businessProfileId: businessProfileId || undefined,
+      type: 'EXPENSE',
       date: { 
         gte: firstDayOfMonth,
         lte: lastDayOfMonth
       }
     },
     _sum: { amount: true }
-  }).then(result => result._sum.amount || 0)
+  }).then(result => Math.abs(result._sum.amount || 0))
 
   // Calculate total budget allocated and spent
   const totalBudgetAllocated = budgets.reduce((sum, b) => sum + (b.amount || 0), 0)
@@ -106,7 +122,11 @@ async function getDashboardData(userId: string) {
 
   // Count completed bank statements
   const completedStatements = await prisma.bankStatement.count({
-    where: { userId, status: 'COMPLETED' }
+    where: { 
+      userId, 
+      businessProfileId: businessProfileId || undefined,
+      status: 'COMPLETED' 
+    }
   })
 
   return {
