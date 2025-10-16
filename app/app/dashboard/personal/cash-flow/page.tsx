@@ -12,10 +12,25 @@ export default function CashFlowPage() {
     projectedExpenses: 0,
     netCashFlow: 0
   })
+  const [currentProfile, setCurrentProfile] = useState<any>(null)
 
   useEffect(() => {
     fetchForecast()
+    fetchCurrentProfile()
   }, [])
+
+  const fetchCurrentProfile = async () => {
+    try {
+      const response = await fetch('/api/business-profiles')
+      if (response.ok) {
+        const data = await response.json()
+        const current = data.profiles?.find((p: any) => p.isCurrent)
+        setCurrentProfile(current)
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error)
+    }
+  }
 
   const fetchForecast = async () => {
     try {
@@ -36,6 +51,21 @@ export default function CashFlowPage() {
         <h1 className="text-3xl font-bold">Cash Flow Forecast</h1>
         <p className="text-muted-foreground">Predict your future cash position</p>
       </div>
+
+      {currentProfile && (
+        <Card className="bg-blue-50 border-blue-200">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-blue-600"></div>
+              <p className="text-sm font-medium text-blue-900">
+                Showing cash flow for: <span className="font-bold">{currentProfile.name}</span>
+                {currentProfile.type === 'PERSONAL' && ' (Personal/Household)'}
+                {currentProfile.type === 'BUSINESS' && ' (Business)'}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>

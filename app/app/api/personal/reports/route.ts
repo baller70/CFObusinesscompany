@@ -50,6 +50,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
+    // Get the business profile details
+    const businessProfile = await prisma.businessProfile.findUnique({
+      where: { id: businessProfileId || '' }
+    })
+
+    const profileName = businessProfile?.name || 'Unknown Profile'
+    const profileType = businessProfile?.type || 'UNKNOWN'
+
     // Calculate date range based on report type
     let start = new Date()
     let end = new Date()
@@ -108,6 +116,7 @@ export async function POST(request: NextRequest) {
     // Generate CSV content
     const csvRows = [
       ['Financial Report', reportName],
+      ['Profile', `${profileName} (${profileType})`],
       ['Generated', new Date().toLocaleString()],
       ['Period', `${start.toLocaleDateString()} - ${end.toLocaleDateString()}`],
       [],
