@@ -34,8 +34,8 @@ export default function PayrollPage() {
   }
 
   // All data will come from the database - no mock data
-  const mockEmployees: any[] = []
-  const mockPayPeriods: any[] = []
+  const employees: any[] = []
+  const payPeriods: any[] = []
 
   const activeEmployees = 0
   const totalPayrollCost = 0
@@ -277,9 +277,9 @@ export default function PayrollPage() {
               <CardTitle>Employee Directory</CardTitle>
             </CardHeader>
             <CardContent>
-              {mockEmployees.length > 0 ? (
+              {employees.length > 0 ? (
                 <div className="space-y-4">
-                  {mockEmployees.map((employee) => (
+                  {employees.map((employee) => (
                     <div key={employee.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                       <div className="flex items-start justify-between">
                         <div className="flex items-start space-x-4">
@@ -360,7 +360,7 @@ export default function PayrollPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {mockPayPeriods.map((period) => (
+                {payPeriods.map((period) => (
                   <div key={period.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4">

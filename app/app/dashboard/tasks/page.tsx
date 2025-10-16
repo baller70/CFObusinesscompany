@@ -22,7 +22,7 @@ export default function TasksPage() {
   }
 
   // All data will come from the database - no mock data
-  const mockTasks: any[] = []
+  const tasks: any[] = []
 
   const todoTasks = 0
   const inProgressTasks = 0
@@ -135,7 +135,7 @@ export default function TasksPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {mockTasks.filter(task => task.status !== 'COMPLETED' && task.status !== 'OVERDUE').map((task) => (
+                {tasks.filter(task => task.status !== 'COMPLETED' && task.status !== 'OVERDUE').map((task) => (
                   <div key={task.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -253,7 +253,7 @@ export default function TasksPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {mockTasks.filter(task => task.status === 'COMPLETED').map((task) => (
+                {tasks.filter(task => task.status === 'COMPLETED').map((task) => (
                   <div key={task.id} className="border border-gray-200 rounded-lg p-6 bg-green-50 border-green-200">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -285,7 +285,7 @@ export default function TasksPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {mockTasks.filter(task => task.status === 'OVERDUE').map((task) => (
+                {tasks.filter(task => task.status === 'OVERDUE').map((task) => (
                   <div key={task.id} className="border border-red-200 rounded-lg p-6 bg-red-50">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -349,7 +349,7 @@ export default function TasksPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {mockTasks.map((task) => (
+                {tasks.map((task) => (
                   <div key={task.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">

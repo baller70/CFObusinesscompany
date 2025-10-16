@@ -7,10 +7,10 @@ import { format } from 'date-fns'
 import { toast } from 'sonner'
 
 interface ExportFilterButtonsProps {
-  mockInvoices: any[];
+  invoices: any[];
 }
 
-export function ExportFilterButtons({ mockInvoices }: ExportFilterButtonsProps) {
+export function ExportFilterButtons({ invoices }: ExportFilterButtonsProps) {
   return (
     <div className="flex items-center space-x-4">
       <Button 
@@ -26,7 +26,7 @@ export function ExportFilterButtons({ mockInvoices }: ExportFilterButtonsProps) 
         variant="outline"
         onClick={() => {
           // Create CSV data for export
-          const csvData = mockInvoices.map(inv => ({
+          const csvData = invoices.map(inv => ({
             'Invoice Number': inv.invoiceNumber,
             'Customer': inv.customer.name,
             'Status': inv.status,

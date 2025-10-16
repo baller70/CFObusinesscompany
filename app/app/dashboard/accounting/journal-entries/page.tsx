@@ -40,9 +40,6 @@ export default async function JournalEntriesPage() {
 
   const { journalEntries, journalStats } = await getJournalEntriesData(session.user.id)
 
-  // Empty journal entries data - users can add their own
-  const mockJournalEntries: any[] = []
-
   const thisMonthEntries = 0
   const totalDebits = 0
   const averageEntry = 0
@@ -97,7 +94,7 @@ export default async function JournalEntriesPage() {
             <CardTitle className="text-sm font-medium text-gray-600">Total Entries</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{mockJournalEntries.length}</div>
+            <div className="text-2xl font-bold text-gray-900">{journalEntries.length}</div>
             <p className="text-xs text-gray-500 mt-1">All time</p>
           </CardContent>
         </Card>
@@ -143,9 +140,9 @@ export default async function JournalEntriesPage() {
           <CardTitle>Journal Entry Register</CardTitle>
         </CardHeader>
         <CardContent>
-          {mockJournalEntries.length > 0 ? (
+          {journalEntries.length > 0 ? (
             <div className="space-y-6">
-              {mockJournalEntries.map((entry) => (
+              {journalEntries.map((entry) => (
                 <div key={entry.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
                   {/* Entry Header */}
                   <div className="flex items-start justify-between mb-4">

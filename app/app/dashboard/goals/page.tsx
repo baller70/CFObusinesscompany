@@ -23,7 +23,7 @@ export default function GoalsPage() {
   }
 
   // All data will come from the database - no mock data
-  const mockGoals: any[] = []
+  const goals: any[] = []
 
   const inProgressGoals = 0
   const completedGoals = 0
@@ -129,7 +129,7 @@ export default function GoalsPage() {
             <CardTitle className="text-sm font-medium text-gray-600">Total Goals</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{mockGoals.length}</div>
+            <div className="text-2xl font-bold text-gray-900">{goals.length}</div>
             <p className="text-xs text-gray-500 mt-1">All time</p>
           </CardContent>
         </Card>
@@ -146,7 +146,7 @@ export default function GoalsPage() {
 
         <TabsContent value="active">
           <div className="space-y-6">
-            {mockGoals.filter(goal => goal.status === 'IN_PROGRESS').map((goal) => {
+            {goals.filter(goal => goal.status === 'IN_PROGRESS').map((goal) => {
               const progressPercentage = getProgressPercentage(goal.currentAmount, goal.targetAmount)
               const daysRemaining = differenceInDays(goal.targetDate, new Date())
       // @ts-ignore
@@ -300,7 +300,7 @@ export default function GoalsPage() {
 
         <TabsContent value="savings">
           <div className="space-y-4">
-            {mockGoals.filter(goal => goal.type === 'SAVINGS').map((goal) => {
+            {goals.filter(goal => goal.type === 'SAVINGS').map((goal) => {
               const progressPercentage = getProgressPercentage(goal.currentAmount, goal.targetAmount)
 
               return (
@@ -336,7 +336,7 @@ export default function GoalsPage() {
 
         <TabsContent value="revenue">
           <div className="space-y-4">
-            {mockGoals.filter(goal => goal.type === 'REVENUE').map((goal) => {
+            {goals.filter(goal => goal.type === 'REVENUE').map((goal) => {
               const progressPercentage = getProgressPercentage(goal.currentAmount, goal.targetAmount)
 
               return (
@@ -377,7 +377,7 @@ export default function GoalsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {mockGoals.map((goal) => {
+                {goals.map((goal) => {
                   const progressPercentage = getProgressPercentage(goal.currentAmount, goal.targetAmount)
 
                   return (

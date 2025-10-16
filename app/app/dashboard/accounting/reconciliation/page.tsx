@@ -37,9 +37,6 @@ export default async function ReconciliationPage() {
 
   const { reconciliations, reconciliationStats } = await getReconciliationData(session.user.id)
 
-  // Empty reconciliations data - users can add their own
-  const mockReconciliations: any[] = []
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'COMPLETED':
@@ -106,7 +103,7 @@ export default async function ReconciliationPage() {
             <div className="flex items-center">
               <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
               <div className="text-2xl font-bold text-green-600">
-                {mockReconciliations.filter(r => r.status === 'COMPLETED').length}
+                {reconciliations.filter(r => r.status === 'COMPLETED').length}
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-1">This year</p>
@@ -121,7 +118,7 @@ export default async function ReconciliationPage() {
             <div className="flex items-center">
               <Clock className="h-5 w-5 text-orange-500 mr-2" />
               <div className="text-2xl font-bold text-orange-600">
-                {mockReconciliations.filter(r => r.status === 'PENDING').length}
+                {reconciliations.filter(r => r.status === 'PENDING').length}
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-1">Awaiting action</p>
@@ -136,7 +133,7 @@ export default async function ReconciliationPage() {
             <div className="flex items-center">
               <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
               <div className="text-2xl font-bold text-red-600">
-                {mockReconciliations.filter(r => r.status === 'NEEDS_REVIEW').length}
+                {reconciliations.filter(r => r.status === 'NEEDS_REVIEW').length}
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-1">Discrepancies found</p>
@@ -167,9 +164,9 @@ export default async function ReconciliationPage() {
               <CardTitle>Reconciliation History</CardTitle>
             </CardHeader>
             <CardContent>
-              {mockReconciliations.length > 0 ? (
+              {reconciliations.length > 0 ? (
                 <div className="space-y-4">
-                  {mockReconciliations.map((reconciliation) => (
+                  {reconciliations.map((reconciliation) => (
                     <div 
                       key={reconciliation.id} 
                       className={`border rounded-lg p-6 hover:shadow-md transition-shadow ${

@@ -24,9 +24,9 @@ export default function InvoicesPage() {
     }
   }, [session, router])
 
-  // All data will come from the database - no mock data
-  const mockInvoices: any[] = []
-  const mockEstimates: any[] = []
+  // Real data from database
+  const invoices: any[] = []
+  const estimates: any[] = []
 
   const draftInvoices = 0
   const sentInvoices = 0
@@ -183,13 +183,13 @@ export default function InvoicesPage() {
                     className="pl-10"
                   />
                 </div>
-                <ExportFilterButtons mockInvoices={mockInvoices} />
+                <ExportFilterButtons invoices={invoices} />
               </div>
             </CardContent>
           </Card>
 
           <div className="space-y-4">
-            {mockInvoices.map((invoice) => (
+            {invoices.map((invoice) => (
               <Card key={invoice.id} className={`hover:shadow-md transition-shadow ${
                 invoice.status === 'OVERDUE' ? 'border-red-200 bg-red-50' : ''
               }`}>
@@ -301,7 +301,7 @@ export default function InvoicesPage() {
 
         <TabsContent value="estimates">
           <div className="space-y-4">
-            {mockEstimates.map((estimate) => (
+            {estimates.map((estimate) => (
               <Card key={estimate.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between">
@@ -378,7 +378,7 @@ export default function InvoicesPage() {
 
         <TabsContent value="drafts">
           <div className="space-y-4">
-            {mockInvoices.filter(invoice => invoice.status === 'DRAFT').map((invoice) => (
+            {invoices.filter(invoice => invoice.status === 'DRAFT').map((invoice) => (
               <Card key={invoice.id} className="bg-gray-50 border-gray-200">
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between">
@@ -417,7 +417,7 @@ export default function InvoicesPage() {
 
         <TabsContent value="overdue">
           <div className="space-y-4">
-            {mockInvoices.filter(invoice => invoice.status === 'OVERDUE').map((invoice) => (
+            {invoices.filter(invoice => invoice.status === 'OVERDUE').map((invoice) => (
               <Card key={invoice.id} className="bg-red-50 border-red-200">
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between">

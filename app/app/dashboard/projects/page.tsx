@@ -24,7 +24,7 @@ export default function ProjectsPage() {
   }
 
   // All data will come from the database - no mock data
-  const mockProjects: any[] = []
+  const projects: any[] = []
 
   const activeProjects = 0
   const completedProjects = 0
@@ -130,7 +130,7 @@ export default function ProjectsPage() {
 
         <TabsContent value="active">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {mockProjects.filter(project => project.status === 'IN_PROGRESS').map((project) => (
+            {projects.filter(project => project.status === 'IN_PROGRESS').map((project) => (
               <Card key={project.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
@@ -333,7 +333,7 @@ export default function ProjectsPage() {
 
         <TabsContent value="completed">
           <div className="space-y-4">
-            {mockProjects.filter(project => project.status === 'COMPLETED').map((project) => (
+            {projects.filter(project => project.status === 'COMPLETED').map((project) => (
               <Card key={project.id} className="bg-green-50 border-green-200">
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between">
@@ -435,7 +435,7 @@ export default function ProjectsPage() {
 
         <TabsContent value="planning">
           <div className="space-y-4">
-            {mockProjects.filter(project => project.status === 'PLANNING').map((project) => (
+            {projects.filter(project => project.status === 'PLANNING').map((project) => (
               <Card key={project.id} className="bg-blue-50 border-blue-200">
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between">
@@ -516,7 +516,7 @@ export default function ProjectsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {mockProjects.map((project) => (
+                    {projects.map((project) => (
                       <tr key={project.id} className="border-b border-gray-100 hover:bg-gray-50">
                         <td className="py-3 px-4">
                           <div>

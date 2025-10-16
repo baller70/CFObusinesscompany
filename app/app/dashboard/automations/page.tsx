@@ -38,8 +38,8 @@ export default function AutomationsPage() {
   }
 
   // All data will come from the database - no mock data
-  const mockAutomations: any[] = []
-  const mockRuns: any[] = []
+  const automations: any[] = []
+  const runs: any[] = []
 
   const activeAutomations = 0
   const totalRuns = 0
@@ -138,7 +138,7 @@ export default function AutomationsPage() {
               <Zap className="h-5 w-5 text-blue-500 mr-2" />
               <div className="text-2xl font-bold text-blue-600">{activeAutomations}</div>
             </div>
-            <p className="text-xs text-gray-500 mt-1">Out of {mockAutomations.length} total</p>
+            <p className="text-xs text-gray-500 mt-1">Out of {automations.length} total</p>
           </CardContent>
         </Card>
 
@@ -186,9 +186,9 @@ export default function AutomationsPage() {
               <CardTitle>Automation Rules</CardTitle>
             </CardHeader>
             <CardContent>
-              {mockAutomations.length > 0 ? (
+              {automations.length > 0 ? (
                 <div className="space-y-4">
-                  {mockAutomations.map((automation) => (
+                  {automations.map((automation) => (
                     <div key={automation.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
                       <div className="flex items-start justify-between">
                         <div className="flex items-start space-x-4 flex-1">
@@ -291,7 +291,7 @@ export default function AutomationsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {mockRuns.map((run) => (
+                {runs.map((run) => (
                   <div key={run.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
                     <div className="flex items-center space-x-4">
                       {getStatusIcon(run.status)}
