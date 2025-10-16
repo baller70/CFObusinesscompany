@@ -23,13 +23,24 @@ export async function GET() {
     });
 
     if (!user || !user.businessProfiles[0]) {
-      return NextResponse.json({ charges: [] });
+      return NextResponse.json({ 
+        recurringCharges: [],
+        summary: {
+          totalCharges: 0,
+          activeCharges: 0,
+          totalMonthlyAmount: 0,
+          totalAnnualAmount: 0,
+          dueSoon: 0,
+          overdue: 0,
+          categories: []
+        }
+      });
     }
 
     const activeProfileId = user.businessProfiles[0].id;
 
     // Fetch recurring charges
-    const charges = await prisma.recurringCharge.findMany({
+    const recurringCharges = await prisma.recurringCharge.findMany({
       where: {
         businessProfileId: activeProfileId
       },
@@ -38,9 +49,66 @@ export async function GET() {
       }
     });
 
-    return NextResponse.json({ charges });
+    // Calculate summary
+    const now = new Date();
+    const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    
+    const activeCharges = recurringCharges.filter(c => c.isActive && !c.isPaused);
+    const totalMonthlyAmount = activeCharges.reduce((sum, c) => {
+      // Convert to monthly based on frequency
+      const frequencyMultipliers: { [key: string]: number } = {
+        DAILY: 30,
+        WEEKLY: 4.33,
+        BIWEEKLY: 2.17,
+        MONTHLY: 1,
+        BIMONTHLY: 0.5,
+        QUARTERLY: 0.33,
+        SEMIANNUALLY: 0.17,
+        ANNUALLY: 0.08
+      };
+      const multiplier = frequencyMultipliers[c.frequency] || 1;
+      return sum + (c.amount * multiplier);
+    }, 0);
+    
+    const totalAnnualAmount = activeCharges.reduce((sum, c) => sum + c.annualAmount, 0);
+    
+    const dueSoon = activeCharges.filter(c => {
+      const dueDate = new Date(c.nextDueDate);
+      return dueDate <= sevenDaysFromNow && dueDate > now;
+    }).length;
+    
+    const overdue = activeCharges.filter(c => {
+      const dueDate = new Date(c.nextDueDate);
+      return dueDate < now;
+    }).length;
+    
+    const categories = [...new Set(recurringCharges.map(c => c.category))];
+
+    const summary = {
+      totalCharges: recurringCharges.length,
+      activeCharges: activeCharges.length,
+      totalMonthlyAmount,
+      totalAnnualAmount,
+      dueSoon,
+      overdue,
+      categories
+    };
+
+    return NextResponse.json({ recurringCharges, summary });
   } catch (error) {
     console.error('Error fetching recurring charges:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      recurringCharges: [],
+      summary: {
+        totalCharges: 0,
+        activeCharges: 0,
+        totalMonthlyAmount: 0,
+        totalAnnualAmount: 0,
+        dueSoon: 0,
+        overdue: 0,
+        categories: []
+      }
+    }, { status: 500 });
   }
 }

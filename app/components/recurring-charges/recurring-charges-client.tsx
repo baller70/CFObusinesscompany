@@ -76,8 +76,8 @@ export default function RecurringChargesClient() {
       if (!response.ok) throw new Error('Failed to fetch recurring charges')
       
       const data = await response.json()
-      setRecurringCharges(data.recurringCharges)
-      setSummary(data.summary)
+      setRecurringCharges(Array.isArray(data.recurringCharges) ? data.recurringCharges : [])
+      setSummary(data.summary || null)
     } catch (error) {
       console.error('Error fetching recurring charges:', error)
       toast.error('Failed to load recurring charges')
@@ -143,7 +143,7 @@ export default function RecurringChargesClient() {
     }
   }
 
-  const filteredCharges = recurringCharges.filter(charge => {
+  const filteredCharges = (recurringCharges || []).filter(charge => {
     const matchesSearch = charge.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          charge.vendor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          charge.category.toLowerCase().includes(searchTerm.toLowerCase())
@@ -363,7 +363,7 @@ export default function RecurringChargesClient() {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
           <TabsList className="bg-card border">
-            <TabsTrigger value="all">All ({recurringCharges.length})</TabsTrigger>
+            <TabsTrigger value="all">All ({(recurringCharges || []).length})</TabsTrigger>
             <TabsTrigger value="active">Active</TabsTrigger>
             <TabsTrigger value="upcoming">Due Soon</TabsTrigger>
           </TabsList>
