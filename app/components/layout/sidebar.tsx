@@ -123,6 +123,7 @@ const personalMenuItems = [
     submenu: [
       { title: 'Tax Documents', href: '/dashboard/personal/tax-documents', icon: FileText },
       { title: 'Tax Planning', href: '/dashboard/personal/tax-planning', icon: Calculator },
+      { title: 'Tax Breaks', href: '/dashboard/personal/tax-breaks', icon: Sparkles },
       { title: 'Charitable Giving', href: '/dashboard/personal/charitable-giving', icon: Heart }
     ]
   },
