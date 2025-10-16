@@ -10,17 +10,19 @@ import Link from 'next/link'
 
 interface FinancialSummaryProps {
   bills: any[]
-  metrics: {
-    totalRevenue: number
-    pendingInvoices: number
-    monthlyExpenses: number
-  }
+  metrics: any
 }
 
-export function FinancialSummary({ bills, metrics }: FinancialSummaryProps) {
+export function FinancialSummary({ bills = [], metrics = {} }: FinancialSummaryProps) {
   const overdueBills = bills.filter(bill => 
-    bill.dueDate && isBefore(new Date(bill.dueDate), new Date())
+    bill?.dueDate && isBefore(new Date(bill.dueDate), new Date())
   )
+
+  // Use safe access with fallback values
+  const monthlyIncome = metrics?.monthlyIncome || 0
+  const monthlyExpenses = metrics?.monthlyExpenses || 0
+  const totalBudgetAllocated = metrics?.totalBudgetAllocated || 0
+  const totalBudgetSpent = metrics?.totalBudgetSpent || 0
 
   return (
     <div className="space-y-6">
@@ -39,10 +41,10 @@ export function FinancialSummary({ bills, metrics }: FinancialSummaryProps) {
                 <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center mr-3">
                   <DollarSign className="h-4 w-4 text-white" />
                 </div>
-                <span className="text-sm font-medium text-green-800">Total Revenue</span>
+                <span className="text-sm font-medium text-green-800">Monthly Income</span>
               </div>
               <span className="text-lg font-bold text-green-700">
-                ${metrics.totalRevenue.toLocaleString()}
+                ${monthlyIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
             
@@ -51,10 +53,22 @@ export function FinancialSummary({ bills, metrics }: FinancialSummaryProps) {
                 <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center mr-3">
                   <CreditCard className="h-4 w-4 text-white" />
                 </div>
-                <span className="text-sm font-medium text-orange-800">Outstanding</span>
+                <span className="text-sm font-medium text-orange-800">Monthly Expenses</span>
               </div>
               <span className="text-lg font-bold text-orange-700">
-                ${metrics.pendingInvoices.toLocaleString()}
+                ${monthlyExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+
+            <div className="flex justify-between items-center p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center">
+                <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center mr-3">
+                  <TrendingUp className="h-4 w-4 text-white" />
+                </div>
+                <span className="text-sm font-medium text-blue-800">Budget Allocated</span>
+              </div>
+              <span className="text-lg font-bold text-blue-700">
+                ${totalBudgetAllocated.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
           </div>

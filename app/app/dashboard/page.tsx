@@ -14,94 +14,114 @@ import DashboardContent from '@/components/dashboard/dashboard-content'
 import { TrendingUp, FileText, Calendar, Users } from 'lucide-react'
 
 async function getDashboardData(userId: string) {
+  const currentDate = new Date()
+  
+  // Get the most recent transaction to determine the last active month
+  const mostRecentTransaction = await prisma.transaction.findFirst({
+    where: { userId },
+    orderBy: { date: 'desc' },
+    select: { date: true }
+  })
+
+  // Use the most recent transaction month, or fall back to current month
+  let targetDate = mostRecentTransaction?.date || currentDate
+  const targetMonth = targetDate.getMonth()
+  const targetYear = targetDate.getFullYear()
+  const firstDayOfMonth = new Date(targetYear, targetMonth, 1)
+  const lastDayOfMonth = new Date(targetYear, targetMonth + 1, 0)
+
   const [
     user,
-    recentInvoices,
     recentTransactions,
-    upcomingTasks,
-    projects,
-    customers,
-    vendors,
-    bills
+    budgets,
+    bankStatements,
+    businessProfiles
   ] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId }
     }),
-    prisma.invoice.findMany({
-      where: { userId },
-      take: 5,
-      orderBy: { createdAt: 'desc' },
-      include: { customer: true }
-    }).catch(() => []),
     prisma.transaction.findMany({
       where: { userId },
       take: 10,
       orderBy: { date: 'desc' },
-      include: { categoryRelation: true }
+      include: { 
+        categoryRelation: true,
+        businessProfile: true
+      }
     }),
-    prisma.task.findMany({
-      where: { userId, status: { not: 'COMPLETED' } },
+    prisma.budget.findMany({
+      where: { 
+        userId,
+        month: targetMonth + 1,
+        year: targetYear
+      },
+      include: {
+        businessProfile: true
+      }
+    }),
+    prisma.bankStatement.findMany({
+      where: { userId },
       take: 5,
-      orderBy: { dueDate: 'asc' },
-      include: { project: true }
-    }).catch(() => []),
-    prisma.project.count({
-      where: { userId, status: { not: 'COMPLETED' } }
-    }).catch(() => 0),
-    prisma.customer.count({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        businessProfile: true,
+        _count: {
+          select: { transactions: true }
+        }
+      }
+    }),
+    prisma.businessProfile.findMany({
       where: { userId, isActive: true }
-    }).catch(() => 0),
-    prisma.vendor.count({
-      where: { userId, isActive: true }
-    }).catch(() => 0),
-    prisma.bill.findMany({
-      where: { userId, status: 'PENDING' },
-      take: 5,
-      orderBy: { dueDate: 'asc' },
-      include: { vendor: true }
-    }).catch(() => [])
+    })
   ])
 
-  // Calculate business metrics
-  const totalInvoices = await prisma.invoice.count({
-    where: { userId }
-  }).catch(() => 0)
-
-  const totalRevenue = await prisma.invoice.aggregate({
-    where: { userId, status: 'PAID' },
-    _sum: { total: true }
-  }).then(result => result._sum.total || 0).catch(() => 0)
-
-  const pendingInvoices = await prisma.invoice.aggregate({
-    where: { userId, status: { in: ['SENT', 'VIEWED', 'OVERDUE'] } },
-    _sum: { total: true }
-  }).then(result => result._sum.total || 0).catch(() => 0)
-
-  const monthlyExpenses = await prisma.transaction.aggregate({
+  // Calculate financial metrics from actual transactions for the target month
+  const incomeTransactions = await prisma.transaction.aggregate({
     where: {
       userId,
-      type: 'EXPENSE',
-      date: {
-        gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+      category: 'Income',
+      date: { 
+        gte: firstDayOfMonth,
+        lte: lastDayOfMonth
       }
     },
     _sum: { amount: true }
-  }).then(result => result._sum.amount || 0).catch(() => 0)
+  }).then(result => result._sum.amount || 0)
+
+  const expenseTransactions = await prisma.transaction.aggregate({
+    where: {
+      userId,
+      category: { not: 'Income' },
+      date: { 
+        gte: firstDayOfMonth,
+        lte: lastDayOfMonth
+      }
+    },
+    _sum: { amount: true }
+  }).then(result => result._sum.amount || 0)
+
+  // Calculate total budget allocated and spent
+  const totalBudgetAllocated = budgets.reduce((sum, b) => sum + (b.amount || 0), 0)
+  const totalBudgetSpent = budgets.reduce((sum, b) => sum + (b.spent || 0), 0)
+
+  // Count completed bank statements
+  const completedStatements = await prisma.bankStatement.count({
+    where: { userId, status: 'COMPLETED' }
+  })
 
   return {
     user,
-    recentInvoices,
     recentTransactions,
-    upcomingTasks,
-    bills,
+    budgets,
+    bankStatements,
+    businessProfiles,
     businessMetrics: {
-      totalInvoices,
-      totalRevenue,
-      pendingInvoices,
-      monthlyExpenses,
-      activeProjects: projects,
-      totalCustomers: customers,
-      totalVendors: vendors
+      monthlyIncome: incomeTransactions,
+      monthlyExpenses: expenseTransactions,
+      totalBudgetAllocated,
+      totalBudgetSpent,
+      completedStatements,
+      totalProfiles: businessProfiles.length
     }
   }
 }
@@ -135,39 +155,21 @@ export default async function DashboardPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-small text-muted-foreground font-medium flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-success"></div>
-                  Total Revenue
+                  Monthly Income
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-financial-large text-financial-positive mb-2">
-                  ${dashboardData.businessMetrics.totalRevenue.toLocaleString()}
+                  ${dashboardData.businessMetrics.monthlyIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <p className="text-small text-muted-foreground flex items-center gap-1">
                   <TrendingUp className="h-3 w-3 text-success" />
-                  All time
+                  This month
                 </p>
               </CardContent>
             </Card>
 
             <Card className="card-premium-elevated animate-slide-in-up group hover:scale-105 transition-all duration-300" style={{ animationDelay: '100ms' }}>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-small text-muted-foreground font-medium flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-warning"></div>
-                  Outstanding Invoices
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-financial-large text-warning mb-2">
-                  ${dashboardData.businessMetrics.pendingInvoices.toLocaleString()}
-                </div>
-                <p className="text-small text-muted-foreground flex items-center gap-1">
-                  <FileText className="h-3 w-3 text-warning" />
-                  {dashboardData.businessMetrics.totalInvoices} total invoices
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="card-premium-elevated animate-slide-in-up group hover:scale-105 transition-all duration-300" style={{ animationDelay: '200ms' }}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-small text-muted-foreground font-medium flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-destructive"></div>
@@ -176,7 +178,7 @@ export default async function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-financial-large text-financial-negative mb-2">
-                  ${dashboardData.businessMetrics.monthlyExpenses.toLocaleString()}
+                  ${dashboardData.businessMetrics.monthlyExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <p className="text-small text-muted-foreground flex items-center gap-1">
                   <Calendar className="h-3 w-3 text-destructive" />
@@ -185,20 +187,38 @@ export default async function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="card-premium-elevated animate-slide-in-up group hover:scale-105 transition-all duration-300" style={{ animationDelay: '300ms' }}>
+            <Card className="card-premium-elevated animate-slide-in-up group hover:scale-105 transition-all duration-300" style={{ animationDelay: '200ms' }}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-small text-muted-foreground font-medium flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-primary"></div>
-                  Active Projects
+                  Budget Allocated
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-financial-large text-primary mb-2">
-                  {dashboardData.businessMetrics.activeProjects}
+                  ${dashboardData.businessMetrics.totalBudgetAllocated.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <p className="text-small text-muted-foreground flex items-center gap-1">
-                  <Users className="h-3 w-3 text-primary" />
-                  {dashboardData.businessMetrics.totalCustomers} customers, {dashboardData.businessMetrics.totalVendors} vendors
+                  <FileText className="h-3 w-3 text-primary" />
+                  ${dashboardData.businessMetrics.totalBudgetSpent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} spent
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="card-premium-elevated animate-slide-in-up group hover:scale-105 transition-all duration-300" style={{ animationDelay: '300ms' }}>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-small text-muted-foreground font-medium flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-warning"></div>
+                  Bank Statements
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-financial-large text-warning mb-2">
+                  {dashboardData.businessMetrics.completedStatements}
+                </div>
+                <p className="text-small text-muted-foreground flex items-center gap-1">
+                  <Users className="h-3 w-3 text-warning" />
+                  {dashboardData.businessMetrics.totalProfiles} profiles
                 </p>
               </CardContent>
             </Card>
@@ -206,10 +226,9 @@ export default async function DashboardPage() {
 
           <DashboardContent
             businessMetrics={dashboardData.businessMetrics}
-            recentInvoices={dashboardData.recentInvoices}
             recentTransactions={dashboardData.recentTransactions}
-            upcomingTasks={dashboardData.upcomingTasks}
-            bills={dashboardData.bills}
+            budgets={dashboardData.budgets}
+            bankStatements={dashboardData.bankStatements}
           />
         </div>
       </div>

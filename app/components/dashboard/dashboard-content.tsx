@@ -12,18 +12,16 @@ import { RecurringChargesWidget } from '@/components/dashboard/recurring-charges
 
 interface DashboardContentProps {
   businessMetrics: any
-  recentInvoices: any[]
   recentTransactions: any[]
-  upcomingTasks: any[]
-  bills: any[]
+  budgets: any[]
+  bankStatements: any[]
 }
 
 export default function DashboardContent({
   businessMetrics,
-  recentInvoices,
   recentTransactions,
-  upcomingTasks,
-  bills
+  budgets,
+  bankStatements
 }: DashboardContentProps) {
   const [isCFOChatOpen, setIsCFOChatOpen] = useState(false)
 
@@ -40,9 +38,10 @@ export default function DashboardContent({
           <CFOInsightsWidget onOpenChat={handleOpenCFOChat} />
           
           <QuickActions />
-          <BusinessOverview metrics={businessMetrics} />
+          
+          {/* Recent Transactions */}
           <RecentActivity 
-            invoices={recentInvoices}
+            invoices={[]}
             transactions={recentTransactions}
           />
         </div>
@@ -55,9 +54,9 @@ export default function DashboardContent({
           {/* Debt Reduction Planner */}
           <DebtReductionPlanner />
           
-          <UpcomingTasks tasks={upcomingTasks} />
+          {/* Financial Summary */}
           <FinancialSummary 
-            bills={bills}
+            bills={[]}
             metrics={businessMetrics}
           />
         </div>
