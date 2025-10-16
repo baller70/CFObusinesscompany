@@ -23,24 +23,34 @@ export async function GET() {
     });
 
     if (!user || !user.businessProfiles[0]) {
-      return NextResponse.json({ charges: [] });
+      return NextResponse.json({ categories: [] });
     }
 
     const activeProfileId = user.businessProfiles[0].id;
 
-    // Fetch recurring charges
-    const charges = await prisma.recurringCharge.findMany({
+    // Fetch categories with transaction counts
+    const categories = await prisma.category.findMany({
       where: {
         businessProfileId: activeProfileId
       },
+      include: {
+        transactions: {
+          where: {
+            businessProfileId: activeProfileId
+          }
+        },
+        _count: {
+          select: { transactions: true }
+        }
+      },
       orderBy: {
-        nextDueDate: 'asc'
+        name: 'asc'
       }
     });
 
-    return NextResponse.json({ charges });
+    return NextResponse.json({ categories });
   } catch (error) {
-    console.error('Error fetching recurring charges:', error);
+    console.error('Error fetching categories:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

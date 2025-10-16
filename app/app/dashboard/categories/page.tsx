@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -7,27 +8,48 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
-import { Plus, Tag, TrendingUp, TrendingDown, DollarSign, Percent, Edit, Trash2, Search, Filter } from 'lucide-react'
+import { Plus, Tag, TrendingUp, TrendingDown, DollarSign, Percent, Edit, Trash2, Search, Filter, RefreshCw } from 'lucide-react'
 import { CategoryActions } from '@/components/categories/category-actions'
 import Link from 'next/link'
 import { toast } from 'sonner'
 
 export default function CategoriesPage() {
   const { data: session, status } = useSession() || {}
+  const [mockCategories, setMockCategories] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   
-  if (status === 'loading') return <div className="p-6">Loading...</div>
+  useEffect(() => {
+    if (session?.user?.id) {
+      fetchCategories()
+    }
+  }, [session?.user?.id])
+
+  const fetchCategories = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/categories')
+      if (response.ok) {
+        const data = await response.json()
+        setMockCategories(data.categories || [])
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error)
+      toast.error('Failed to load categories')
+    } finally {
+      setLoading(false)
+    }
+  }
+  
+  if (status === 'loading' || loading) return <div className="p-6">Loading...</div>
   
   if (!session?.user?.id) {
     redirect('/auth/signin')
   }
 
-  // Empty categories array
-  const mockCategories: any[] = []
-
-  const incomeCategories: any[] = []
-  const expenseCategories: any[] = []
-  const activeCategories = 0
-  const totalCategories = 0
+  const incomeCategories = mockCategories.filter(cat => cat.type === 'INCOME')
+  const expenseCategories = mockCategories.filter(cat => cat.type === 'EXPENSE')
+  const activeCategories = mockCategories.filter(cat => cat.isActive !== false).length
+  const totalCategories = mockCategories.length
 
   const getTotalAmount = (category: any) => {
     return category.transactions.reduce((sum: number, t: any) => sum + t.amount, 0)
@@ -54,12 +76,22 @@ export default function CategoriesPage() {
           <h1 className="text-3xl font-bold text-gray-900">Categories</h1>
           <p className="text-gray-600 mt-1">Organize and manage your income and expense categories</p>
         </div>
-        <Link href="/dashboard/categories/new">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            New Category
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={fetchCategories}
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
           </Button>
-        </Link>
+          <Link href="/dashboard/categories/new">
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              New Category
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Statistics Cards */}
