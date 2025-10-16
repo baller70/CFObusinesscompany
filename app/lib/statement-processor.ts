@@ -144,9 +144,21 @@ export async function processStatement(statementId: string) {
       }
     });
 
-    // Create transactions in database
-    console.log(`[Processing] Creating ${categorizedTransactions.length} transactions in database`);
+    // Get all business profiles for routing
+    const businessProfiles = await prisma.businessProfile.findMany({
+      where: { userId: statement.userId }
+    });
+    
+    const businessProfile = businessProfiles.find(bp => bp.type === 'BUSINESS');
+    const personalProfile = businessProfiles.find(bp => bp.type === 'PERSONAL');
+    
+    console.log(`[Processing] Found profiles - Business: ${businessProfile?.name || 'None'}, Personal: ${personalProfile?.name || 'None'}`);
+
+    // Create transactions in database with intelligent routing
+    console.log(`[Processing] Creating ${categorizedTransactions.length} transactions in database with cross-profile routing`);
     const createdTransactions = [];
+    const businessTransactions = [];
+    const personalTransactions = [];
     
     for (const catTxn of categorizedTransactions) {
       const originalTxn = catTxn.originalTransaction;
@@ -182,6 +194,23 @@ export async function processStatement(statementId: string) {
         type = 'TRANSFER';
       }
 
+      // INTELLIGENT PROFILE ROUTING
+      // Determine which profile this transaction should belong to based on AI classification
+      let targetProfileId: string | null = null;
+      const aiProfileType = catTxn.profileType?.toUpperCase();
+      
+      if (aiProfileType === 'BUSINESS' && businessProfile) {
+        targetProfileId = businessProfile.id;
+        console.log(`[Processing] 🏢 Routing to BUSINESS profile: ${originalTxn.description}`);
+      } else if (aiProfileType === 'PERSONAL' && personalProfile) {
+        targetProfileId = personalProfile.id;
+        console.log(`[Processing] 🏠 Routing to PERSONAL profile: ${originalTxn.description}`);
+      } else {
+        // Fallback to original statement profile if AI didn't classify or profile not found
+        targetProfileId = statement.businessProfileId;
+        console.log(`[Processing] ⚠️ Using original profile (no AI classification): ${originalTxn.description}`);
+      }
+
       // Find or create category
       let category = await prisma.category.findFirst({
         where: {
@@ -205,7 +234,7 @@ export async function processStatement(statementId: string) {
       const transaction = await prisma.transaction.create({
         data: {
           userId: statement.userId,
-          businessProfileId: statement.businessProfileId,
+          businessProfileId: targetProfileId, // Use AI-determined profile
           bankStatementId: statementId,
           date: new Date(originalTxn.date),
           amount: amount,
@@ -221,12 +250,26 @@ export async function processStatement(statementId: string) {
       });
       
       createdTransactions.push({ transaction, catTxn });
+      
+      // Track transactions by profile
+      if (targetProfileId === businessProfile?.id) {
+        businessTransactions.push({ transaction, catTxn });
+      } else if (targetProfileId === personalProfile?.id) {
+        personalTransactions.push({ transaction, catTxn });
+      }
     }
     
-    console.log(`[Processing] Created ${createdTransactions.length} transactions`);
+    console.log(`[Processing] ✅ Created ${createdTransactions.length} transactions total`);
+    console.log(`[Processing] 🏢 Business transactions: ${businessTransactions.length}`);
+    console.log(`[Processing] 🏠 Personal transactions: ${personalTransactions.length}`);
     
-    // Create recurring charges for recurring transactions
-    await createRecurringCharges(statement.userId, statement.businessProfileId, createdTransactions);
+    // Create recurring charges for recurring transactions in each profile
+    if (businessTransactions.length > 0 && businessProfile) {
+      await createRecurringCharges(statement.userId, businessProfile.id, businessTransactions);
+    }
+    if (personalTransactions.length > 0 && personalProfile) {
+      await createRecurringCharges(statement.userId, personalProfile.id, personalTransactions);
+    }
 
     // Update processed count and transaction count
     await prisma.bankStatement.update({
@@ -242,8 +285,15 @@ export async function processStatement(statementId: string) {
 
     console.log(`[Processing] Successfully completed processing for ${statement.fileName} - ${categorizedTransactions.length} transactions`);
 
-    // Update budgets with actual spending
-    await updateBudgetsFromTransactions(statement.userId, statement.businessProfileId);
+    // Update budgets with actual spending for each profile that has transactions
+    if (businessTransactions.length > 0 && businessProfile) {
+      console.log(`[Processing] Updating budgets for business profile`);
+      await updateBudgetsFromTransactions(statement.userId, businessProfile.id);
+    }
+    if (personalTransactions.length > 0 && personalProfile) {
+      console.log(`[Processing] Updating budgets for personal profile`);
+      await updateBudgetsFromTransactions(statement.userId, personalProfile.id);
+    }
 
     // Update user's financial metrics
     await updateFinancialMetrics(statement.userId);

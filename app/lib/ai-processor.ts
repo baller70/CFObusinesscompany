@@ -257,11 +257,15 @@ Respond with raw JSON only.`
             model: 'gpt-4.1-mini',
             messages: [{
               role: "user",
-              content: `Categorize these financial transactions. For each, provide category and confidence:
+              content: `Categorize these financial transactions. For each, provide category, confidence, AND determine if it's a business or personal/household expense:
 
 ${JSON.stringify(batch, null, 2)}
 
 Categories: Food & Dining, Transportation, Shopping, Entertainment, Bills & Utilities, Healthcare, Education, Travel, Income, Transfers, Fees & Charges, Groceries, Gas & Fuel, Restaurants, Insurance, Rent/Mortgage, Phone, Internet, Subscriptions, ATM, Interest, Dividends, Salary, Freelance, Business, Other
+
+IMPORTANT: Also classify each transaction as either "BUSINESS" or "PERSONAL":
+- BUSINESS: Office supplies, business services, professional fees, business travel, client meals, equipment, software licenses, advertising, etc.
+- PERSONAL: Personal groceries, personal dining, entertainment, personal healthcare, household bills, personal shopping, etc.
 
 Return JSON:
 {
@@ -272,7 +276,8 @@ Return JSON:
       "confidence": 0.95,
       "reasoning": "brief",
       "merchant": "merchant name",
-      "isRecurring": false
+      "isRecurring": false,
+      "profileType": "BUSINESS" or "PERSONAL"
     }
   ]
 }
