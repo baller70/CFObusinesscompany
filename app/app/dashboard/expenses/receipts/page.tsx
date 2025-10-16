@@ -8,10 +8,11 @@ import { Input } from '@/components/ui/input'
 import { 
   Plus, Receipt as ReceiptIcon, Search, Filter, FileImage, Eye, 
   Edit, Trash2, Download, ShoppingCart, DollarSign, TrendingUp,
-  Calendar, RefreshCw
+  Calendar, RefreshCw, Scan, Share2, CheckSquare, XSquare
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ReceiptDialog } from '@/components/receipt-dialog'
+import { ReceiptViewDialog } from '@/components/receipt-view-dialog'
 import { toast } from 'react-hot-toast'
 import {
   AlertDialog,
@@ -55,11 +56,14 @@ export default function ReceiptsPage() {
   const [stats, setStats] = useState<any>([])
   const [showDialog, setShowDialog] = useState(false)
   const [editingReceipt, setEditingReceipt] = useState<any>(null)
+  const [viewingReceipt, setViewingReceipt] = useState<any>(null)
   const [deleteDialog, setDeleteDialog] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [loading, setLoading] = useState(false)
   const [populating, setPopulating] = useState(false)
+  const [selectedReceipts, setSelectedReceipts] = useState<Set<string>>(new Set())
+  const [bulkSelectMode, setBulkSelectMode] = useState(false)
 
   useEffect(() => {
     fetchReceipts()
@@ -89,13 +93,14 @@ export default function ReceiptsPage() {
   const filterReceipts = () => {
     let filtered = receipts
 
-    // Filter by search term
+    // Filter by search term (including OCR text)
     if (searchTerm) {
       const term = searchTerm.toLowerCase()
       filtered = filtered.filter(receipt =>
         (receipt.vendor?.toLowerCase() || '').includes(term) ||
         (receipt.description?.toLowerCase() || '').includes(term) ||
         (receipt.category?.toLowerCase() || '').includes(term) ||
+        (receipt.ocrText?.toLowerCase() || '').includes(term) ||
         receipt.amount.toString().includes(term)
       )
     }
@@ -106,6 +111,65 @@ export default function ReceiptsPage() {
     }
 
     setFilteredReceipts(filtered)
+  }
+
+  const handleViewReceipt = (receipt: any) => {
+    setViewingReceipt(receipt)
+  }
+
+  const toggleReceiptSelection = (receiptId: string) => {
+    const newSelection = new Set(selectedReceipts)
+    if (newSelection.has(receiptId)) {
+      newSelection.delete(receiptId)
+    } else {
+      newSelection.add(receiptId)
+    }
+    setSelectedReceipts(newSelection)
+  }
+
+  const selectAllReceipts = () => {
+    const allIds = new Set(filteredReceipts.map(r => r.id))
+    setSelectedReceipts(allIds)
+  }
+
+  const deselectAllReceipts = () => {
+    setSelectedReceipts(new Set())
+  }
+
+  const handleBulkShare = async () => {
+    if (selectedReceipts.size === 0) {
+      toast.error('No receipts selected')
+      return
+    }
+
+    try {
+      const response = await fetch('/api/personal/receipts/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ receiptIds: Array.from(selectedReceipts) })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        toast.success(`Generated share links for ${data.receipts.length} receipt(s)`)
+        
+        // Create shareable text
+        const shareText = data.receipts.map((r: any) => 
+          `${r.vendor} - $${r.amount} (${format(new Date(r.date), 'MMM d, yyyy')})`
+        ).join('\n')
+        
+        await navigator.clipboard.writeText(shareText)
+        toast.success('Receipt details copied to clipboard')
+        
+        deselectAllReceipts()
+        setBulkSelectMode(false)
+      } else {
+        toast.error('Failed to generate share links')
+      }
+    } catch (error) {
+      console.error('Error sharing receipts:', error)
+      toast.error('An error occurred')
+    }
   }
 
   const handleCreateReceipt = () => {
@@ -187,22 +251,55 @@ export default function ReceiptsPage() {
         <div>
           <h1 className="text-3xl font-bold">Receipt Manager</h1>
           <p className="text-muted-foreground">
-            Track all your shopping receipts and expenses
+            Track all your shopping receipts and expenses with OCR scanning
           </p>
         </div>
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            onClick={handlePopulateFromStatements}
-            disabled={populating}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${populating ? 'animate-spin' : ''}`} />
-            {populating ? 'Importing...' : 'Import from Statements'}
-          </Button>
-          <Button onClick={handleCreateReceipt}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Receipt
-          </Button>
+          {bulkSelectMode ? (
+            <>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setBulkSelectMode(false)
+                  deselectAllReceipts()
+                }}
+              >
+                <XSquare className="h-4 w-4 mr-2" />
+                Cancel
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleBulkShare}
+                disabled={selectedReceipts.size === 0}
+              >
+                <Share2 className="h-4 w-4 mr-2" />
+                Share Selected ({selectedReceipts.size})
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button 
+                variant="outline" 
+                onClick={handlePopulateFromStatements}
+                disabled={populating}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${populating ? 'animate-spin' : ''}`} />
+                {populating ? 'Importing...' : 'Import from Statements'}
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => setBulkSelectMode(true)}
+                disabled={filteredReceipts.length === 0}
+              >
+                <CheckSquare className="h-4 w-4 mr-2" />
+                Select Multiple
+              </Button>
+              <Button onClick={handleCreateReceipt}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Receipt
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -264,7 +361,7 @@ export default function ReceiptsPage() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
-                placeholder="Search by vendor, description, or amount..."
+                placeholder="Search by vendor, description, amount, or OCR text..."
                 className="pl-10"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -284,6 +381,30 @@ export default function ReceiptsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Bulk Selection Banner */}
+      {bulkSelectMode && (
+        <Card className="bg-blue-50 border-blue-200">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <CheckSquare className="h-5 w-5 text-blue-600" />
+                <span className="font-medium text-blue-900">
+                  {selectedReceipts.size} receipt(s) selected
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={selectAllReceipts}>
+                  Select All ({filteredReceipts.length})
+                </Button>
+                <Button size="sm" variant="outline" onClick={deselectAllReceipts}>
+                  Deselect All
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Top Categories */}
       {topCategories.length > 0 && (
@@ -330,8 +451,24 @@ export default function ReceiptsPage() {
               {filteredReceipts.map((receipt) => (
                 <div 
                   key={receipt.id} 
-                  className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                  className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${
+                    selectedReceipts.has(receipt.id) ? 'ring-2 ring-blue-500 bg-blue-50' : ''
+                  }`}
                 >
+                  {bulkSelectMode && (
+                    <div className="mb-3">
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedReceipts.has(receipt.id)}
+                          onChange={() => toggleReceiptSelection(receipt.id)}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                        <span className="text-sm font-medium">Select this receipt</span>
+                      </label>
+                    </div>
+                  )}
+                  
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center space-x-2">
                       <FileImage className="h-5 w-5 text-gray-400" />
@@ -339,9 +476,19 @@ export default function ReceiptsPage() {
                         {format(new Date(receipt.date), 'MMM d, yyyy')}
                       </span>
                     </div>
-                    {receipt.taxDeductible && (
-                      <Badge variant="outline" className="text-xs">Tax Deductible</Badge>
-                    )}
+                    <div className="flex gap-1">
+                      {receipt.processed && receipt.ocrText && (
+                        <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                          <Scan className="h-3 w-3 mr-1" />
+                          OCR
+                        </Badge>
+                      )}
+                      {receipt.taxDeductible && (
+                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                          Tax
+                        </Badge>
+                      )}
+                    </div>
                   </div>
 
                   {receipt.vendor && (
@@ -367,7 +514,22 @@ export default function ReceiptsPage() {
                     </div>
                   )}
 
+                  {receipt.confidence && (
+                    <div className="mb-3 text-xs text-gray-500">
+                      Confidence: {(receipt.confidence * 100).toFixed(0)}%
+                    </div>
+                  )}
+
                   <div className="flex gap-2 mt-3 pt-3 border-t">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleViewReceipt(receipt)}
+                      className="flex-1"
+                    >
+                      <Eye className="h-3 w-3 mr-1" />
+                      View
+                    </Button>
                     <Button 
                       variant="outline" 
                       size="sm"
@@ -429,6 +591,12 @@ export default function ReceiptsPage() {
           setEditingReceipt(null)
         }}
         receipt={editingReceipt}
+      />
+
+      <ReceiptViewDialog
+        open={!!viewingReceipt}
+        onClose={() => setViewingReceipt(null)}
+        receipt={viewingReceipt}
       />
 
       <AlertDialog open={!!deleteDialog} onOpenChange={() => setDeleteDialog(null)}>
