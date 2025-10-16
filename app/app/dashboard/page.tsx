@@ -179,8 +179,8 @@ export default async function DashboardPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-financial-large text-financial-positive mb-2">
-                  ${dashboardData.businessMetrics.monthlyIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                <div className="text-financial-large text-green-600 mb-2">
+                  +${dashboardData.businessMetrics.monthlyIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <p className="text-small text-muted-foreground flex items-center gap-1">
                   <TrendingUp className="h-3 w-3 text-success" />
@@ -197,8 +197,8 @@ export default async function DashboardPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-financial-large text-financial-negative mb-2">
-                  ${dashboardData.businessMetrics.monthlyExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                <div className="text-financial-large text-red-600 mb-2">
+                  -${dashboardData.businessMetrics.monthlyExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <p className="text-small text-muted-foreground flex items-center gap-1">
                   <Calendar className="h-3 w-3 text-destructive" />

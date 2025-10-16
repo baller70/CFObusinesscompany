@@ -90,7 +90,7 @@ export function FinancialOverview({ metrics, userId }: FinancialOverviewProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(metrics?.monthlyIncome)}
+              +{formatCurrency(metrics?.monthlyIncome)}
             </div>
             <p className="text-xs text-muted-foreground">
               Average over last 3 months
@@ -106,7 +106,7 @@ export function FinancialOverview({ metrics, userId }: FinancialOverviewProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {formatCurrency(metrics?.monthlyExpenses)}
+              -{formatCurrency(metrics?.monthlyExpenses)}
             </div>
             <p className="text-xs text-muted-foreground">
               Average over last 3 months
