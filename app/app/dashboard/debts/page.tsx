@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -18,28 +18,119 @@ import {
   Clock,
   Calculator,
   FileText,
-  Target
+  Target,
+  Loader2
 } from 'lucide-react'
 import { format, differenceInMonths } from 'date-fns'
 import { toast } from 'sonner'
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 export default function DebtsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedStrategy, setSelectedStrategy] = useState('avalanche')
+  const [debts, setDebts] = useState<any[]>([])
+  const [statistics, setStatistics] = useState({
+    totalDebt: 0,
+    totalMonthlyPayments: 0,
+    highestInterestRate: 0,
+    averageInterestRate: 0
+  })
+  const [loading, setLoading] = useState(true)
+  const [showAddDialog, setShowAddDialog] = useState(false)
+  const [newDebt, setNewDebt] = useState({
+    name: '',
+    balance: '',
+    interestRate: '',
+    minimumPayment: '',
+    dueDate: '',
+    type: 'CREDIT_CARD'
+  })
   const itemsPerPage = 10
 
-  // All data will come from the database - no mock data
-  const mockDebts: any[] = []
+  useEffect(() => {
+    fetchDebts()
+  }, [])
 
-  const totalPages = Math.ceil(mockDebts.length / itemsPerPage)
+  const fetchDebts = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/debts')
+      if (response.ok) {
+        const data = await response.json()
+        setDebts(data.debts || [])
+        setStatistics(data.statistics || {
+          totalDebt: 0,
+          totalMonthlyPayments: 0,
+          highestInterestRate: 0,
+          averageInterestRate: 0
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching debts:', error)
+      toast.error('Failed to load debts')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const addDebt = async () => {
+    try {
+      const response = await fetch('/api/debts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newDebt)
+      })
+
+      if (response.ok) {
+        toast.success('Debt added successfully')
+        setShowAddDialog(false)
+        setNewDebt({
+          name: '',
+          balance: '',
+          interestRate: '',
+          minimumPayment: '',
+          dueDate: '',
+          type: 'CREDIT_CARD'
+        })
+        fetchDebts()
+      } else {
+        toast.error('Failed to add debt')
+      }
+    } catch (error) {
+      console.error('Error adding debt:', error)
+      toast.error('Failed to add debt')
+    }
+  }
+
+  const deleteDebt = async (id: string) => {
+    try {
+      const response = await fetch(`/api/debts/${id}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        toast.success('Debt removed successfully')
+        fetchDebts()
+      } else {
+        toast.error('Failed to remove debt')
+      }
+    } catch (error) {
+      console.error('Error removing debt:', error)
+      toast.error('Failed to remove debt')
+    }
+  }
+
+  const totalPages = Math.ceil(debts.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
-  const currentDebts = mockDebts.slice(startIndex, startIndex + itemsPerPage)
+  const currentDebts = debts.slice(startIndex, startIndex + itemsPerPage)
 
-  const totalDebt = 0
-  const totalMonthlyPayments = 0
-  const highestInterestRate = 0
-  const averageInterestRate = 0
+  const totalDebt = statistics.totalDebt
+  const totalMonthlyPayments = statistics.totalMonthlyPayments
+  const highestInterestRate = statistics.highestInterestRate
+  const averageInterestRate = statistics.averageInterestRate
 
   const getDebtTypeIcon = (type: string) => {
     switch (type) {
@@ -95,15 +186,102 @@ export default function DebtsPage() {
             <Calculator className="h-4 w-4 mr-2" />
             Generate Payment Plan
           </Button>
-          <Button
-            onClick={() => {
-              toast.info('Add debt form would open here')
-              // In a real app, this would open add debt form
-            }}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Debt
-          </Button>
+          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Debt
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Add New Debt</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="name">Debt Name</Label>
+                  <Input
+                    id="name"
+                    placeholder="e.g., Chase Credit Card"
+                    value={newDebt.name}
+                    onChange={(e) => setNewDebt({ ...newDebt, name: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="type">Debt Type</Label>
+                  <Select value={newDebt.type} onValueChange={(value) => setNewDebt({ ...newDebt, type: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CREDIT_CARD">Credit Card</SelectItem>
+                      <SelectItem value="LINE_OF_CREDIT">Line of Credit</SelectItem>
+                      <SelectItem value="TERM_LOAN">Term Loan</SelectItem>
+                      <SelectItem value="SBA_LOAN">SBA Loan</SelectItem>
+                      <SelectItem value="MORTGAGE">Mortgage</SelectItem>
+                      <SelectItem value="AUTO_LOAN">Auto Loan</SelectItem>
+                      <SelectItem value="STUDENT_LOAN">Student Loan</SelectItem>
+                      <SelectItem value="PERSONAL_LOAN">Personal Loan</SelectItem>
+                      <SelectItem value="OTHER">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="balance">Current Balance</Label>
+                    <Input
+                      id="balance"
+                      type="number"
+                      placeholder="0.00"
+                      value={newDebt.balance}
+                      onChange={(e) => setNewDebt({ ...newDebt, balance: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="interestRate">Interest Rate (%)</Label>
+                    <Input
+                      id="interestRate"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={newDebt.interestRate}
+                      onChange={(e) => setNewDebt({ ...newDebt, interestRate: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="minimumPayment">Minimum Payment</Label>
+                    <Input
+                      id="minimumPayment"
+                      type="number"
+                      placeholder="0.00"
+                      value={newDebt.minimumPayment}
+                      onChange={(e) => setNewDebt({ ...newDebt, minimumPayment: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="dueDate">Due Date (Day of Month)</Label>
+                    <Input
+                      id="dueDate"
+                      type="number"
+                      min="1"
+                      max="31"
+                      placeholder="1"
+                      value={newDebt.dueDate}
+                      onChange={(e) => setNewDebt({ ...newDebt, dueDate: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowAddDialog(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={addDebt}>Add Debt</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -117,7 +295,7 @@ export default function DebtsPage() {
             <div className="text-2xl font-bold text-red-600">
               ${totalDebt.toLocaleString()}
             </div>
-            <p className="text-xs text-gray-500 mt-1">Across {mockDebts.length} accounts</p>
+            <p className="text-xs text-gray-500 mt-1">Across {debts.length} accounts</p>
           </CardContent>
         </Card>
 
@@ -172,100 +350,106 @@ export default function DebtsPage() {
               <CardTitle>Current Debts</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                {currentDebts.map((debt) => {
-                  const payoffMonths = calculatePayoffTime(debt.currentBalance, debt.monthlyPayment, debt.interestRate)
-                  const progressPercentage = ((debt.originalAmount - debt.currentBalance) / debt.originalAmount) * 100
+              {loading ? (
+                <div className="flex justify-center items-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                </div>
+              ) : currentDebts.length === 0 ? (
+                <div className="text-center py-12">
+                  <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Debts Tracked</h3>
+                  <p className="text-gray-600 mb-4">Start tracking your debts to get insights and payoff strategies</p>
+                  <Button onClick={() => setShowAddDialog(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Your First Debt
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {currentDebts.map((debt) => {
+                    const payoffMonths = calculatePayoffTime(debt.balance, debt.minimumPayment, debt.interestRate)
+                    const progressPercentage = 0 // No original amount stored, so we can't calculate progress
 
-                  return (
-                    <div key={debt.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-start space-x-4">
-                          {getDebtTypeIcon(debt.type)}
-                          <div>
-                            <h3 className="text-lg font-semibold text-gray-900">{debt.name}</h3>
-                            <p className="text-sm text-gray-600">{debt.creditor}</p>
+                    return (
+                      <div key={debt.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-start space-x-4">
+                            {getDebtTypeIcon(debt.type)}
+                            <div>
+                              <h3 className="text-lg font-semibold text-gray-900">{debt.name}</h3>
+                              <p className="text-sm text-gray-600">{debt.businessProfile?.businessName || 'Personal'}</p>
+                            </div>
+                          </div>
+                          <div className="flex space-x-2">
+                            <Badge variant="outline">{debt.type.replace(/_/g, ' ')}</Badge>
                           </div>
                         </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                          <div className="text-center p-3 bg-red-50 rounded-lg">
+                            <div className="text-sm text-gray-600">Current Balance</div>
+                            <div className="text-lg font-bold text-red-600">
+                              ${debt.balance.toLocaleString()}
+                            </div>
+                          </div>
+                          
+                          <div className="text-center p-3 bg-blue-50 rounded-lg">
+                            <div className="text-sm text-gray-600">Monthly Payment</div>
+                            <div className="text-lg font-bold text-blue-600">
+                              ${debt.minimumPayment.toLocaleString()}
+                            </div>
+                          </div>
+                          
+                          <div className="text-center p-3 bg-orange-50 rounded-lg">
+                            <div className="text-sm text-gray-600">Interest Rate</div>
+                            <div className="text-lg font-bold text-orange-600">
+                              {debt.interestRate}%
+                            </div>
+                          </div>
+                          
+                          <div className="text-center p-3 bg-green-50 rounded-lg">
+                            <div className="text-sm text-gray-600">Payoff Time</div>
+                            <div className="text-lg font-bold text-green-600">
+                              {isFinite(payoffMonths) ? `${payoffMonths} months` : 'N/A'}
+                            </div>
+                          </div>
+                        </div>
+
                         <div className="flex space-x-2">
-                          {getPriorityBadge(debt.priority)}
-                          <Badge variant="outline">{debt.type.replace('_', ' ')}</Badge>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => toast.info(`Viewing details for ${debt.name}`)}
+                          >
+                            View Details
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => toast.success(`Payment recorded for ${debt.name}`)}
+                          >
+                            Record Payment
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              if (confirm(`Are you sure you want to remove ${debt.name}?`)) {
+                                deleteDebt(debt.id)
+                              }
+                            }}
+                          >
+                            Remove
+                          </Button>
                         </div>
                       </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                        <div className="text-center p-3 bg-red-50 rounded-lg">
-                          <div className="text-sm text-gray-600">Current Balance</div>
-                          <div className="text-lg font-bold text-red-600">
-                            ${debt.currentBalance.toLocaleString()}
-                          </div>
-                        </div>
-                        
-                        <div className="text-center p-3 bg-blue-50 rounded-lg">
-                          <div className="text-sm text-gray-600">Monthly Payment</div>
-                          <div className="text-lg font-bold text-blue-600">
-                            ${debt.monthlyPayment.toLocaleString()}
-                          </div>
-                        </div>
-                        
-                        <div className="text-center p-3 bg-orange-50 rounded-lg">
-                          <div className="text-sm text-gray-600">Interest Rate</div>
-                          <div className="text-lg font-bold text-orange-600">
-                            {debt.interestRate}%
-                          </div>
-                        </div>
-                        
-                        <div className="text-center p-3 bg-green-50 rounded-lg">
-                          <div className="text-sm text-gray-600">Payoff Time</div>
-                          <div className="text-lg font-bold text-green-600">
-                            {payoffMonths} months
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mb-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-gray-700">Payoff Progress</span>
-                          <span className="text-sm font-bold text-gray-900">
-                            {progressPercentage.toFixed(1)}%
-                          </span>
-                        </div>
-                        <Progress value={progressPercentage} className="h-2" />
-                        <div className="flex justify-between text-xs text-gray-500 mt-1">
-                          <span>Original: ${debt.originalAmount.toLocaleString()}</span>
-                          <span>Remaining: ${debt.currentBalance.toLocaleString()}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex space-x-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => toast.info(`Viewing details for ${debt.name}`)}
-                        >
-                          View Details
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => toast.success(`Payment recorded for ${debt.name}`)}
-                        >
-                          Record Payment
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => toast.info(`Editing ${debt.name}`)}
-                        >
-                          Edit
-                        </Button>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+                    )
+                  })}
+                </div>
+              )}
 
               {/* Pagination */}
+              {!loading && currentDebts.length > 0 && totalPages > 1 && (
               <div className="mt-6 flex justify-center">
                 <Pagination>
                   <PaginationContent>
@@ -309,6 +493,7 @@ export default function DebtsPage() {
                   </PaginationContent>
                 </Pagination>
               </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -379,23 +564,25 @@ export default function DebtsPage() {
                     <div className="text-sm text-blue-700">Total interest savings</div>
                   </div>
 
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-gray-900">Recommended Order:</h4>
-                    {mockDebts
-                      .sort((a, b) => selectedStrategy === 'avalanche' ? b.interestRate - a.interestRate : a.currentBalance - b.currentBalance)
-                      .slice(0, 3)
-                      .map((debt, index) => (
-                        <div key={debt.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                          <span className="text-sm">
-                            {index + 1}. {debt.name}
-                          </span>
-                          <span className="text-sm font-medium">
-                            {selectedStrategy === 'avalanche' ? `${debt.interestRate}%` : `$${debt.currentBalance.toLocaleString()}`}
-                          </span>
-                        </div>
-                      ))
-                    }
-                  </div>
+                  {debts.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-gray-900">Recommended Order:</h4>
+                      {debts
+                        .sort((a, b) => selectedStrategy === 'avalanche' ? b.interestRate - a.interestRate : a.balance - b.balance)
+                        .slice(0, 3)
+                        .map((debt, index) => (
+                          <div key={debt.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                            <span className="text-sm">
+                              {index + 1}. {debt.name}
+                            </span>
+                            <span className="text-sm font-medium">
+                              {selectedStrategy === 'avalanche' ? `${debt.interestRate}%` : `$${debt.balance.toLocaleString()}`}
+                            </span>
+                          </div>
+                        ))
+                      }
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
