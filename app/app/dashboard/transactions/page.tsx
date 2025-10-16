@@ -295,7 +295,7 @@ export default function TransactionsPage() {
                               {format(new Date(transaction.date), 'MMM d, yyyy')}
                             </div>
                             <span>{transaction.category || 'Uncategorized'}</span>
-                            {transaction.account && <span>{transaction.account.name || transaction.account}</span>}
+                            {transaction.account && <span>{transaction.account?.name || "N/A" || transaction.account}</span>}
                             {transaction.merchant && <span>{transaction.merchant}</span>}
                             {transaction.reference && (
                               <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
@@ -384,7 +384,7 @@ export default function TransactionsPage() {
                           <div className="text-lg font-bold text-green-600">
                             +${transaction.amount.toLocaleString()}
                           </div>
-                          <div className="text-sm text-gray-600">{transaction.account.name}</div>
+                          <div className="text-sm text-gray-600">{transaction.account?.name || 'N/A'}</div>
                         </div>
                       </div>
                     </div>
@@ -436,7 +436,7 @@ export default function TransactionsPage() {
                           <div className="text-lg font-bold text-red-600">
                             ${Math.abs(transaction.amount).toLocaleString()}
                           </div>
-                          <div className="text-sm text-gray-600">{transaction.account.name}</div>
+                          <div className="text-sm text-gray-600">{transaction.account?.name || "N/A"}</div>
                         </div>
 
                         {transaction.receiptUrl && (
@@ -445,7 +445,7 @@ export default function TransactionsPage() {
                             size="sm"
                             onClick={() => {
                               // Simulate receipt download
-                              const receiptContent = `Expense Receipt\n\nDate: ${format(transaction.date, 'MMM d, yyyy')}\nDescription: ${transaction.description}\nAmount: $${Math.abs(transaction.amount).toLocaleString()}\nCategory: ${transaction.category?.name || 'N/A'}\nVendor: ${transaction.vendor?.name || 'N/A'}\nAccount: ${transaction.account.name}\nReference: ${transaction.reference || 'N/A'}\n\nThis is a simulated receipt download.`
+                              const receiptContent = `Expense Receipt\n\nDate: ${format(transaction.date, 'MMM d, yyyy')}\nDescription: ${transaction.description}\nAmount: $${Math.abs(transaction.amount).toLocaleString()}\nCategory: ${transaction.category?.name || 'N/A'}\nVendor: ${transaction.vendor?.name || 'N/A'}\nAccount: ${transaction.account?.name || "N/A"}\nReference: ${transaction.reference || 'N/A'}\n\nThis is a simulated receipt download.`
                               
                               const blob = new Blob([receiptContent], { type: 'text/plain' })
                               const url = URL.createObjectURL(blob)
@@ -513,7 +513,7 @@ export default function TransactionsPage() {
                           <div className="text-lg font-bold text-blue-600">
                             ${Math.abs(transaction.amount).toLocaleString()}
                           </div>
-                          <div className="text-sm text-gray-600">From: {transaction.account.name}</div>
+                          <div className="text-sm text-gray-600">From: {transaction.account?.name || "N/A"}</div>
                         </div>
                       </div>
                     </div>

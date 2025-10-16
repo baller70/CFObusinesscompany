@@ -127,14 +127,39 @@ export async function processStatement(statementId: string) {
 
     // Create transactions in database
     console.log(`[Processing] Creating ${categorizedTransactions.length} transactions in database`);
-    const transactionPromises = categorizedTransactions.map(async (catTxn: any) => {
+    const createdTransactions = [];
+    
+    for (const catTxn of categorizedTransactions) {
       const originalTxn = catTxn.originalTransaction;
       
-      // Determine transaction type based on amount
+      // Determine transaction type based on debit/credit from AI
+      // Debit = money leaving account = EXPENSE
+      // Credit = money entering account = INCOME
       let type: 'INCOME' | 'EXPENSE' | 'TRANSFER' = 'EXPENSE';
-      if (originalTxn.amount > 0) {
+      let amount = Math.abs(originalTxn.amount || 0);
+      
+      // Check AI's type field first
+      if (originalTxn.type) {
+        const txnType = originalTxn.type.toLowerCase();
+        if (txnType === 'credit' || txnType === 'deposit') {
+          type = 'INCOME';
+        } else if (txnType === 'debit' || txnType === 'withdrawal') {
+          type = 'EXPENSE';
+        }
+      }
+      
+      // Check category hints
+      const categoryLower = catTxn.suggestedCategory?.toLowerCase() || '';
+      if (categoryLower.includes('income') || categoryLower.includes('salary') || 
+          categoryLower.includes('freelance') || categoryLower.includes('dividend')) {
         type = 'INCOME';
-      } else if (originalTxn.description?.toLowerCase().includes('transfer')) {
+      } else if (categoryLower.includes('transfer')) {
+        type = 'TRANSFER';
+      }
+      
+      // Check description hints
+      const descLower = originalTxn.description?.toLowerCase() || '';
+      if (descLower.includes('transfer')) {
         type = 'TRANSFER';
       }
 
@@ -158,13 +183,13 @@ export async function processStatement(statementId: string) {
         });
       }
 
-      return prisma.transaction.create({
+      const transaction = await prisma.transaction.create({
         data: {
           userId: statement.userId,
           businessProfileId: statement.businessProfileId,
           bankStatementId: statementId,
           date: new Date(originalTxn.date),
-          amount: Math.abs(originalTxn.amount),
+          amount: amount,
           description: originalTxn.description || 'Unknown transaction',
           merchant: catTxn.merchant,
           category: category.name,
@@ -175,9 +200,14 @@ export async function processStatement(statementId: string) {
           isRecurring: catTxn.isRecurring || false
         }
       });
-    });
-
-    await Promise.all(transactionPromises);
+      
+      createdTransactions.push({ transaction, catTxn });
+    }
+    
+    console.log(`[Processing] Created ${createdTransactions.length} transactions`);
+    
+    // Create recurring charges for recurring transactions
+    await createRecurringCharges(statement.userId, statement.businessProfileId, createdTransactions);
 
     // Update processed count and transaction count
     await prisma.bankStatement.update({
@@ -342,6 +372,91 @@ async function updateBudgetsFromTransactions(userId: string, businessProfileId?:
     console.log('[Processing] Budget update completed for all months');
   } catch (error) {
     console.error('[Processing] Error updating budgets:', error);
+    // Don't throw - this is not critical
+  }
+}
+
+async function createRecurringCharges(
+  userId: string, 
+  businessProfileId: string | null | undefined, 
+  transactionsData: Array<{ transaction: any; catTxn: any }>
+) {
+  try {
+    console.log(`[Processing] Detecting recurring charges from ${transactionsData.length} transactions`);
+    
+    // Filter to only recurring expenses
+    const recurringExpenses = transactionsData.filter(
+      ({ transaction, catTxn }) => 
+        catTxn.isRecurring && 
+        transaction.type === 'EXPENSE'
+    );
+    
+    console.log(`[Processing] Found ${recurringExpenses.length} recurring expense transactions`);
+    
+    for (const { transaction, catTxn } of recurringExpenses) {
+      // Check if this recurring charge already exists
+      const existingCharge = await prisma.recurringCharge.findFirst({
+        where: {
+          userId,
+          name: {
+            contains: catTxn.merchant || transaction.description.substring(0, 30),
+            mode: 'insensitive'
+          }
+        }
+      });
+      
+      if (!existingCharge) {
+        // Determine frequency based on category or description
+        let frequency: 'MONTHLY' | 'WEEKLY' | 'QUARTERLY' | 'ANNUALLY' = 'MONTHLY';
+        const desc = transaction.description.toLowerCase();
+        
+        if (desc.includes('monthly') || desc.includes('subscription')) {
+          frequency = 'MONTHLY';
+        } else if (desc.includes('weekly')) {
+          frequency = 'WEEKLY';
+        } else if (desc.includes('quarterly')) {
+          frequency = 'QUARTERLY';
+        } else if (desc.includes('annual') || desc.includes('yearly')) {
+          frequency = 'ANNUALLY';
+        }
+        
+        // Create the recurring charge
+        const nextDue = new Date(transaction.date);
+        // Set next due date based on frequency
+        if (frequency === 'WEEKLY') {
+          nextDue.setDate(nextDue.getDate() + 7);
+        } else if (frequency === 'MONTHLY') {
+          nextDue.setMonth(nextDue.getMonth() + 1);
+        } else if (frequency === 'QUARTERLY') {
+          nextDue.setMonth(nextDue.getMonth() + 3);
+        } else if (frequency === 'ANNUALLY') {
+          nextDue.setFullYear(nextDue.getFullYear() + 1);
+        }
+        
+        await prisma.recurringCharge.create({
+          data: {
+            userId,
+            businessProfileId,
+            name: catTxn.merchant || transaction.description,
+            amount: transaction.amount,
+            frequency,
+            category: transaction.category,
+            nextDueDate: nextDue,
+            annualAmount: frequency === 'ANNUALLY' ? transaction.amount : 
+                         frequency === 'MONTHLY' ? transaction.amount * 12 :
+                         frequency === 'QUARTERLY' ? transaction.amount * 4 :
+                         transaction.amount * 52,
+            isActive: true
+          }
+        });
+        
+        console.log(`[Processing] Created recurring charge: ${catTxn.merchant || transaction.description} - $${transaction.amount} ${frequency}`);
+      }
+    }
+    
+    console.log('[Processing] Recurring charges creation completed');
+  } catch (error) {
+    console.error('[Processing] Error creating recurring charges:', error);
     // Don't throw - this is not critical
   }
 }
