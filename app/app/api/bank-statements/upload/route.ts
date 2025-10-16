@@ -20,9 +20,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No files provided' }, { status: 400 });
     }
 
+    // Get optional parameters
+    const businessProfileId = formData.get('businessProfileId') as string | null;
+    const sourceTypes = formData.getAll('sourceTypes') as string[];
+
     const uploadResults = [];
 
-    for (const file of files) {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      
       // Validate file type
       const allowedTypes = ['text/csv', 'application/pdf', 'application/vnd.ms-excel'];
       const allowedExtensions = ['.csv', '.pdf', '.xls', '.xlsx'];
@@ -52,16 +58,21 @@ export async function POST(request: NextRequest) {
 
         // Determine file type
         const fileType = fileExtension === '.pdf' ? 'PDF' : 'CSV';
+        
+        // Determine source type (BANK or CREDIT_CARD)
+        const sourceType = sourceTypes[i] || 'BANK';
 
         // Create database record
         const bankStatement = await prisma.bankStatement.create({
           data: {
             userId: session.user.id,
+            businessProfileId: businessProfileId,
             fileName: file.name,
             originalName: file.name,
             cloudStoragePath,
             fileType: fileType as any,
             fileSize: file.size,
+            sourceType: sourceType as any,
             status: 'PENDING',
             processingStage: 'UPLOADED'
           }

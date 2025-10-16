@@ -27,14 +27,17 @@ export async function processStatement(statementId: string) {
     // Get statement from database
     const statement = await prisma.bankStatement.findUnique({
       where: { id: statementId },
-      include: { user: true }
+      include: { 
+        user: true,
+        businessProfile: true
+      }
     });
 
     if (!statement) {
       throw new Error('Statement not found');
     }
 
-    console.log(`[Processing] Starting processing for ${statement.fileName}`);
+    console.log(`[Processing] Starting processing for ${statement.fileName} (Business Profile: ${statement.businessProfile?.name || 'None'})`);
 
     // Update status to processing
     await prisma.bankStatement.update({
@@ -158,6 +161,7 @@ export async function processStatement(statementId: string) {
       return prisma.transaction.create({
         data: {
           userId: statement.userId,
+          businessProfileId: statement.businessProfileId,
           bankStatementId: statementId,
           date: new Date(originalTxn.date),
           amount: Math.abs(originalTxn.amount),
@@ -175,21 +179,22 @@ export async function processStatement(statementId: string) {
 
     await Promise.all(transactionPromises);
 
-    // Update processed count
+    // Update processed count and transaction count
     await prisma.bankStatement.update({
       where: { id: statementId },
       data: {
         processedCount: categorizedTransactions.length,
+        transactionCount: categorizedTransactions.length,
         processingStage: 'COMPLETED',
         status: 'COMPLETED',
         processedAt: new Date()
       }
     });
 
-    console.log(`[Processing] Successfully completed processing for ${statement.fileName}`);
+    console.log(`[Processing] Successfully completed processing for ${statement.fileName} - ${categorizedTransactions.length} transactions`);
 
     // Update budgets with actual spending
-    await updateBudgetsFromTransactions(statement.userId);
+    await updateBudgetsFromTransactions(statement.userId, statement.businessProfileId);
 
     // Update user's financial metrics
     await updateFinancialMetrics(statement.userId);
@@ -221,95 +226,120 @@ export async function processStatement(statementId: string) {
   }
 }
 
-async function updateBudgetsFromTransactions(userId: string) {
+async function updateBudgetsFromTransactions(userId: string, businessProfileId?: string | null) {
   try {
-    console.log('[Processing] Updating budgets from transactions');
+    console.log(`[Processing] Updating budgets from transactions (Business Profile: ${businessProfileId || 'All'})`);
     
-    const now = new Date();
-    const currentMonth = now.getMonth() + 1;
-    const currentYear = now.getFullYear();
+    // Get all transactions for this business profile (or all if no profile specified)
+    const whereClause: any = {
+      userId
+    };
     
-    // Get all transactions for the current month
-    const startOfMonth = new Date(currentYear, currentMonth - 1, 1);
-    const endOfMonth = new Date(currentYear, currentMonth, 0, 23, 59, 59);
+    // Filter by business profile if provided
+    if (businessProfileId) {
+      whereClause.businessProfileId = businessProfileId;
+    }
     
-    const monthlyTransactions = await prisma.transaction.findMany({
-      where: {
-        userId,
-        date: {
-          gte: startOfMonth,
-          lte: endOfMonth
-        }
-      },
+    const allTransactions = await prisma.transaction.findMany({
+      where: whereClause,
       include: {
         categoryRelation: true
       }
     });
     
-    console.log(`[Processing] Found ${monthlyTransactions.length} transactions for ${currentMonth}/${currentYear}`);
+    console.log(`[Processing] Found ${allTransactions.length} total transactions`);
     
-    // Group transactions by category and calculate spending
-    const categorySpending = new Map<string, { amount: number; type: 'INCOME' | 'EXPENSE' }>();
+    // Group transactions by month/year
+    const transactionsByMonth = new Map<string, typeof allTransactions>();
     
-    for (const txn of monthlyTransactions) {
-      const category = txn.category;
-      const type = txn.type;
+    for (const txn of allTransactions) {
+      const month = txn.date.getMonth() + 1;
+      const year = txn.date.getFullYear();
+      const key = `${month}-${year}`;
       
-      if (!categorySpending.has(category)) {
-        categorySpending.set(category, { amount: 0, type: type as 'INCOME' | 'EXPENSE' });
+      if (!transactionsByMonth.has(key)) {
+        transactionsByMonth.set(key, []);
       }
-      
-      const current = categorySpending.get(category)!;
-      current.amount += txn.amount;
+      transactionsByMonth.get(key)!.push(txn);
     }
     
-    console.log(`[Processing] Updating budgets for ${categorySpending.size} categories`);
+    console.log(`[Processing] Processing budgets for ${transactionsByMonth.size} different months`);
     
-    // Create or update budgets for each category
-    for (const [category, data] of categorySpending.entries()) {
-      const spent = data.amount;
+    // Process each month
+    for (const [monthYear, monthlyTransactions] of transactionsByMonth.entries()) {
+      const [month, year] = monthYear.split('-').map(Number);
+      console.log(`[Processing] Processing ${monthlyTransactions.length} transactions for ${month}/${year}`);
+    
+      // Group transactions by category and calculate spending
+      const categorySpending = new Map<string, { amount: number; type: 'INCOME' | 'EXPENSE' }>();
       
-      // Calculate a suggested budget amount (20% more than spent, or minimum $100)
-      const suggestedBudget = Math.max(spent * 1.2, 100);
+      for (const txn of monthlyTransactions) {
+        const category = txn.category;
+        const type = txn.type;
+        
+        if (!categorySpending.has(category)) {
+          categorySpending.set(category, { amount: 0, type: type as 'INCOME' | 'EXPENSE' });
+        }
+        
+        const current = categorySpending.get(category)!;
+        current.amount += txn.amount;
+      }
       
-      // Check if budget exists
-      const existingBudget = await prisma.budget.findFirst({
-        where: {
+      console.log(`[Processing] Updating budgets for ${categorySpending.size} categories in ${month}/${year}`);
+      
+      // Create or update budgets for each category
+      for (const [category, data] of categorySpending.entries()) {
+        const spent = data.amount;
+        
+        // Calculate a suggested budget amount (20% more than spent, or minimum $100)
+        const suggestedBudget = Math.max(spent * 1.2, 100);
+        
+        // Check if budget exists
+        const budgetWhereClause: any = {
           userId,
           category,
-          month: currentMonth,
-          year: currentYear
+          month: month,
+          year: year
+        };
+        
+        if (businessProfileId) {
+          budgetWhereClause.businessProfileId = businessProfileId;
         }
-      });
-      
-      if (existingBudget) {
-        // Update existing budget with actual spending
-        await prisma.budget.update({
-          where: { id: existingBudget.id },
-          data: {
-            spent: spent
-          }
+        
+        const existingBudget = await prisma.budget.findFirst({
+          where: budgetWhereClause
         });
-        console.log(`[Processing] Updated budget for ${category}: $${spent.toFixed(2)} spent`);
-      } else {
-        // Create new budget with suggested amount and actual spending
-        await prisma.budget.create({
-          data: {
-            userId,
-            category,
-            month: currentMonth,
-            year: currentYear,
-            amount: suggestedBudget,
-            spent: spent,
-            type: 'MONTHLY',
-            name: `${category} - ${currentMonth}/${currentYear}`
-          }
-        });
-        console.log(`[Processing] Created budget for ${category}: $${suggestedBudget.toFixed(2)} budget, $${spent.toFixed(2)} spent`);
+        
+        if (existingBudget) {
+          // Update existing budget with actual spending
+          await prisma.budget.update({
+            where: { id: existingBudget.id },
+            data: {
+              spent: spent
+            }
+          });
+          console.log(`[Processing] Updated budget for ${category} (${month}/${year}): $${spent.toFixed(2)} spent`);
+        } else {
+          // Create new budget with suggested amount and actual spending
+          await prisma.budget.create({
+            data: {
+              userId,
+              businessProfileId,
+              category,
+              month: month,
+              year: year,
+              amount: suggestedBudget,
+              spent: spent,
+              type: 'MONTHLY',
+              name: `${category} - ${month}/${year}`
+            }
+          });
+          console.log(`[Processing] Created budget for ${category} (${month}/${year}): $${suggestedBudget.toFixed(2)} budget, $${spent.toFixed(2)} spent`);
+        }
       }
     }
     
-    console.log('[Processing] Budget update completed');
+    console.log('[Processing] Budget update completed for all months');
   } catch (error) {
     console.error('[Processing] Error updating budgets:', error);
     // Don't throw - this is not critical
