@@ -3454,3 +3454,16 @@ model BurnRateAnalysis {
   createdAt         DateTime         @default(now())
   user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
+model FinancialReport {
+  id                String           @id @default(cuid())
+  userId            String?
+  businessProfileId String?
+  name              String
+  type              String
+  startDate         DateTime
+  endDate           DateTime
+  summary           Json             // Contains income, expenses, netIncome, transactionCount
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+}

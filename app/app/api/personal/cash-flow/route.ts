@@ -41,12 +41,20 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    const forecast = Object.entries(monthlyData).map(([month, data]) => ({
-      month,
-      income: data.income,
-      expenses: data.expense,
-      netCashFlow: data.income - data.expense
-    }))
+    // Format data for frontend
+    const forecast = Object.entries(monthlyData).map(([month, data], index) => {
+      const date = new Date(month + '-01')
+      const monthName = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+      
+      return {
+        id: `${month}-${index}`,
+        period: monthName,
+        periodType: 'Monthly',
+        income: data.income,
+        expenses: data.expense,
+        projectedCashFlow: data.income - data.expense
+      }
+    })
 
     // Calculate averages for projection
     const avgIncome = forecast.reduce((sum, f) => sum + f.income, 0) / (forecast.length || 1)
@@ -55,9 +63,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ 
       forecast, 
       summary: { 
-        projectedIncome: avgIncome, 
-        projectedExpenses: avgExpenses, 
-        netCashFlow: avgIncome - avgExpenses 
+        projectedIncome: Math.round(avgIncome), 
+        projectedExpenses: Math.round(avgExpenses), 
+        netCashFlow: Math.round(avgIncome - avgExpenses)
       } 
     })
   } catch (error) {
