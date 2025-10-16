@@ -94,65 +94,18 @@ async function main() {
 
   console.log('📊 Created default categories');
 
-  // Create sample transactions
-  const sampleTransactions = [
-    {
-      date: new Date('2024-01-15'),
-      amount: 3500,
-      description: 'Monthly Salary',
-      category: 'Salary',
-      type: 'INCOME' as const,
-      account: 'Checking Account'
-    },
-    {
-      date: new Date('2024-01-16'),
-      amount: -1200,
-      description: 'Rent Payment',
-      category: 'Bills & Utilities',
-      type: 'EXPENSE' as const,
-      account: 'Checking Account',
-      merchant: 'Property Management Co.'
-    },
-    {
-      date: new Date('2024-01-17'),
-      amount: -85.50,
-      description: 'Grocery Shopping',
-      category: 'Food & Dining',
-      type: 'EXPENSE' as const,
-      account: 'Credit Card',
-      merchant: 'Whole Foods'
-    },
-    {
-      date: new Date('2024-01-18'),
-      amount: -45.00,
-      description: 'Gas Station',
-      category: 'Transportation',
-      type: 'EXPENSE' as const,
-      account: 'Credit Card',
-      merchant: 'Shell'
-    },
-    {
-      date: new Date('2024-01-19'),
-      amount: -12.99,
-      description: 'Netflix Subscription',
-      category: 'Entertainment',
-      type: 'EXPENSE' as const,
-      account: 'Credit Card',
-      merchant: 'Netflix'
-    },
-  ];
+  // NOTE: No sample data is created. All financial data should come from:
+  // 1. User-uploaded bank statements (PDF/CSV)
+  // 2. Manual transaction entries
+  // 3. AI-generated budgets based on actual transactions
+  
+  console.log('✅ Seed completed - No sample financial data created');
+  console.log('💡 Upload bank statements to populate transactions and budgets');
 
-  for (const transaction of sampleTransactions) {
-    await prisma.transaction.create({
-      data: {
-        ...transaction,
-        userId: testUser.id
-      }
-    });
-  }
-
-  console.log('💳 Created sample transactions');
-
+  // Removed: Sample transactions, debts, and financial metrics
+  // These will be generated dynamically from uploaded data
+  
+  /*
   // Create sample debt
   await prisma.debt.create({
     data: {
@@ -191,8 +144,19 @@ async function main() {
   }
 
   console.log('📈 Created financial metrics');
+  */
 
   console.log('✅ Database seeded successfully!');
+  console.log('');
+  console.log('👤 Demo Account:');
+  console.log('   Email: john@doe.com');
+  console.log('   Password: johndoe123');
+  console.log('');
+  console.log('📁 To populate with data:');
+  console.log('   1. Login with demo account');
+  console.log('   2. Go to Financial Statements page');
+  console.log('   3. Upload your bank statement PDFs');
+  console.log('   4. Transactions and budgets will be auto-generated');
 }
 
 main()
