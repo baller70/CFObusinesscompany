@@ -190,7 +190,7 @@ const businessMenuItems = [
   },
   {
     title: 'Financial Statements',
-    href: '/dashboard/statements',
+    href: '/dashboard/bank-statements',
     icon: Upload
   },
   {
