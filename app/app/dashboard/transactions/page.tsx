@@ -1,6 +1,7 @@
 
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar, Search, Filter, Download, ArrowUpRight, ArrowDownLeft, CreditCard, Building } from 'lucide-react'
+import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar, Search, Filter, Download, ArrowUpRight, ArrowDownLeft, CreditCard, Building, RefreshCw } from 'lucide-react'
 import { format } from 'date-fns'
 import { TransactionExportFilterButtons, TransactionActions, ExpenseReceiptButton } from '@/components/transactions/transaction-page-client'
 import Link from 'next/link'
@@ -17,6 +18,31 @@ import { toast } from 'sonner'
 
 export default function TransactionsPage() {
   const { data: session, status } = useSession() || {}
+  const [transactions, setTransactions] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [refreshKey, setRefreshKey] = useState(0)
+  
+  // Fetch transactions from API
+  useEffect(() => {
+    if (session?.user?.id) {
+      fetchTransactions()
+    }
+  }, [session?.user?.id, refreshKey])
+
+  const fetchTransactions = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/transactions?limit=1000')
+      const data = await response.json()
+      setTransactions(data.transactions || [])
+    } catch (error) {
+      console.error('Error fetching transactions:', error)
+      toast.error('Failed to load transactions')
+      setTransactions([])
+    } finally {
+      setLoading(false)
+    }
+  }
   
   if (status === 'loading') return <div className="p-6">Loading...</div>
   
@@ -24,13 +50,16 @@ export default function TransactionsPage() {
     redirect('/auth/signin')
   }
 
-  // Empty transactions array
-  const mockTransactions: any[] = []
-
-  const totalIncome = 0
-  const totalExpenses = 0
-  const netCashFlow = 0
-  const pendingTransactions = 0
+  // Calculate statistics from real transactions
+  const mockTransactions = transactions
+  const totalIncome = transactions
+    .filter(t => t.type === 'INCOME')
+    .reduce((sum, t) => sum + (t.amount || 0), 0)
+  const totalExpenses = transactions
+    .filter(t => t.type === 'EXPENSE')
+    .reduce((sum, t) => sum + Math.abs(t.amount || 0), 0)
+  const netCashFlow = totalIncome - totalExpenses
+  const pendingTransactions = transactions.filter(t => t.status === 'PENDING').length
 
   const getTransactionIcon = (type: string, amount: number) => {
     switch (type) {
@@ -74,12 +103,23 @@ export default function TransactionsPage() {
           <h1 className="text-3xl font-bold text-gray-900">Transactions</h1>
           <p className="text-gray-600 mt-1">Monitor all financial transactions and cash flow</p>
         </div>
-        <Link href="/dashboard/transactions/new">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Transaction
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setRefreshKey(k => k + 1)}
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
           </Button>
-        </Link>
+          <Link href="/dashboard/transactions/new">
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Transaction
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Statistics Cards */}
@@ -213,7 +253,13 @@ export default function TransactionsPage() {
               <CardTitle>All Transactions</CardTitle>
             </CardHeader>
             <CardContent>
-              {mockTransactions.length === 0 ? (
+              {loading ? (
+                <div className="text-center py-12">
+                  <RefreshCw className="h-12 w-12 text-gray-400 mx-auto mb-4 animate-spin" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading transactions...</h3>
+                  <p className="text-gray-600">Please wait while we fetch your transactions</p>
+                </div>
+              ) : mockTransactions.length === 0 ? (
                 <div className="text-center py-12">
                   <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">No transactions yet</h3>
@@ -232,24 +278,25 @@ export default function TransactionsPage() {
                       <div className="flex items-center space-x-4 flex-1">
                         <div className="flex items-center space-x-2">
                           {getTransactionIcon(transaction.type, transaction.amount)}
-                          {getAccountIcon(transaction.account.type)}
+                          {transaction.account && getAccountIcon(transaction.account.type)}
                         </div>
 
                         <div className="flex-1">
                           <div className="flex items-center space-x-3 mb-1">
                             <h4 className="font-semibold text-gray-900">{transaction.description}</h4>
-                            <Badge variant={getStatusColor(transaction.status)}>
-                              {transaction.status}
+                            <Badge variant={getStatusColor(transaction.status || 'COMPLETED')}>
+                              {transaction.status || 'COMPLETED'}
                             </Badge>
                           </div>
 
                           <div className="flex items-center space-x-4 text-sm text-gray-600">
                             <div className="flex items-center">
                               <Calendar className="h-3 w-3 mr-1" />
-                              {format(transaction.date, 'MMM d, yyyy')}
+                              {format(new Date(transaction.date), 'MMM d, yyyy')}
                             </div>
-                            <span>{transaction.category?.name}</span>
-                            <span>{transaction.account.name}</span>
+                            <span>{transaction.category || 'Uncategorized'}</span>
+                            {transaction.account && <span>{transaction.account.name || transaction.account}</span>}
+                            {transaction.merchant && <span>{transaction.merchant}</span>}
                             {transaction.reference && (
                               <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
                                 {transaction.reference}
