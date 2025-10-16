@@ -324,9 +324,11 @@ export default function TransactionsPage() {
 
                         <div className="text-right">
                           <div className={`text-lg font-bold ${
-                            transaction.amount >= 0 ? 'text-green-600' : 'text-red-600'
+                            transaction.type === 'INCOME' ? 'text-green-600' : 
+                            transaction.type === 'EXPENSE' ? 'text-red-600' : 
+                            'text-blue-600'
                           }`}>
-                            {transaction.amount >= 0 ? '+' : ''}${Math.abs(transaction.amount).toLocaleString()}
+                            {transaction.type === 'INCOME' ? '+' : transaction.type === 'EXPENSE' ? '-' : ''}${Math.abs(transaction.amount).toLocaleString()}
                           </div>
                           <div className="text-sm text-gray-500">
                             {transaction.type.charAt(0) + transaction.type.slice(1).toLowerCase()}
@@ -382,7 +384,7 @@ export default function TransactionsPage() {
 
                         <div className="text-right">
                           <div className="text-lg font-bold text-green-600">
-                            +${transaction.amount.toLocaleString()}
+                            +${Math.abs(transaction.amount).toLocaleString()}
                           </div>
                           <div className="text-sm text-gray-600">{transaction.account?.name || 'N/A'}</div>
                         </div>
@@ -434,7 +436,7 @@ export default function TransactionsPage() {
 
                         <div className="text-right">
                           <div className="text-lg font-bold text-red-600">
-                            ${Math.abs(transaction.amount).toLocaleString()}
+                            -${Math.abs(transaction.amount).toLocaleString()}
                           </div>
                           <div className="text-sm text-gray-600">{transaction.account?.name || "N/A"}</div>
                         </div>
