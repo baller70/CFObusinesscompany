@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getCurrentBusinessProfileId } from '@/lib/business-profile-utils'
+import { generateReportPDF } from '@/lib/pdf-generator'
 
 export async function GET(request: NextRequest) {
   try {
@@ -113,39 +114,60 @@ export async function POST(request: NextRequest) {
       where: { businessProfileId }
     })
 
-    // Generate CSV content
-    const csvRows = [
-      ['Financial Report', reportName],
-      ['Profile', `${profileName} (${profileType})`],
-      ['Generated', new Date().toLocaleString()],
-      ['Period', `${start.toLocaleDateString()} - ${end.toLocaleDateString()}`],
-      [],
-      ['Summary'],
-      ['Total Income', income.toFixed(2)],
-      ['Total Expenses', expenses.toFixed(2)],
-      ['Net Income', netIncome.toFixed(2)],
-      [],
-      ['Transactions'],
-      ['Date', 'Description', 'Category', 'Type', 'Amount'],
-      ...transactions.map(t => [
-        t.date.toLocaleDateString(),
-        t.description,
-        t.category || '',
-        t.type,
-        t.amount.toFixed(2)
-      ]),
-      [],
-      ['Budgets'],
-      ['Category', 'Budget Amount', 'Month', 'Year'],
-      ...budgets.map(b => [
-        b.category,
-        b.amount.toFixed(2),
-        b.month.toString(),
-        b.year.toString()
-      ])
-    ]
+    // Get assets and liabilities for net worth
+    const assets = await prisma.asset.findMany({
+      where: { businessProfileId }
+    })
 
-    const csvContent = csvRows.map(row => row.join(',')).join('\n')
+    const liabilities = await prisma.debt.findMany({
+      where: { businessProfileId }
+    })
+
+    const totalAssets = assets.reduce((sum, a) => sum + (a.value || 0), 0)
+    const totalLiabilities = liabilities.reduce((sum, l) => sum + l.balance, 0)
+    const netWorth = totalAssets - totalLiabilities
+
+    // Group transactions by category
+    const transactionsByCategory = transactions.reduce((acc, t) => {
+      const category = t.category || 'Uncategorized'
+      if (!acc[category]) {
+        acc[category] = { income: 0, expenses: 0, count: 0 }
+      }
+      if (t.type === 'INCOME') {
+        acc[category].income += t.amount
+      } else {
+        acc[category].expenses += Math.abs(t.amount)
+      }
+      acc[category].count += 1
+      return acc
+    }, {} as Record<string, { income: number; expenses: number; count: number }>)
+
+    // Generate PDF
+    const pdfBuffer = await generateReportPDF({
+      reportName,
+      reportType,
+      profileName,
+      profileType,
+      userName: user.name || user.email,
+      userEmail: user.email,
+      startDate: start,
+      endDate: end,
+      generatedDate: new Date(),
+      summary: {
+        income,
+        expenses,
+        netIncome,
+        transactionCount: transactions.length,
+        totalAssets,
+        totalLiabilities,
+        netWorth
+      },
+      transactions,
+      transactionsByCategory,
+      budgets,
+      assets,
+      liabilities
+    })
 
     // Save report record
     const report = await prisma.financialReport.create({
@@ -159,17 +181,20 @@ export async function POST(request: NextRequest) {
           income,
           expenses,
           netIncome,
-          transactionCount: transactions.length
+          transactionCount: transactions.length,
+          totalAssets,
+          totalLiabilities,
+          netWorth
         }
       }
     })
 
-    // Return CSV as response
-    return new NextResponse(csvContent, {
+    // Return PDF as response
+    return new NextResponse(pdfBuffer, {
       status: 200,
       headers: {
-        'Content-Type': 'text/csv',
-        'Content-Disposition': `attachment; filename="${reportName.replace(/[^a-z0-9]/gi, '_')}.csv"`
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${reportName.replace(/[^a-z0-9]/gi, '_')}.pdf"`
       }
     })
 
