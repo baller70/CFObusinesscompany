@@ -33,7 +33,11 @@ interface UploadFile {
   sourceType?: 'BANK' | 'CREDIT_CARD';
 }
 
-export default function StatementUploader() {
+interface StatementUploaderProps {
+  onUploadComplete?: () => void;
+}
+
+export default function StatementUploader({ onUploadComplete }: StatementUploaderProps) {
   const [uploadFiles, setUploadFiles] = useState<UploadFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [defaultSourceType, setDefaultSourceType] = useState<'BANK' | 'CREDIT_CARD'>('BANK');
@@ -108,6 +112,9 @@ export default function StatementUploader() {
         );
 
         toast.success(result.message);
+        
+        // Notify parent component that upload is complete
+        onUploadComplete?.();
         
         // Start polling for processing status
         pollProcessingStatus();
