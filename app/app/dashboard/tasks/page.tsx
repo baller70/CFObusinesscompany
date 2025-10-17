@@ -7,13 +7,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Plus, CheckSquare, Clock, AlertCircle, Calendar, User, Tag } from 'lucide-react'
+import { Plus, CheckSquare, Clock, AlertCircle, Calendar, User, Tag, Loader2, RefreshCw } from 'lucide-react'
 import { format } from 'date-fns'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { useState, useEffect } from 'react'
 
 export default function TasksPage() {
   const { data: session, status } = useSession() || {}
+  const [tasks, setTasks] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   
   if (status === 'loading') return <div className="p-6">Loading...</div>
   
@@ -21,13 +25,48 @@ export default function TasksPage() {
     redirect('/auth/signin')
   }
 
-  // All data will come from the database - no mock data
-  const tasks: any[] = []
+  // Fetch tasks from the API
+  const fetchTasks = async (showToast = false) => {
+    try {
+      if (showToast) setIsRefreshing(true)
+      const response = await fetch('/api/tasks')
+      if (!response.ok) throw new Error('Failed to fetch tasks')
+      const data = await response.json()
+      setTasks(data.tasks || [])
+      if (showToast) toast.success('Tasks refreshed successfully!')
+    } catch (error) {
+      console.error('Error fetching tasks:', error)
+      toast.error('Failed to load tasks')
+    } finally {
+      setIsLoading(false)
+      if (showToast) setIsRefreshing(false)
+    }
+  }
 
-  const todoTasks = 0
-  const inProgressTasks = 0
-  const overdueMockTasks = 0
-  const completedTasks = 0
+  useEffect(() => {
+    if (session?.user?.id) {
+      fetchTasks()
+    }
+  }, [session?.user?.id])
+
+  const todoTasks = tasks.filter(task => task.status === 'TODO').length
+  const inProgressTasks = tasks.filter(task => task.status === 'IN_PROGRESS').length
+  const overdueMockTasks = tasks.filter(task => {
+    if (task.status === 'COMPLETED') return false
+    return task.dueDate && new Date(task.dueDate) < new Date()
+  }).length
+  const completedTasks = tasks.filter(task => task.status === 'COMPLETED').length
+
+  if (isLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-gray-600">Loading tasks...</p>
+        </div>
+      </div>
+    )
+  }
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -66,12 +105,22 @@ export default function TasksPage() {
           <h1 className="text-3xl font-bold text-gray-900">Task Management</h1>
           <p className="text-gray-600 mt-1">Organize and track your financial tasks and deadlines</p>
         </div>
-        <Link href="/dashboard/tasks/new">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            New Task
+        <div className="flex items-center space-x-3">
+          <Button 
+            variant="outline" 
+            onClick={() => fetchTasks(true)}
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh
           </Button>
-        </Link>
+          <Link href="/dashboard/tasks/new">
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              New Task
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Statistics Cards */}
@@ -134,6 +183,19 @@ export default function TasksPage() {
               <CardTitle>Active Tasks</CardTitle>
             </CardHeader>
             <CardContent>
+              {tasks.filter(task => task.status !== 'COMPLETED' && task.status !== 'OVERDUE').length === 0 ? (
+                <div className="text-center py-12">
+                  <Clock className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Active Tasks</h3>
+                  <p className="text-gray-600 mb-6">You don't have any active tasks at the moment.</p>
+                  <Link href="/dashboard/tasks/new">
+                    <Button>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Your First Task
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
               <div className="space-y-4">
                 {tasks.filter(task => task.status !== 'COMPLETED' && task.status !== 'OVERDUE').map((task) => (
                   <div key={task.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
@@ -242,6 +304,7 @@ export default function TasksPage() {
                   </div>
                 ))}
               </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -252,6 +315,13 @@ export default function TasksPage() {
               <CardTitle>Completed Tasks</CardTitle>
             </CardHeader>
             <CardContent>
+              {tasks.filter(task => task.status === 'COMPLETED').length === 0 ? (
+                <div className="text-center py-12">
+                  <CheckSquare className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Completed Tasks</h3>
+                  <p className="text-gray-600">You haven't completed any tasks yet.</p>
+                </div>
+              ) : (
               <div className="space-y-4">
                 {tasks.filter(task => task.status === 'COMPLETED').map((task) => (
                   <div key={task.id} className="border border-gray-200 rounded-lg p-6 bg-green-50 border-green-200">
@@ -274,6 +344,7 @@ export default function TasksPage() {
                   </div>
                 ))}
               </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -284,8 +355,21 @@ export default function TasksPage() {
               <CardTitle>Overdue Tasks</CardTitle>
             </CardHeader>
             <CardContent>
+              {tasks.filter(task => {
+                if (task.status === 'COMPLETED') return false
+                return task.dueDate && new Date(task.dueDate) < new Date()
+              }).length === 0 ? (
+                <div className="text-center py-12">
+                  <AlertCircle className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Overdue Tasks</h3>
+                  <p className="text-gray-600">Great! You're on top of all your deadlines.</p>
+                </div>
+              ) : (
               <div className="space-y-4">
-                {tasks.filter(task => task.status === 'OVERDUE').map((task) => (
+                {tasks.filter(task => {
+                  if (task.status === 'COMPLETED') return false
+                  return task.dueDate && new Date(task.dueDate) < new Date()
+                }).map((task) => (
                   <div key={task.id} className="border border-red-200 rounded-lg p-6 bg-red-50">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -338,6 +422,7 @@ export default function TasksPage() {
                   </div>
                 ))}
               </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -348,6 +433,19 @@ export default function TasksPage() {
               <CardTitle>All Tasks</CardTitle>
             </CardHeader>
             <CardContent>
+              {tasks.length === 0 ? (
+                <div className="text-center py-12">
+                  <Tag className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Tasks Yet</h3>
+                  <p className="text-gray-600 mb-6">Get started by creating your first task to organize your work.</p>
+                  <Link href="/dashboard/tasks/new">
+                    <Button>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Task
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
               <div className="space-y-4">
                 {tasks.map((task) => (
                   <div key={task.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
@@ -448,6 +546,7 @@ export default function TasksPage() {
                   </div>
                 ))}
               </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
