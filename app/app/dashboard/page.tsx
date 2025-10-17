@@ -20,11 +20,14 @@ async function getDashboardData(userId: string) {
   // Get current business profile ID
   const businessProfileId = await getCurrentBusinessProfileId()
   
+  // Build the where clause for profile filtering
+  const profileWhere = businessProfileId ? { businessProfileId } : {}
+  
   // Get the most recent transaction to determine the last active month
   const mostRecentTransaction = await prisma.transaction.findFirst({
     where: { 
       userId,
-      businessProfileId: businessProfileId || undefined
+      ...profileWhere
     },
     orderBy: { date: 'desc' },
     select: { date: true }
@@ -50,7 +53,7 @@ async function getDashboardData(userId: string) {
     prisma.transaction.findMany({
       where: { 
         userId,
-        businessProfileId: businessProfileId || undefined
+        ...profileWhere
       },
       take: 10,
       orderBy: { date: 'desc' },
@@ -62,7 +65,7 @@ async function getDashboardData(userId: string) {
     prisma.budget.findMany({
       where: { 
         userId,
-        businessProfileId: businessProfileId || undefined,
+        ...profileWhere,
         month: targetMonth + 1,
         year: targetYear
       },
@@ -73,7 +76,7 @@ async function getDashboardData(userId: string) {
     prisma.bankStatement.findMany({
       where: { 
         userId,
-        businessProfileId: businessProfileId || undefined
+        ...profileWhere
       },
       take: 5,
       orderBy: { createdAt: 'desc' },
@@ -93,7 +96,7 @@ async function getDashboardData(userId: string) {
   const incomeTransactions = await prisma.transaction.aggregate({
     where: {
       userId,
-      businessProfileId: businessProfileId || undefined,
+      ...profileWhere,
       type: 'INCOME',
       date: { 
         gte: firstDayOfMonth,
@@ -106,7 +109,7 @@ async function getDashboardData(userId: string) {
   const expenseTransactions = await prisma.transaction.aggregate({
     where: {
       userId,
-      businessProfileId: businessProfileId || undefined,
+      ...profileWhere,
       type: 'EXPENSE',
       date: { 
         gte: firstDayOfMonth,
@@ -124,7 +127,7 @@ async function getDashboardData(userId: string) {
   const completedStatements = await prisma.bankStatement.count({
     where: { 
       userId, 
-      businessProfileId: businessProfileId || undefined,
+      ...profileWhere,
       status: 'COMPLETED' 
     }
   })
