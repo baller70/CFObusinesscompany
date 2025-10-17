@@ -5,7 +5,7 @@ async function checkDashboardData() {
   try {
     // Get the user
     const user = await prisma.user.findFirst({
-      where: { email: 'john@doe.com' }
+      where: { email: 'khouston721@gmail.com' }
     });
 
     if (!user) {
@@ -54,12 +54,19 @@ async function checkDashboardData() {
         ...(businessProfileId ? { businessProfileId } : {})
       },
       orderBy: { date: 'desc' },
-      take: 50
+      take: 100
     });
 
-    console.log(`\n=== ALL TRANSACTIONS (Last 50) ===`);
+    console.log(`\n=== ALL TRANSACTIONS (Last 100) ===`);
     console.log(`Total transactions: ${allTransactions.length}`);
     
+    if (allTransactions.length > 0) {
+      console.log('\nSample transactions:');
+      allTransactions.slice(0, 10).forEach(t => {
+        console.log(`  ${new Date(t.date).toISOString().split('T')[0]} - ${t.description} - ${t.type} - $${t.amount}`);
+      });
+    }
+
     // Group by month and type
     const monthlyData = {};
     allTransactions.forEach(t => {
@@ -67,14 +74,16 @@ async function checkDashboardData() {
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       
       if (!monthlyData[monthKey]) {
-        monthlyData[monthKey] = { income: 0, expense: 0, count: 0 };
+        monthlyData[monthKey] = { income: 0, expense: 0, count: 0, incomeCount: 0, expenseCount: 0 };
       }
       
       monthlyData[monthKey].count++;
       if (t.type === 'INCOME') {
         monthlyData[monthKey].income += Number(t.amount);
+        monthlyData[monthKey].incomeCount++;
       } else if (t.type === 'EXPENSE') {
         monthlyData[monthKey].expense += Math.abs(Number(t.amount));
+        monthlyData[monthKey].expenseCount++;
       }
     });
 
@@ -82,8 +91,10 @@ async function checkDashboardData() {
     Object.keys(monthlyData).sort().reverse().slice(0, 6).forEach(monthKey => {
       const data = monthlyData[monthKey];
       console.log(`\n${monthKey}:`);
-      console.log(`  Transactions: ${data.count}`);
+      console.log(`  Total Transactions: ${data.count}`);
+      console.log(`  Income Count: ${data.incomeCount}`);
       console.log(`  Income: $${data.income.toFixed(2)}`);
+      console.log(`  Expense Count: ${data.expenseCount}`);
       console.log(`  Expenses: $${data.expense.toFixed(2)}`);
       console.log(`  Net: $${(data.income - data.expense).toFixed(2)}`);
     });
@@ -117,7 +128,7 @@ async function checkDashboardData() {
       _count: true
     });
 
-    console.log(`\n=== DASHBOARD CALCULATIONS (Current Month) ===`);
+    console.log(`\n=== DASHBOARD CALCULATIONS (Current Month: ${currentMonth + 1}/${currentYear}) ===`);
     console.log(`Income Transactions: ${incomeTransactions._count}`);
     console.log(`Income Total: $${(incomeTransactions._sum.amount || 0).toFixed(2)}`);
     console.log(`Expense Transactions: ${expenseTransactions._count}`);

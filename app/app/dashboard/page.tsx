@@ -20,6 +20,15 @@ async function getDashboardData(userId: string) {
   // Get current business profile ID
   const businessProfileId = await getCurrentBusinessProfileId()
   
+  // Get profile details for display
+  let currentProfile = null
+  if (businessProfileId) {
+    currentProfile = await prisma.businessProfile.findUnique({
+      where: { id: businessProfileId },
+      select: { name: true, type: true }
+    })
+  }
+  
   // Build the where clause for profile filtering
   const profileWhere = businessProfileId ? { businessProfileId } : {}
   
@@ -39,6 +48,49 @@ async function getDashboardData(userId: string) {
   const targetYear = targetDate.getFullYear()
   const firstDayOfMonth = new Date(targetYear, targetMonth, 1)
   const lastDayOfMonth = new Date(targetYear, targetMonth + 1, 0)
+  
+  // Check if this month has sufficient data (at least 3 transactions)
+  const transactionCount = await prisma.transaction.count({
+    where: {
+      userId,
+      ...profileWhere,
+      date: { gte: firstDayOfMonth, lte: lastDayOfMonth }
+    }
+  })
+  
+  // If current month has few transactions, find the most recent month with activity
+  let finalMonth = targetMonth
+  let finalYear = targetYear
+  let periodLabel = `${new Date(finalYear, finalMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
+  
+  if (transactionCount < 3 && mostRecentTransaction) {
+    // Find the most recent month with at least 5 transactions
+    for (let i = 1; i <= 12; i++) {
+      const checkDate = new Date(targetYear, targetMonth - i, 1)
+      const checkMonth = checkDate.getMonth()
+      const checkYear = checkDate.getFullYear()
+      const checkFirstDay = new Date(checkYear, checkMonth, 1)
+      const checkLastDay = new Date(checkYear, checkMonth + 1, 0)
+      
+      const checkCount = await prisma.transaction.count({
+        where: {
+          userId,
+          ...profileWhere,
+          date: { gte: checkFirstDay, lte: checkLastDay }
+        }
+      })
+      
+      if (checkCount >= 5) {
+        finalMonth = checkMonth
+        finalYear = checkYear
+        periodLabel = `${new Date(finalYear, finalMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
+        break
+      }
+    }
+  }
+  
+  const firstDayOfFinalMonth = new Date(finalYear, finalMonth, 1)
+  const lastDayOfFinalMonth = new Date(finalYear, finalMonth + 1, 0)
 
   const [
     user,
@@ -66,8 +118,8 @@ async function getDashboardData(userId: string) {
       where: { 
         userId,
         ...profileWhere,
-        month: targetMonth + 1,
-        year: targetYear
+        month: finalMonth + 1,
+        year: finalYear
       },
       include: {
         businessProfile: true
@@ -92,15 +144,15 @@ async function getDashboardData(userId: string) {
     })
   ])
 
-  // Calculate financial metrics from actual transactions for the target month
+  // Calculate financial metrics from actual transactions for the final month
   const incomeTransactions = await prisma.transaction.aggregate({
     where: {
       userId,
       ...profileWhere,
       type: 'INCOME',
       date: { 
-        gte: firstDayOfMonth,
-        lte: lastDayOfMonth
+        gte: firstDayOfFinalMonth,
+        lte: lastDayOfFinalMonth
       }
     },
     _sum: { amount: true }
@@ -112,8 +164,8 @@ async function getDashboardData(userId: string) {
       ...profileWhere,
       type: 'EXPENSE',
       date: { 
-        gte: firstDayOfMonth,
-        lte: lastDayOfMonth
+        gte: firstDayOfFinalMonth,
+        lte: lastDayOfFinalMonth
       }
     },
     _sum: { amount: true }
@@ -138,6 +190,8 @@ async function getDashboardData(userId: string) {
     budgets,
     bankStatements,
     businessProfiles,
+    periodLabel,
+    currentProfile,
     businessMetrics: {
       monthlyIncome: incomeTransactions,
       monthlyExpenses: expenseTransactions,
@@ -170,6 +224,25 @@ export default async function DashboardPage() {
             <p className="text-body text-muted-foreground">
               {dashboardData.user?.companyName ? `Here's what's happening at ${dashboardData.user.companyName}` : "Here's what's happening with your business"} today
             </p>
+            <div className="mt-3 flex flex-wrap gap-3">
+              {dashboardData.currentProfile && (
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg">
+                  <Users className="h-4 w-4 text-primary" />
+                  <span className="text-small font-medium text-primary">
+                    {dashboardData.currentProfile.name}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    ({dashboardData.currentProfile.type === 'PERSONAL' ? 'Personal' : 'Business'})
+                  </span>
+                </div>
+              )}
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-muted/50 border border-border rounded-lg">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span className="text-small font-medium text-foreground">
+                  {dashboardData.periodLabel}
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Premium Financial Metrics */}
@@ -178,7 +251,7 @@ export default async function DashboardPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-small text-muted-foreground font-medium flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-success"></div>
-                  Monthly Income
+                  Income
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -187,7 +260,7 @@ export default async function DashboardPage() {
                 </div>
                 <p className="text-small text-muted-foreground flex items-center gap-1">
                   <TrendingUp className="h-3 w-3 text-success" />
-                  This month
+                  {dashboardData.periodLabel}
                 </p>
               </CardContent>
             </Card>
@@ -196,7 +269,7 @@ export default async function DashboardPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-small text-muted-foreground font-medium flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-destructive"></div>
-                  Monthly Expenses
+                  Expenses
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -205,7 +278,7 @@ export default async function DashboardPage() {
                 </div>
                 <p className="text-small text-muted-foreground flex items-center gap-1">
                   <Calendar className="h-3 w-3 text-destructive" />
-                  This month
+                  {dashboardData.periodLabel}
                 </p>
               </CardContent>
             </Card>
