@@ -454,7 +454,7 @@ export default function TasksPage() {
                         {getStatusIcon(task.status)}
                         <div>
                           <h4 className="font-semibold text-gray-900">{task.title}</h4>
-                          <p className="text-sm text-gray-600">{task.description.substring(0, 80)}...</p>
+                          <p className="text-sm text-gray-600">{task.description ? task.description.substring(0, 80) + '...' : 'No description'}</p>
                         </div>
                       </div>
 
