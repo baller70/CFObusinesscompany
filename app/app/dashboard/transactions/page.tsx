@@ -19,8 +19,15 @@ import { toast } from 'sonner'
 export default function TransactionsPage() {
   const { data: session, status } = useSession() || {}
   const [transactions, setTransactions] = useState<any[]>([])
+  const [filteredTransactions, setFilteredTransactions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [filters, setFilters] = useState({
+    search: '',
+    category: 'all',
+    account: 'all',
+    status: 'all'
+  })
   
   // Fetch transactions from API
   useEffect(() => {
@@ -29,10 +36,18 @@ export default function TransactionsPage() {
     }
   }, [session?.user?.id, refreshKey])
 
+  useEffect(() => {
+    // Apply filters whenever transactions or filters change
+    applyFilters()
+  }, [transactions, filters])
+
   const fetchTransactions = async () => {
     try {
       setLoading(true)
       const response = await fetch('/api/transactions?limit=1000')
+      if (!response.ok) {
+        throw new Error('Failed to fetch transactions')
+      }
       const data = await response.json()
       setTransactions(data.transactions || [])
     } catch (error) {
@@ -43,6 +58,48 @@ export default function TransactionsPage() {
       setLoading(false)
     }
   }
+
+  const applyFilters = () => {
+    let filtered = [...transactions]
+
+    // Apply search filter
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase()
+      filtered = filtered.filter(t => 
+        t.description?.toLowerCase().includes(searchLower) ||
+        t.merchant?.toLowerCase().includes(searchLower) ||
+        t.category?.toLowerCase().includes(searchLower)
+      )
+    }
+
+    // Apply category filter
+    if (filters.category !== 'all') {
+      filtered = filtered.filter(t => 
+        t.category?.toLowerCase() === filters.category.toLowerCase()
+      )
+    }
+
+    // Apply account filter
+    if (filters.account !== 'all') {
+      filtered = filtered.filter(t => 
+        t.account?.name?.toLowerCase().includes(filters.account.toLowerCase()) ||
+        t.account?.toLowerCase().includes(filters.account.toLowerCase())
+      )
+    }
+
+    // Apply status filter
+    if (filters.status !== 'all') {
+      filtered = filtered.filter(t => 
+        (t.status || 'COMPLETED').toLowerCase() === filters.status.toLowerCase()
+      )
+    }
+
+    setFilteredTransactions(filtered)
+  }
+
+  const handleRefresh = () => {
+    setRefreshKey(k => k + 1)
+  }
   
   if (status === 'loading') return <div className="p-6">Loading...</div>
   
@@ -51,15 +108,15 @@ export default function TransactionsPage() {
   }
 
   // Calculate statistics from real transactions
-  const mockTransactions = transactions
-  const totalIncome = transactions
+  const mockTransactions = filteredTransactions
+  const totalIncome = filteredTransactions
     .filter(t => t.type === 'INCOME')
     .reduce((sum, t) => sum + (t.amount || 0), 0)
-  const totalExpenses = transactions
+  const totalExpenses = filteredTransactions
     .filter(t => t.type === 'EXPENSE')
     .reduce((sum, t) => sum + Math.abs(t.amount || 0), 0)
   const netCashFlow = totalIncome - totalExpenses
-  const pendingTransactions = transactions.filter(t => t.status === 'PENDING').length
+  const pendingTransactions = filteredTransactions.filter(t => t.status === 'PENDING').length
 
   const getTransactionIcon = (type: string, amount: number) => {
     switch (type) {
@@ -107,7 +164,7 @@ export default function TransactionsPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setRefreshKey(k => k + 1)}
+            onClick={handleRefresh}
             disabled={loading}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
@@ -202,10 +259,15 @@ export default function TransactionsPage() {
                 <Input
                   placeholder="Search transactions..."
                   className="pl-10"
+                  value={filters.search}
+                  onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
                 />
               </div>
               
-              <Select>
+              <Select 
+                value={filters.category} 
+                onValueChange={(value) => setFilters(prev => ({ ...prev, category: value }))}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
@@ -220,7 +282,10 @@ export default function TransactionsPage() {
                 </SelectContent>
               </Select>
 
-              <Select>
+              <Select 
+                value={filters.account} 
+                onValueChange={(value) => setFilters(prev => ({ ...prev, account: value }))}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Account" />
                 </SelectTrigger>
@@ -232,7 +297,10 @@ export default function TransactionsPage() {
                 </SelectContent>
               </Select>
 
-              <Select>
+              <Select 
+                value={filters.status} 
+                onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
@@ -335,7 +403,7 @@ export default function TransactionsPage() {
                           </div>
                         </div>
 
-                        <TransactionActions transaction={transaction} />
+                        <TransactionActions transaction={transaction} onRefresh={handleRefresh} />
                       </div>
                     </div>
                   ))}

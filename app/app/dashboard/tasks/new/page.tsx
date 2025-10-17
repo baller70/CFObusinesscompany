@@ -108,10 +108,27 @@ export default function NewTaskPage() {
     }
 
     try {
-      // Here you would normally send to your API
-      await new Promise(resolve => setTimeout(resolve, 2000)) // Simulate API call
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          title: formData.title,
+          description: formData.description || null,
+          priority: formData.priority,
+          status: formData.status,
+          dueDate: formData.dueDate,
+          estimatedHours: formData.estimatedHours || null
+        })
+      })
 
-      // Mock successful creation
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create task')
+      }
+
       toast.success('Task created successfully!')
       router.push('/dashboard/tasks')
     } catch (error) {
