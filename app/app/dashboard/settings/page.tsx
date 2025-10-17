@@ -2,6 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,11 +13,327 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { User, Building, CreditCard, Bell, Shield, Download, Upload, Trash2, Key, Globe, Moon, Sun, Database, Calendar } from 'lucide-react'
+import { User, Building, CreditCard, Bell, Shield, Download, Upload, Trash2, Key, Globe, Moon, Sun, Database, Calendar, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+
+interface ProfileData {
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+  jobTitle: string
+}
+
+interface BusinessData {
+  companyName: string
+  businessType: string
+  industry: string
+  address: string
+  city: string
+  state: string
+  country: string
+  zipCode: string
+}
+
+interface NotificationSettings {
+  emailNotifications: boolean
+  invoicePayments: boolean
+  budgetAlerts: boolean
+  cashFlowWarnings: boolean
+  monthlyReports: boolean
+  systemUpdates: boolean
+  securityAlerts: boolean
+  marketingUpdates: boolean
+}
+
+interface PreferenceSettings {
+  theme: string
+  currency: string
+  dateFormat: string
+  fiscalYearStart: string
+  showBudgetAlerts: boolean
+  autoRefreshData: boolean
+  showDecimalPlaces: boolean
+}
 
 export default function SettingsPage() {
   const { data: session, status } = useSession() || {}
+  
+  const [profileData, setProfileData] = useState<ProfileData>({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    jobTitle: '',
+  })
+  
+  const [businessData, setBusinessData] = useState<BusinessData>({
+    companyName: '',
+    businessType: '',
+    industry: '',
+    address: '',
+    city: '',
+    state: '',
+    country: '',
+    zipCode: '',
+  })
+
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
+    emailNotifications: true,
+    invoicePayments: true,
+    budgetAlerts: true,
+    cashFlowWarnings: true,
+    monthlyReports: true,
+    systemUpdates: false,
+    securityAlerts: true,
+    marketingUpdates: false,
+  })
+
+  const [preferences, setPreferences] = useState<PreferenceSettings>({
+    theme: 'light',
+    currency: 'usd',
+    dateFormat: 'mdy',
+    fiscalYearStart: 'january',
+    showBudgetAlerts: true,
+    autoRefreshData: true,
+    showDecimalPlaces: true,
+  })
+
+  const [securityData, setSecurityData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  })
+
+  const [loading, setLoading] = useState({
+    profile: false,
+    business: false,
+    notifications: false,
+    security: false,
+    preferences: false,
+  })
+
+  useEffect(() => {
+    if (session?.user?.id) {
+      loadProfileData()
+      loadBusinessData()
+      loadNotificationSettings()
+      loadPreferences()
+    }
+  }, [session?.user?.id])
+
+  const loadProfileData = async () => {
+    try {
+      const res = await fetch('/api/settings/profile')
+      if (res.ok) {
+        const data = await res.json()
+        setProfileData({
+          firstName: data.firstName || '',
+          lastName: data.lastName || '',
+          email: data.email || '',
+          phone: data.phone || '',
+          jobTitle: data.jobTitle || '',
+        })
+      }
+    } catch (error) {
+      console.error('Failed to load profile data:', error)
+    }
+  }
+
+  const loadBusinessData = async () => {
+    try {
+      const res = await fetch('/api/settings/business')
+      if (res.ok) {
+        const data = await res.json()
+        setBusinessData({
+          companyName: data.companyName || '',
+          businessType: data.businessType || '',
+          industry: data.industry || '',
+          address: data.address || '',
+          city: data.city || '',
+          state: data.state || '',
+          country: data.country || '',
+          zipCode: data.zipCode || '',
+        })
+      }
+    } catch (error) {
+      console.error('Failed to load business data:', error)
+    }
+  }
+
+  const loadNotificationSettings = async () => {
+    try {
+      const res = await fetch('/api/settings/notifications')
+      if (res.ok) {
+        const data = await res.json()
+        setNotificationSettings(data)
+      }
+    } catch (error) {
+      console.error('Failed to load notification settings:', error)
+    }
+  }
+
+  const loadPreferences = async () => {
+    try {
+      const res = await fetch('/api/settings/preferences')
+      if (res.ok) {
+        const data = await res.json()
+        setPreferences(data)
+      }
+    } catch (error) {
+      console.error('Failed to load preferences:', error)
+    }
+  }
+
+  const saveProfile = async () => {
+    setLoading({ ...loading, profile: true })
+    try {
+      const res = await fetch('/api/settings/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData),
+      })
+
+      if (res.ok) {
+        toast.success('Profile updated successfully!')
+      } else {
+        const error = await res.json()
+        toast.error(error.error || 'Failed to update profile')
+      }
+    } catch (error) {
+      toast.error('Failed to update profile')
+    } finally {
+      setLoading({ ...loading, profile: false })
+    }
+  }
+
+  const saveBusiness = async () => {
+    setLoading({ ...loading, business: true })
+    try {
+      const res = await fetch('/api/settings/business', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(businessData),
+      })
+
+      if (res.ok) {
+        toast.success('Business information saved successfully!')
+      } else {
+        const error = await res.json()
+        toast.error(error.error || 'Failed to save business information')
+      }
+    } catch (error) {
+      toast.error('Failed to save business information')
+    } finally {
+      setLoading({ ...loading, business: false })
+    }
+  }
+
+  const saveNotifications = async () => {
+    setLoading({ ...loading, notifications: true })
+    try {
+      const res = await fetch('/api/settings/notifications', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(notificationSettings),
+      })
+
+      if (res.ok) {
+        toast.success('Notification settings saved successfully!')
+      } else {
+        const error = await res.json()
+        toast.error(error.error || 'Failed to save notification settings')
+      }
+    } catch (error) {
+      toast.error('Failed to save notification settings')
+    } finally {
+      setLoading({ ...loading, notifications: false })
+    }
+  }
+
+  const savePreferences = async () => {
+    setLoading({ ...loading, preferences: true })
+    try {
+      const res = await fetch('/api/settings/preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(preferences),
+      })
+
+      if (res.ok) {
+        toast.success('Preferences saved successfully!')
+      } else {
+        const error = await res.json()
+        toast.error(error.error || 'Failed to save preferences')
+      }
+    } catch (error) {
+      toast.error('Failed to save preferences')
+    } finally {
+      setLoading({ ...loading, preferences: false })
+    }
+  }
+
+  const updatePassword = async () => {
+    if (securityData.newPassword !== securityData.confirmPassword) {
+      toast.error('Passwords do not match')
+      return
+    }
+
+    if (!securityData.currentPassword || !securityData.newPassword) {
+      toast.error('Please fill in all password fields')
+      return
+    }
+
+    setLoading({ ...loading, security: true })
+    try {
+      const res = await fetch('/api/settings/security/password', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword: securityData.currentPassword,
+          newPassword: securityData.newPassword,
+        }),
+      })
+
+      if (res.ok) {
+        toast.success('Password updated successfully!')
+        setSecurityData({ currentPassword: '', newPassword: '', confirmPassword: '' })
+      } else {
+        const error = await res.json()
+        toast.error(error.error || 'Failed to update password')
+      }
+    } catch (error) {
+      toast.error('Failed to update password')
+    } finally {
+      setLoading({ ...loading, security: false })
+    }
+  }
+
+  const exportData = async () => {
+    try {
+      toast.info('Preparing your data export...')
+      const res = await fetch('/api/settings/data-export', {
+        method: 'POST',
+      })
+
+      if (res.ok) {
+        const blob = await res.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `data-export-${new Date().toISOString()}.json`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+        toast.success('Data exported successfully!')
+      } else {
+        toast.error('Failed to export data')
+      }
+    } catch (error) {
+      toast.error('Failed to export data')
+    }
+  }
   
   if (status === 'loading') return <div className="p-6">Loading...</div>
   
@@ -90,14 +407,16 @@ export default function SettingsPage() {
                     <Label htmlFor="firstName">First Name</Label>
                     <Input 
                       id="firstName" 
-                      defaultValue={session.user?.name?.split(' ')[0] || ''} 
+                      value={profileData.firstName}
+                      onChange={(e) => setProfileData({ ...profileData, firstName: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="lastName">Last Name</Label>
                     <Input 
                       id="lastName" 
-                      defaultValue={session.user?.name?.split(' ').slice(1).join(' ') || ''} 
+                      value={profileData.lastName}
+                      onChange={(e) => setProfileData({ ...profileData, lastName: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
@@ -105,50 +424,37 @@ export default function SettingsPage() {
                     <Input 
                       id="email" 
                       type="email" 
-                      defaultValue={session.user?.email || ''} 
+                      value={profileData.email}
+                      onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="phone">Phone Number</Label>
-                    <Input id="phone" type="tel" placeholder="+1 (555) 123-4567" />
+                    <Input 
+                      id="phone" 
+                      type="tel" 
+                      placeholder="+1 (555) 123-4567"
+                      value={profileData.phone}
+                      onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="title">Job Title</Label>
-                    <Input id="title" placeholder="Chief Financial Officer" />
+                    <Input 
+                      id="title" 
+                      placeholder="Chief Financial Officer"
+                      value={profileData.jobTitle}
+                      onChange={(e) => setProfileData({ ...profileData, jobTitle: e.target.value })}
+                    />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="timezone">Timezone</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select timezone" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="utc-8">UTC-8 (Pacific Time)</SelectItem>
-                        <SelectItem value="utc-7">UTC-7 (Mountain Time)</SelectItem>
-                        <SelectItem value="utc-6">UTC-6 (Central Time)</SelectItem>
-                        <SelectItem value="utc-5">UTC-5 (Eastern Time)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="bio">Bio</Label>
-                  <textarea 
-                    id="bio"
-                    className="w-full p-3 border rounded-md resize-none"
-                    rows={4}
-                    placeholder="Tell us about yourself and your role..."
-                  />
                 </div>
 
                 <div className="flex justify-end">
                   <Button
-                    onClick={() => {
-                      toast.success('Profile updated successfully!')
-                      // In a real app, this would save to API
-                    }}
+                    onClick={saveProfile}
+                    disabled={loading.profile}
                   >
+                    {loading.profile && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                     Save Profile Changes
                   </Button>
                 </div>
@@ -170,41 +476,38 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="companyName">Company Name</Label>
-                    <Input id="companyName" placeholder="Your Company LLC" />
+                    <Input 
+                      id="companyName" 
+                      placeholder="Your Company LLC"
+                      value={businessData.companyName}
+                      onChange={(e) => setBusinessData({ ...businessData, companyName: e.target.value })}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="businessType">Business Type</Label>
-                    <Select>
+                    <Select 
+                      value={businessData.businessType}
+                      onValueChange={(value) => setBusinessData({ ...businessData, businessType: value })}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select business type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="llc">LLC</SelectItem>
-                        <SelectItem value="corporation">Corporation</SelectItem>
-                        <SelectItem value="partnership">Partnership</SelectItem>
-                        <SelectItem value="sole-proprietorship">Sole Proprietorship</SelectItem>
+                        <SelectItem value="SMALL_BUSINESS">Small Business</SelectItem>
+                        <SelectItem value="STARTUP">Startup</SelectItem>
+                        <SelectItem value="ENTERPRISE">Enterprise</SelectItem>
+                        <SelectItem value="FREELANCER">Freelancer</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="taxId">Tax ID (EIN)</Label>
-                    <Input id="taxId" placeholder="12-3456789" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="industry">Industry</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select industry" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="consulting">Consulting</SelectItem>
-                        <SelectItem value="technology">Technology</SelectItem>
-                        <SelectItem value="healthcare">Healthcare</SelectItem>
-                        <SelectItem value="manufacturing">Manufacturing</SelectItem>
-                        <SelectItem value="retail">Retail</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Input 
+                      id="industry" 
+                      placeholder="e.g., Technology, Healthcare"
+                      value={businessData.industry}
+                      onChange={(e) => setBusinessData({ ...businessData, industry: e.target.value })}
+                    />
                   </div>
                 </div>
 
@@ -215,57 +518,58 @@ export default function SettingsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <Label htmlFor="street">Street Address</Label>
-                      <Input id="street" placeholder="123 Business St" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="suite">Suite/Unit</Label>
-                      <Input id="suite" placeholder="Suite 100" />
+                      <Input 
+                        id="street" 
+                        placeholder="123 Business St"
+                        value={businessData.address}
+                        onChange={(e) => setBusinessData({ ...businessData, address: e.target.value })}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="city">City</Label>
-                      <Input id="city" placeholder="San Francisco" />
+                      <Input 
+                        id="city" 
+                        placeholder="San Francisco"
+                        value={businessData.city}
+                        onChange={(e) => setBusinessData({ ...businessData, city: e.target.value })}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="state">State</Label>
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select state" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="ca">California</SelectItem>
-                          <SelectItem value="ny">New York</SelectItem>
-                          <SelectItem value="tx">Texas</SelectItem>
-                          <SelectItem value="fl">Florida</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Input 
+                        id="state" 
+                        placeholder="California"
+                        value={businessData.state}
+                        onChange={(e) => setBusinessData({ ...businessData, state: e.target.value })}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="zip">ZIP Code</Label>
-                      <Input id="zip" placeholder="94105" />
+                      <Input 
+                        id="zip" 
+                        placeholder="94105"
+                        value={businessData.zipCode}
+                        onChange={(e) => setBusinessData({ ...businessData, zipCode: e.target.value })}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="country">Country</Label>
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select country" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="us">United States</SelectItem>
-                          <SelectItem value="ca">Canada</SelectItem>
-                          <SelectItem value="mx">Mexico</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Input 
+                        id="country" 
+                        placeholder="United States"
+                        value={businessData.country}
+                        onChange={(e) => setBusinessData({ ...businessData, country: e.target.value })}
+                      />
                     </div>
                   </div>
                 </div>
 
                 <div className="flex justify-end">
                   <Button
-                    onClick={() => {
-                      toast.success('Business information saved successfully!')
-                      // In a real app, this would save to API
-                    }}
+                    onClick={saveBusiness}
+                    disabled={loading.business}
                   >
+                    {loading.business && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                     Save Business Information
                   </Button>
                 </div>
@@ -290,7 +594,12 @@ export default function SettingsPage() {
                       <h4 className="font-medium">Email Notifications</h4>
                       <p className="text-sm text-gray-600">Receive email alerts for important updates</p>
                     </div>
-                    <Switch defaultChecked />
+                    <Switch 
+                      checked={notificationSettings.emailNotifications}
+                      onCheckedChange={(checked) => 
+                        setNotificationSettings({ ...notificationSettings, emailNotifications: checked })
+                      }
+                    />
                   </div>
 
                   <Separator />
@@ -304,7 +613,12 @@ export default function SettingsPage() {
                           <p className="font-medium">Invoice Payments</p>
                           <p className="text-sm text-gray-600">When invoices are paid or overdue</p>
                         </div>
-                        <Switch defaultChecked />
+                        <Switch 
+                          checked={notificationSettings.invoicePayments}
+                          onCheckedChange={(checked) => 
+                            setNotificationSettings({ ...notificationSettings, invoicePayments: checked })
+                          }
+                        />
                       </div>
 
                       <div className="flex items-center justify-between">
@@ -312,7 +626,12 @@ export default function SettingsPage() {
                           <p className="font-medium">Budget Alerts</p>
                           <p className="text-sm text-gray-600">When spending approaches budget limits</p>
                         </div>
-                        <Switch defaultChecked />
+                        <Switch 
+                          checked={notificationSettings.budgetAlerts}
+                          onCheckedChange={(checked) => 
+                            setNotificationSettings({ ...notificationSettings, budgetAlerts: checked })
+                          }
+                        />
                       </div>
 
                       <div className="flex items-center justify-between">
@@ -320,7 +639,12 @@ export default function SettingsPage() {
                           <p className="font-medium">Cash Flow Warnings</p>
                           <p className="text-sm text-gray-600">When cash flow drops below threshold</p>
                         </div>
-                        <Switch defaultChecked />
+                        <Switch 
+                          checked={notificationSettings.cashFlowWarnings}
+                          onCheckedChange={(checked) => 
+                            setNotificationSettings({ ...notificationSettings, cashFlowWarnings: checked })
+                          }
+                        />
                       </div>
 
                       <div className="flex items-center justify-between">
@@ -328,7 +652,12 @@ export default function SettingsPage() {
                           <p className="font-medium">Monthly Reports</p>
                           <p className="text-sm text-gray-600">Automated monthly financial summary</p>
                         </div>
-                        <Switch defaultChecked />
+                        <Switch 
+                          checked={notificationSettings.monthlyReports}
+                          onCheckedChange={(checked) => 
+                            setNotificationSettings({ ...notificationSettings, monthlyReports: checked })
+                          }
+                        />
                       </div>
                     </div>
                   </div>
@@ -344,7 +673,12 @@ export default function SettingsPage() {
                           <p className="font-medium">System Updates</p>
                           <p className="text-sm text-gray-600">New features and system changes</p>
                         </div>
-                        <Switch />
+                        <Switch 
+                          checked={notificationSettings.systemUpdates}
+                          onCheckedChange={(checked) => 
+                            setNotificationSettings({ ...notificationSettings, systemUpdates: checked })
+                          }
+                        />
                       </div>
 
                       <div className="flex items-center justify-between">
@@ -352,7 +686,12 @@ export default function SettingsPage() {
                           <p className="font-medium">Security Alerts</p>
                           <p className="text-sm text-gray-600">Login attempts and security events</p>
                         </div>
-                        <Switch defaultChecked />
+                        <Switch 
+                          checked={notificationSettings.securityAlerts}
+                          onCheckedChange={(checked) => 
+                            setNotificationSettings({ ...notificationSettings, securityAlerts: checked })
+                          }
+                        />
                       </div>
 
                       <div className="flex items-center justify-between">
@@ -360,7 +699,12 @@ export default function SettingsPage() {
                           <p className="font-medium">Marketing Updates</p>
                           <p className="text-sm text-gray-600">Tips, best practices, and product news</p>
                         </div>
-                        <Switch />
+                        <Switch 
+                          checked={notificationSettings.marketingUpdates}
+                          onCheckedChange={(checked) => 
+                            setNotificationSettings({ ...notificationSettings, marketingUpdates: checked })
+                          }
+                        />
                       </div>
                     </div>
                   </div>
@@ -368,11 +712,10 @@ export default function SettingsPage() {
 
                 <div className="flex justify-end">
                   <Button
-                    onClick={() => {
-                      toast.success('Notification settings saved successfully!')
-                      // In a real app, this would save to API
-                    }}
+                    onClick={saveNotifications}
+                    disabled={loading.notifications}
                   >
+                    {loading.notifications && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                     Save Notification Settings
                   </Button>
                 </div>
@@ -397,24 +740,38 @@ export default function SettingsPage() {
                     <div className="space-y-3">
                       <div className="space-y-2">
                         <Label htmlFor="currentPassword">Current Password</Label>
-                        <Input id="currentPassword" type="password" />
+                        <Input 
+                          id="currentPassword" 
+                          type="password"
+                          value={securityData.currentPassword}
+                          onChange={(e) => setSecurityData({ ...securityData, currentPassword: e.target.value })}
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="newPassword">New Password</Label>
-                        <Input id="newPassword" type="password" />
+                        <Input 
+                          id="newPassword" 
+                          type="password"
+                          value={securityData.newPassword}
+                          onChange={(e) => setSecurityData({ ...securityData, newPassword: e.target.value })}
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                        <Input id="confirmPassword" type="password" />
+                        <Input 
+                          id="confirmPassword" 
+                          type="password"
+                          value={securityData.confirmPassword}
+                          onChange={(e) => setSecurityData({ ...securityData, confirmPassword: e.target.value })}
+                        />
                       </div>
                       <Button 
                         variant="outline"
-                        onClick={() => {
-                          toast.success('Password updated successfully!')
-                          // In a real app, this would update the password
-                        }}
+                        onClick={updatePassword}
+                        disabled={loading.security}
                       >
-                        <Key className="h-4 w-4 mr-2" />
+                        {loading.security && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        {!loading.security && <Key className="h-4 w-4 mr-2" />}
                         Update Password
                       </Button>
                     </div>
@@ -486,10 +843,7 @@ export default function SettingsPage() {
                     <div className="space-y-3">
                       <Button 
                         variant="outline"
-                        onClick={() => {
-                          toast.info('Data export initiated. You will receive an email when ready.')
-                          // In a real app, this would start data export process
-                        }}
+                        onClick={exportData}
                       >
                         <Download className="h-4 w-4 mr-2" />
                         Export My Data
@@ -499,7 +853,6 @@ export default function SettingsPage() {
                         className="text-red-600"
                         onClick={() => {
                           toast.error('Account deletion requires additional verification. Contact support for assistance.')
-                          // In a real app, this would start account deletion process
                         }}
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
@@ -680,23 +1033,16 @@ export default function SettingsPage() {
                       <h4 className="font-medium">Theme</h4>
                       <p className="text-sm text-gray-600">Choose your app appearance</p>
                     </div>
-                    <Select defaultValue="light">
+                    <Select 
+                      value={preferences.theme}
+                      onValueChange={(value) => setPreferences({ ...preferences, theme: value })}
+                    >
                       <SelectTrigger className="w-32">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="light">
-                          <div className="flex items-center">
-                            <Sun className="h-4 w-4 mr-2" />
-                            Light
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="dark">
-                          <div className="flex items-center">
-                            <Moon className="h-4 w-4 mr-2" />
-                            Dark
-                          </div>
-                        </SelectItem>
+                        <SelectItem value="light">Light</SelectItem>
+                        <SelectItem value="dark">Dark</SelectItem>
                         <SelectItem value="system">System</SelectItem>
                       </SelectContent>
                     </Select>
@@ -707,7 +1053,10 @@ export default function SettingsPage() {
                       <h4 className="font-medium">Currency</h4>
                       <p className="text-sm text-gray-600">Default currency for transactions</p>
                     </div>
-                    <Select defaultValue="usd">
+                    <Select 
+                      value={preferences.currency}
+                      onValueChange={(value) => setPreferences({ ...preferences, currency: value })}
+                    >
                       <SelectTrigger className="w-32">
                         <SelectValue />
                       </SelectTrigger>
@@ -725,7 +1074,10 @@ export default function SettingsPage() {
                       <h4 className="font-medium">Date Format</h4>
                       <p className="text-sm text-gray-600">How dates are displayed</p>
                     </div>
-                    <Select defaultValue="mdy">
+                    <Select 
+                      value={preferences.dateFormat}
+                      onValueChange={(value) => setPreferences({ ...preferences, dateFormat: value })}
+                    >
                       <SelectTrigger className="w-32">
                         <SelectValue />
                       </SelectTrigger>
@@ -742,7 +1094,10 @@ export default function SettingsPage() {
                       <h4 className="font-medium">Fiscal Year Start</h4>
                       <p className="text-sm text-gray-600">When your fiscal year begins</p>
                     </div>
-                    <Select defaultValue="january">
+                    <Select 
+                      value={preferences.fiscalYearStart}
+                      onValueChange={(value) => setPreferences({ ...preferences, fiscalYearStart: value })}
+                    >
                       <SelectTrigger className="w-32">
                         <SelectValue />
                       </SelectTrigger>
@@ -765,7 +1120,12 @@ export default function SettingsPage() {
                         <p className="font-medium">Show Budget Alerts</p>
                         <p className="text-sm text-gray-600">Display budget warnings on dashboard</p>
                       </div>
-                      <Switch defaultChecked />
+                      <Switch 
+                        checked={preferences.showBudgetAlerts}
+                        onCheckedChange={(checked) => 
+                          setPreferences({ ...preferences, showBudgetAlerts: checked })
+                        }
+                      />
                     </div>
 
                     <div className="flex items-center justify-between">
@@ -773,7 +1133,12 @@ export default function SettingsPage() {
                         <p className="font-medium">Auto-refresh Data</p>
                         <p className="text-sm text-gray-600">Automatically update financial data</p>
                       </div>
-                      <Switch defaultChecked />
+                      <Switch 
+                        checked={preferences.autoRefreshData}
+                        onCheckedChange={(checked) => 
+                          setPreferences({ ...preferences, autoRefreshData: checked })
+                        }
+                      />
                     </div>
 
                     <div className="flex items-center justify-between">
@@ -781,7 +1146,12 @@ export default function SettingsPage() {
                         <p className="font-medium">Show Decimal Places</p>
                         <p className="text-sm text-gray-600">Display cents in currency amounts</p>
                       </div>
-                      <Switch defaultChecked />
+                      <Switch 
+                        checked={preferences.showDecimalPlaces}
+                        onCheckedChange={(checked) => 
+                          setPreferences({ ...preferences, showDecimalPlaces: checked })
+                        }
+                      />
                     </div>
                   </div>
 
@@ -794,7 +1164,6 @@ export default function SettingsPage() {
                         variant="outline"
                         onClick={() => {
                           toast.success('Data backup initiated. You will receive confirmation when complete.')
-                          // In a real app, this would start data backup process
                         }}
                       >
                         <Database className="h-4 w-4 mr-2" />
@@ -804,7 +1173,6 @@ export default function SettingsPage() {
                         variant="outline"
                         onClick={() => {
                           toast.info('Data import dialog would open here. Select files to import.')
-                          // In a real app, this would open file picker for data import
                         }}
                       >
                         <Upload className="h-4 w-4 mr-2" />
@@ -816,11 +1184,10 @@ export default function SettingsPage() {
 
                 <div className="flex justify-end">
                   <Button
-                    onClick={() => {
-                      toast.success('Preferences saved successfully!')
-                      // In a real app, this would save to API
-                    }}
+                    onClick={savePreferences}
+                    disabled={loading.preferences}
                   >
+                    {loading.preferences && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                     Save Preferences
                   </Button>
                 </div>
