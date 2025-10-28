@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { getDefaultCategories } from '@/lib/default-categories';
 
 export async function GET() {
   try {
@@ -26,10 +27,12 @@ export async function GET() {
       return NextResponse.json({ categories: [] });
     }
 
-    const activeProfileId = user.businessProfiles[0].id;
+    const activeProfile = user.businessProfiles[0];
+    const activeProfileId = activeProfile.id;
+    const profileType = activeProfile.type || 'BUSINESS';
 
-    // Fetch categories with transaction counts
-    const categories = await prisma.category.findMany({
+    // Fetch user-created categories with transaction counts
+    const userCategories = await prisma.category.findMany({
       where: {
         businessProfileId: activeProfileId
       },
@@ -48,7 +51,29 @@ export async function GET() {
       }
     });
 
-    return NextResponse.json({ categories });
+    // Get default categories based on profile type
+    const defaultCategories = getDefaultCategories(profileType as 'PERSONAL' | 'BUSINESS');
+    
+    // Convert default categories to the expected format
+    const defaultCategoriesFormatted = defaultCategories.map((cat, index) => ({
+      id: `default-${index}`,
+      name: cat.name,
+      type: cat.type,
+      color: cat.color,
+      icon: cat.icon,
+      description: `Default ${cat.type.toLowerCase()} category`,
+      isDefault: true,
+      isActive: true,
+      transactions: [],
+      _count: { transactions: 0 },
+      budgetLimit: null,
+      taxDeductible: false
+    }));
+
+    // Combine user categories and default categories
+    const allCategories = [...userCategories, ...defaultCategoriesFormatted];
+
+    return NextResponse.json({ categories: allCategories });
   } catch (error) {
     console.error('Error fetching categories:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
