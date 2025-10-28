@@ -214,8 +214,8 @@ export default function BurnRatePage() {
   const getRiskColor = (level?: string) => {
     switch (level) {
       case 'LOW': return 'text-green-600'
-      case 'MEDIUM': return 'text-yellow-600'
-      case 'HIGH': return 'text-orange-600'
+      case 'MEDIUM': return 'text-orange-600'
+      case 'HIGH': return 'text-orange-700'
       case 'CRITICAL': return 'text-red-600'
       default: return 'text-gray-600'
     }
@@ -224,8 +224,8 @@ export default function BurnRatePage() {
   const getRiskBgColor = (level?: string) => {
     switch (level) {
       case 'LOW': return 'bg-green-100'
-      case 'MEDIUM': return 'bg-yellow-100'
-      case 'HIGH': return 'bg-orange-100'
+      case 'MEDIUM': return 'bg-orange-100'
+      case 'HIGH': return 'bg-orange-200'
       case 'CRITICAL': return 'bg-red-100'
       default: return 'bg-gray-100'
     }
@@ -766,7 +766,7 @@ export default function BurnRatePage() {
                     <h4 className="font-semibold">{rec.title}</h4>
                     <span className={`text-xs px-2 py-1 rounded ${
                       rec.priority === 'HIGH' ? 'bg-red-100 text-red-800' :
-                      rec.priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
+                      rec.priority === 'MEDIUM' ? 'bg-orange-100 text-orange-800' :
                       'bg-blue-100 text-blue-800'
                     }`}>
                       {rec.priority}

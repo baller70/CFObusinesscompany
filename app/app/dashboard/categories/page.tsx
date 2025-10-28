@@ -65,7 +65,7 @@ export default function CategoriesPage() {
   const getBudgetColor = (percentage: number) => {
     if (percentage >= 90) return 'text-red-600 bg-red-100'
     if (percentage >= 75) return 'text-orange-600 bg-orange-100'
-    if (percentage >= 50) return 'text-gray-600 bg-yellow-100'
+    if (percentage >= 50) return 'text-blue-600 bg-blue-100'
     return 'text-green-600 bg-green-100'
   }
 

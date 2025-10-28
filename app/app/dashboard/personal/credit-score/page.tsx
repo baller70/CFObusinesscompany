@@ -145,7 +145,7 @@ export default function CreditScorePage() {
   const getScoreColor = (score: number) => {
     if (score >= 750) return 'text-green-600'
     if (score >= 700) return 'text-blue-600'
-    if (score >= 650) return 'text-yellow-600'
+    if (score >= 650) return 'text-cyan-600'
     if (score >= 600) return 'text-orange-600'
     return 'text-red-600'
   }
@@ -153,7 +153,7 @@ export default function CreditScorePage() {
   const getScoreBgColor = (score: number) => {
     if (score >= 750) return 'bg-green-50'
     if (score >= 700) return 'bg-blue-50'
-    if (score >= 650) return 'bg-yellow-50'
+    if (score >= 650) return 'bg-cyan-50'
     if (score >= 600) return 'bg-orange-50'
     return 'bg-red-50'
   }
@@ -402,7 +402,7 @@ export default function CreditScorePage() {
                 <div className="border rounded-lg p-4">
                   <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center gap-2">
-                      <RefreshCw className="h-4 w-4 text-yellow-600" />
+                      <RefreshCw className="h-4 w-4 text-cyan-600" />
                       <span className="font-semibold">New Credit</span>
                     </div>
                     <span className="text-sm text-gray-600">10% weight</span>

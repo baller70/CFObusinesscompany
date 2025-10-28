@@ -130,7 +130,7 @@ export default function WishListsPage() {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'HIGH': return 'text-red-600 bg-red-100'
-      case 'MEDIUM': return 'text-yellow-600 bg-yellow-100'
+      case 'MEDIUM': return 'text-orange-600 bg-orange-100'
       case 'LOW': return 'text-green-600 bg-green-100'
       default: return 'text-gray-600 bg-gray-100'
     }

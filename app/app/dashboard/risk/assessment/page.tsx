@@ -108,15 +108,15 @@ export default function RiskAssessmentPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-yellow-200 bg-yellow-50">
+        <Card className="border-blue-200 bg-blue-50">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-yellow-600" />
+              <AlertCircle className="h-4 w-4 text-blue-600" />
               Medium Risk
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-yellow-600">0</div>
+            <div className="text-3xl font-bold text-blue-600">0</div>
             <p className="text-xs text-muted-foreground mt-1">Monitor and plan mitigation</p>
           </CardContent>
         </Card>

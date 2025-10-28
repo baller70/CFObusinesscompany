@@ -53,7 +53,7 @@ export default function AssetAllocationPage() {
       case 'stocks': return 'bg-blue-500'
       case 'bonds': return 'bg-green-500'
       case 'real estate': return 'bg-purple-500'
-      case 'cash': return 'bg-yellow-500'
+      case 'cash': return 'bg-teal-500'
       default: return 'bg-gray-500'
     }
   }

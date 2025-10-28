@@ -62,10 +62,10 @@ export default function RiskIncidentsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Open Incidents</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-600" />
+            <Clock className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">0</div>
+            <div className="text-2xl font-bold text-blue-600">0</div>
             <p className="text-xs text-muted-foreground">Under investigation</p>
           </CardContent>
         </Card>
@@ -121,15 +121,15 @@ export default function RiskIncidentsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-yellow-200 bg-yellow-50">
+        <Card className="border-blue-200 bg-blue-50">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-yellow-600" />
+              <AlertCircle className="h-4 w-4 text-blue-600" />
               Medium
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-yellow-600">0</div>
+            <div className="text-3xl font-bold text-blue-600">0</div>
             <p className="text-xs text-muted-foreground mt-1">Moderate impact</p>
           </CardContent>
         </Card>

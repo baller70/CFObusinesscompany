@@ -50,7 +50,7 @@ export default function TaxPlanningPage() {
   }
 
   const effectiveTaxRate = taxData?.effectiveTaxRate || 0
-  const progressColor = effectiveTaxRate > 30 ? 'bg-red-500' : effectiveTaxRate > 20 ? 'bg-yellow-500' : 'bg-green-500'
+  const progressColor = effectiveTaxRate > 30 ? 'bg-red-500' : effectiveTaxRate > 20 ? 'bg-orange-500' : 'bg-green-500'
 
   return (
     <div className="space-y-6">

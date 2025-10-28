@@ -161,7 +161,7 @@ export default function TaxBreaksPage() {
   const getComplexityColor = (complexity: string) => {
     const colors: Record<string, string> = {
       'Low': 'bg-green-100 text-green-800',
-      'Medium': 'bg-yellow-100 text-yellow-800',
+      'Medium': 'bg-orange-100 text-orange-800',
       'High': 'bg-red-100 text-red-800',
     }
     return colors[complexity] || 'bg-gray-100 text-gray-800'
@@ -180,7 +180,7 @@ export default function TaxBreaksPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-yellow-500" />
+              <Sparkles className="h-5 w-5 text-blue-500" />
               Financial Overview
             </CardTitle>
           </CardHeader>

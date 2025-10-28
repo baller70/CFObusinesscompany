@@ -71,14 +71,14 @@ function BudgetPageClient() {
 
   const getProgressColor = (percentUsed: number) => {
     if (percentUsed >= 100) return 'bg-red-500'
-    if (percentUsed >= 80) return 'bg-yellow-500'
+    if (percentUsed >= 80) return 'bg-orange-500'
     return 'bg-green-500'
   }
 
   const getStatusIcon = (spent: number, budget: number) => {
     const percent = (spent / budget) * 100
     if (percent >= 100) return <AlertTriangle className="h-4 w-4 text-red-500" />
-    if (percent >= 80) return <TrendingUp className="h-4 w-4 text-yellow-500" />
+    if (percent >= 80) return <TrendingUp className="h-4 w-4 text-orange-500" />
     return <TrendingDown className="h-4 w-4 text-green-500" />
   }
 

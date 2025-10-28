@@ -66,7 +66,7 @@ export default function RiskDashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Risks</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-yellow-600" />
+            <AlertTriangle className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">0</div>
@@ -122,7 +122,7 @@ export default function RiskDashboardPage() {
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                  <div className="w-3 h-3 rounded-full bg-purple-500"></div>
                   <span className="text-sm">Strategic Risks</span>
                 </div>
                 <span className="text-sm font-medium">0</span>
@@ -161,10 +161,10 @@ export default function RiskDashboardPage() {
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-yellow-600" />
+                  <AlertCircle className="h-4 w-4 text-blue-600" />
                   <span className="text-sm">Medium</span>
                 </div>
-                <Badge className="bg-yellow-500">0</Badge>
+                <Badge className="bg-blue-500">0</Badge>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
