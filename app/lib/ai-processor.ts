@@ -450,4 +450,127 @@ Respond with raw JSON only.`
       throw new Error('Failed to generate financial insights: Unknown error');
     }
   }
+
+  async reValidateTransactions(transactions: any[]): Promise<any> {
+    console.log(`[AI Processor] Re-validating ${transactions.length} transactions`);
+    
+    // Process in smaller batches for validation
+    const batchSize = 15;
+    const allValidations: any[] = [];
+    
+    for (let i = 0; i < transactions.length; i += batchSize) {
+      const batch = transactions.slice(i, i + batchSize);
+      console.log(`[AI Processor] Validating batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(transactions.length/batchSize)}`);
+      
+      try {
+        const response = await fetch('https://apps.abacus.ai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`
+          },
+          body: JSON.stringify({
+            model: 'gpt-4.1-mini',
+            messages: [{
+              role: "user",
+              content: `You are a financial auditor. Re-validate these categorized transactions and flag any potential errors:
+
+${JSON.stringify(batch, null, 2)}
+
+For each transaction, verify:
+1. Category is appropriate for the description/merchant
+2. Profile type (BUSINESS vs PERSONAL) is correct
+3. Amount and type (INCOME/EXPENSE) make sense
+4. No obvious data quality issues
+
+Return JSON:
+{
+  "validatedTransactions": [
+    {
+      "transactionId": "id",
+      "originalCategory": "category",
+      "validatedCategory": "category (same or corrected)",
+      "originalProfile": "BUSINESS|PERSONAL",
+      "validatedProfile": "BUSINESS|PERSONAL (same or corrected)",
+      "confidence": 0.95,
+      "hasIssue": false,
+      "issueType": null | "LOW_CONFIDENCE|CATEGORY_MISMATCH|PROFILE_MISMATCH",
+      "issueSeverity": null | "LOW|MEDIUM|HIGH",
+      "issueDescription": null | "description",
+      "suggestedFix": null | "recommendation"
+    }
+  ],
+  "summary": {
+    "totalValidated": number,
+    "categoriesChanged": number,
+    "profilesChanged": number,
+    "issuesFound": number
+  }
+}
+
+Respond with raw JSON only.`
+            }],
+            response_format: { type: "json_object" },
+            max_tokens: 8000,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`[AI Processor] Validation batch ${i/batchSize + 1} API error:`, errorText);
+          throw new Error(`API request failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
+        
+        if (!content) {
+          throw new Error('Empty response from AI');
+        }
+
+        let result;
+        try {
+          result = JSON.parse(content);
+        } catch (parseError) {
+          const jsonMatch = content.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
+          if (jsonMatch) {
+            result = JSON.parse(jsonMatch[1]);
+          } else {
+            throw new Error(`Invalid JSON in response`);
+          }
+        }
+        
+        if (result.validatedTransactions && Array.isArray(result.validatedTransactions)) {
+          allValidations.push(...result.validatedTransactions);
+          console.log(`[AI Processor] Validation batch ${Math.floor(i/batchSize) + 1} completed: ${result.validatedTransactions.length} transactions`);
+        }
+        
+      } catch (error) {
+        console.error(`[AI Processor] Error validating batch ${Math.floor(i/batchSize) + 1}:`, error);
+        // Continue with next batch
+      }
+    }
+    
+    // Generate summary
+    const categoriesChanged = allValidations.filter(v => v.originalCategory !== v.validatedCategory).length;
+    const profilesChanged = allValidations.filter(v => v.originalProfile !== v.validatedProfile).length;
+    const issuesFound = allValidations.filter(v => v.hasIssue).length;
+    
+    console.log(`[AI Processor] Validation complete: ${allValidations.length} validated, ${categoriesChanged} categories changed, ${profilesChanged} profiles changed, ${issuesFound} issues found`);
+    
+    return {
+      validatedTransactions: allValidations,
+      summary: {
+        totalValidated: allValidations.length,
+        categoriesChanged,
+        profilesChanged,
+        issuesFound
+      },
+      categoryVerification: {
+        changed: categoriesChanged,
+        confirmed: allValidations.length - categoriesChanged - issuesFound,
+        flagged: issuesFound
+      }
+    };
+  }
 }

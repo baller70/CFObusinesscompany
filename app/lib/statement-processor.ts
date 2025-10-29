@@ -1,8 +1,19 @@
 import { prisma } from '@/lib/db';
 import { downloadFile } from '@/lib/s3';
 import { AIBankStatementProcessor } from '@/lib/ai-processor';
+import { 
+  performRuleBasedValidation, 
+  generateValidationSummary,
+  ValidationIssue 
+} from '@/lib/validation';
 
+// Original function kept for backward compatibility
 export async function processStatement(statementId: string) {
+  return processStatementWithValidation(statementId);
+}
+
+// New function with validation
+export async function processStatementWithValidation(statementId: string) {
   let aiProcessor: AIBankStatementProcessor;
   
   try {
@@ -271,7 +282,100 @@ export async function processStatement(statementId: string) {
       await createRecurringCharges(statement.userId, personalProfile.id, personalTransactions);
     }
 
-    // Update processed count and transaction count
+    // ========================================
+    // VALIDATION STAGE - Double-check everything
+    // ========================================
+    console.log(`[Processing] 🔍 Starting validation stage for ${statement.fileName}`);
+    
+    await prisma.bankStatement.update({
+      where: { id: statementId },
+      data: {
+        processingStage: 'VALIDATING'
+      }
+    });
+
+    // Run rule-based validation
+    console.log(`[Processing] Running rule-based validation...`);
+    const ruleBasedResult = await performRuleBasedValidation(
+      statementId,
+      extractedData,
+      createdTransactions.map(ct => ct.transaction)
+    );
+
+    // Run AI re-validation
+    console.log(`[Processing] Running AI re-validation...`);
+    const aiValidationResult = await aiProcessor.reValidateTransactions(
+      createdTransactions.map(ct => ({
+        id: ct.transaction.id,
+        description: ct.transaction.description,
+        amount: ct.transaction.amount,
+        category: ct.transaction.category,
+        type: ct.transaction.type,
+        profileType: ct.catTxn.profileType,
+        merchant: ct.transaction.merchant,
+        confidence: ct.transaction.confidence
+      }))
+    );
+
+    // Generate comprehensive validation report
+    console.log(`[Processing] Generating validation report...`);
+    const validationResult = generateValidationSummary(
+      ruleBasedResult,
+      aiValidationResult,
+      createdTransactions.map(ct => ct.transaction)
+    );
+
+    console.log(`[Processing] ✅ Validation complete: Confidence ${(validationResult.confidence * 100).toFixed(1)}%, ${validationResult.issues.length} issues found`);
+
+    // Apply corrections if AI validation suggests changes with high confidence
+    let correctionsMade = 0;
+    if (aiValidationResult.validatedTransactions) {
+      for (const validation of aiValidationResult.validatedTransactions) {
+        if (validation.hasIssue && validation.confidence > 0.85) {
+          // Auto-correct high-confidence issues
+          const transaction = createdTransactions.find(ct => ct.transaction.id === validation.transactionId);
+          if (transaction && validation.validatedCategory !== validation.originalCategory) {
+            console.log(`[Processing] Auto-correcting transaction ${transaction.transaction.id}: ${validation.originalCategory} → ${validation.validatedCategory}`);
+            
+            // Find or create the corrected category
+            let correctedCategory = await prisma.category.findFirst({
+              where: {
+                userId: statement.userId,
+                name: validation.validatedCategory
+              }
+            });
+
+            if (!correctedCategory) {
+              correctedCategory = await prisma.category.create({
+                data: {
+                  userId: statement.userId,
+                  name: validation.validatedCategory,
+                  type: transaction.transaction.type === 'INCOME' ? 'INCOME' : 'EXPENSE',
+                  color: getCategoryColor(validation.validatedCategory),
+                  icon: getCategoryIcon(validation.validatedCategory)
+                }
+              });
+            }
+
+            await prisma.transaction.update({
+              where: { id: transaction.transaction.id },
+              data: {
+                category: validation.validatedCategory,
+                categoryId: correctedCategory.id
+              }
+            });
+            
+            correctionsMade++;
+          }
+        }
+      }
+    }
+
+    if (correctionsMade > 0) {
+      console.log(`[Processing] ✨ Applied ${correctionsMade} auto-corrections based on validation`);
+    }
+
+    // Update processed count and transaction count with validation results
     await prisma.bankStatement.update({
       where: { id: statementId },
       data: {
@@ -279,11 +383,15 @@ export async function processStatement(statementId: string) {
         transactionCount: categorizedTransactions.length,
         processingStage: 'COMPLETED',
         status: 'COMPLETED',
+        validationResult: validationResult as any,
+        validationConfidence: validationResult.confidence,
+        flaggedIssues: validationResult.issues as any,
+        validatedAt: new Date(),
         processedAt: new Date()
       }
     });
 
-    console.log(`[Processing] Successfully completed processing for ${statement.fileName} - ${categorizedTransactions.length} transactions`);
+    console.log(`[Processing] Successfully completed processing for ${statement.fileName} - ${categorizedTransactions.length} transactions, ${correctionsMade} corrections applied`);
 
     // Update budgets with actual spending for each profile that has transactions
     if (businessTransactions.length > 0 && businessProfile) {

@@ -57,6 +57,10 @@ interface BankStatement {
   processedCount: number;
   errorLog?: string;
   aiAnalysis?: any;
+  validationResult?: any;
+  validationConfidence?: number;
+  flaggedIssues?: any[];
+  validatedAt?: string;
   createdAt: string;
   transactionCount: number;
   transactions?: Transaction[];
@@ -279,10 +283,49 @@ const UploadHistory = forwardRef<UploadHistoryRef>((props, ref) => {
               </div>
 
               {/* Processing Stage Indicator */}
-              {statement.status === 'PROCESSING' && statement.processingStage && (
+              {(statement.status === 'PROCESSING' || statement.status === 'PENDING') && statement.processingStage && (
                 <div className="flex items-center gap-2 text-sm">
-                  <Brain className="h-4 w-4 text-blue-500 animate-pulse" />
-                  <span className="text-blue-600 font-medium text-xs">{statement.processingStage.replace(/_/g, ' ')}</span>
+                  {statement.processingStage === 'QUEUED' ? (
+                    <Clock className="h-4 w-4 text-orange-500" />
+                  ) : statement.processingStage === 'VALIDATING' ? (
+                    <CheckCircle className="h-4 w-4 text-purple-500 animate-pulse" />
+                  ) : (
+                    <Brain className="h-4 w-4 text-blue-500 animate-pulse" />
+                  )}
+                  <span className={`font-medium text-xs ${
+                    statement.processingStage === 'QUEUED' ? 'text-orange-600' :
+                    statement.processingStage === 'VALIDATING' ? 'text-purple-600' :
+                    'text-blue-600'
+                  }`}>
+                    {statement.processingStage === 'QUEUED' ? 'QUEUED FOR PROCESSING' :
+                     statement.processingStage === 'VALIDATING' ? 'VALIDATING ACCURACY' :
+                     statement.processingStage.replace(/_/g, ' ')}
+                  </span>
+                </div>
+              )}
+
+              {/* Validation Confidence Badge */}
+              {statement.status === 'COMPLETED' && statement.validationConfidence !== undefined && (
+                <div className="flex items-center gap-2 text-sm">
+                  {statement.validationConfidence >= 0.95 ? (
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                  ) : statement.validationConfidence >= 0.85 ? (
+                    <AlertCircle className="h-4 w-4 text-yellow-500" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4 text-orange-500" />
+                  )}
+                  <span className={`font-medium text-xs ${
+                    statement.validationConfidence >= 0.95 ? 'text-green-600' :
+                    statement.validationConfidence >= 0.85 ? 'text-yellow-600' :
+                    'text-orange-600'
+                  }`}>
+                    {(statement.validationConfidence * 100).toFixed(0)}% Validated
+                  </span>
+                  {statement.flaggedIssues && statement.flaggedIssues.length > 0 && (
+                    <Badge variant="outline" className="text-xs">
+                      {statement.flaggedIssues.length} flagged
+                    </Badge>
+                  )}
                 </div>
               )}
 
@@ -456,6 +499,153 @@ const UploadHistory = forwardRef<UploadHistoryRef>((props, ref) => {
                         </div>
                       ))}
                     </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Validation Report */}
+              {selectedStatement.validationResult && selectedStatement.validationConfidence !== undefined && (
+                <Card className={`border-2 ${
+                  (selectedStatement.validationConfidence || 0) >= 0.95 ? 'border-green-200 bg-green-50' :
+                  (selectedStatement.validationConfidence || 0) >= 0.85 ? 'border-yellow-200 bg-yellow-50' :
+                  'border-orange-200 bg-orange-50'
+                }`}>
+                  <CardHeader>
+                    <CardTitle className={`text-sm flex items-center gap-2 ${
+                      (selectedStatement.validationConfidence || 0) >= 0.95 ? 'text-green-700' :
+                      (selectedStatement.validationConfidence || 0) >= 0.85 ? 'text-yellow-700' :
+                      'text-orange-700'
+                    }`}>
+                      {(selectedStatement.validationConfidence || 0) >= 0.95 ? (
+                        <CheckCircle className="h-5 w-5" />
+                      ) : (
+                        <AlertCircle className="h-5 w-5" />
+                      )}
+                      Validation Report - {((selectedStatement.validationConfidence || 0) * 100).toFixed(1)}% Confidence
+                    </CardTitle>
+                    <CardDescription>
+                      Double-checked for accuracy and completeness
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Summary */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="text-center p-3 bg-white/50 rounded-lg">
+                        <div className="text-2xl font-bold text-foreground">
+                          {selectedStatement.validationResult.summary?.totalTransactions || 0}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Total</div>
+                      </div>
+                      <div className="text-center p-3 bg-white/50 rounded-lg">
+                        <div className="text-2xl font-bold text-green-600">
+                          {selectedStatement.validationResult.summary?.validatedTransactions || 0}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Validated</div>
+                      </div>
+                      <div className="text-center p-3 bg-white/50 rounded-lg">
+                        <div className="text-2xl font-bold text-orange-600">
+                          {selectedStatement.validationResult.summary?.flaggedTransactions || 0}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Flagged</div>
+                      </div>
+                      <div className="text-center p-3 bg-white/50 rounded-lg">
+                        <div className="text-2xl font-bold text-purple-600">
+                          {selectedStatement.validationResult.summary?.duplicatesFound || 0}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Duplicates</div>
+                      </div>
+                    </div>
+
+                    {/* Balance Reconciliation */}
+                    {selectedStatement.validationResult.details?.mathematicalCheck && (
+                      <div className={`p-3 rounded-lg ${
+                        selectedStatement.validationResult.details.mathematicalCheck.passed 
+                          ? 'bg-green-100 border border-green-300' 
+                          : 'bg-red-100 border border-red-300'
+                      }`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          {selectedStatement.validationResult.details.mathematicalCheck.passed ? (
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <XCircle className="h-4 w-4 text-red-600" />
+                          )}
+                          <span className={`text-sm font-semibold ${
+                            selectedStatement.validationResult.details.mathematicalCheck.passed 
+                              ? 'text-green-700' 
+                              : 'text-red-700'
+                          }`}>
+                            Balance Reconciliation
+                          </span>
+                        </div>
+                        <div className="text-xs space-y-1">
+                          <div>Expected: ${selectedStatement.validationResult.details.mathematicalCheck.expectedBalance?.toFixed(2) || '0.00'}</div>
+                          <div>Calculated: ${selectedStatement.validationResult.details.mathematicalCheck.actualBalance?.toFixed(2) || '0.00'}</div>
+                          {selectedStatement.validationResult.details.mathematicalCheck.difference > 0 && (
+                            <div>Difference: ${selectedStatement.validationResult.details.mathematicalCheck.difference?.toFixed(2) || '0.00'}</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Flagged Issues */}
+                    {selectedStatement.flaggedIssues && selectedStatement.flaggedIssues.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                          <AlertCircle className="h-4 w-4" />
+                          Flagged Issues ({selectedStatement.flaggedIssues.length})
+                        </h4>
+                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                          {selectedStatement.flaggedIssues.slice(0, 10).map((issue: any, index: number) => (
+                            <div 
+                              key={index}
+                              className={`p-2 rounded border text-xs ${
+                                issue.severity === 'HIGH' ? 'bg-red-50 border-red-200' :
+                                issue.severity === 'MEDIUM' ? 'bg-yellow-50 border-yellow-200' :
+                                'bg-blue-50 border-blue-200'
+                              }`}
+                            >
+                              <div className="flex items-start gap-2">
+                                <Badge variant="outline" className="text-xs">
+                                  {issue.type?.replace(/_/g, ' ')}
+                                </Badge>
+                                <Badge variant={
+                                  issue.severity === 'HIGH' ? 'destructive' :
+                                  issue.severity === 'MEDIUM' ? 'default' :
+                                  'secondary'
+                                } className="text-xs">
+                                  {issue.severity}
+                                </Badge>
+                              </div>
+                              <p className="mt-1">{issue.description}</p>
+                              {issue.suggestedFix && (
+                                <p className="mt-1 text-muted-foreground italic">
+                                  💡 {issue.suggestedFix}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                          {selectedStatement.flaggedIssues.length > 10 && (
+                            <p className="text-xs text-muted-foreground text-center py-2">
+                              + {selectedStatement.flaggedIssues.length - 10} more issues
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* All Clear Message */}
+                    {(!selectedStatement.flaggedIssues || selectedStatement.flaggedIssues.length === 0) && 
+                     (selectedStatement.validationConfidence || 0) >= 0.95 && (
+                      <div className="text-center p-4 bg-green-100 rounded-lg">
+                        <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                        <p className="text-sm font-semibold text-green-700">
+                          All transactions validated successfully!
+                        </p>
+                        <p className="text-xs text-green-600 mt-1">
+                          No issues found. Data is ready for analysis.
+                        </p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}

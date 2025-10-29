@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { uploadFile } from '@/lib/s3';
+import { queueManager } from '@/lib/queue-manager';
 
 export async function POST(request: NextRequest) {
   try {
@@ -82,12 +83,14 @@ export async function POST(request: NextRequest) {
           id: bankStatement.id,
           fileName: file.name,
           fileType,
-          status: 'uploaded',
+          status: 'queued',
           size: file.size
         });
 
-        // Start processing asynchronously
-        processStatementAsync(bankStatement.id);
+        // Add to processing queue instead of immediate processing
+        queueManager.addToQueue(bankStatement.id).catch(error => {
+          console.error(`Failed to add ${file.name} to queue:`, error);
+        });
 
       } catch (error) {
         console.error('Upload error:', error);
@@ -98,10 +101,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const queueStatus = queueManager.getQueueStatus();
+    
     return NextResponse.json({ 
       success: true,
       uploads: uploadResults,
-      message: `${uploadResults.filter(r => !r.error).length} files uploaded successfully`
+      message: `${uploadResults.filter(r => !r.error).length} files uploaded and queued for processing`,
+      queueStatus: {
+        active: queueStatus.active,
+        maxConcurrent: queueStatus.max
+      }
     });
 
   } catch (error) {
@@ -111,28 +120,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-// Async processing function
-async function processStatementAsync(statementId: string) {
-  // Process in background without blocking the upload response
-  setImmediate(async () => {
-    try {
-      // Import the processor dynamically to avoid circular dependencies
-      const { processStatement } = await import('@/lib/statement-processor');
-      await processStatement(statementId);
-    } catch (error) {
-      console.error('Async processing failed:', error);
-      
-      // Update status to failed
-      await prisma.bankStatement.update({
-        where: { id: statementId },
-        data: {
-          status: 'FAILED',
-          processingStage: 'FAILED',
-          errorLog: error instanceof Error ? error.message : 'Processing failed'
-        }
-      }).catch(console.error);
-    }
-  });
 }
