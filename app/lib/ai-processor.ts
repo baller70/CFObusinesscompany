@@ -235,11 +235,16 @@ Respond with raw JSON only.`
     }
   }
 
-  async categorizeTransactions(transactions: any[]): Promise<any[]> {
-    console.log(`[AI Processor] Categorizing ${transactions.length} transactions`);
+  async categorizeTransactions(transactions: any[], userContext?: { industry?: string | null; businessType?: string; companyName?: string | null }): Promise<any[]> {
+    console.log(`[AI Processor] Categorizing ${transactions.length} transactions with enhanced accuracy system`);
+    
+    // Import expanded categories
+    const { getAllCategories, getIndustryAwarePrompt } = await import('@/lib/accuracy-enhancer');
+    const allCategories = getAllCategories();
+    const industryContext = userContext ? getIndustryAwarePrompt(userContext.industry, userContext.businessType, userContext.companyName) : '';
     
     // Process in batches to avoid token limits
-    const batchSize = 20;
+    const batchSize = 15; // Reduced batch size for more accurate processing
     const allCategorized: any[] = [];
     
     for (let i = 0; i < transactions.length; i += batchSize) {
@@ -257,30 +262,67 @@ Respond with raw JSON only.`
             model: 'gpt-4.1-mini',
             messages: [{
               role: "user",
-              content: `Categorize these financial transactions. For each, provide category, confidence, AND determine if it's a business or personal/household expense:
+              content: `You are an expert financial analyst. Categorize these transactions with MAXIMUM accuracy.
 
 ${JSON.stringify(batch, null, 2)}
 
-Categories: Food & Dining, Transportation, Shopping, Entertainment, Bills & Utilities, Healthcare, Education, Travel, Income, Transfers, Fees & Charges, Groceries, Gas & Fuel, Restaurants, Insurance, Rent/Mortgage, Phone, Internet, Subscriptions, ATM, Interest, Dividends, Salary, Freelance, Business, Other
+${industryContext}
 
-IMPORTANT: Also classify each transaction as either "BUSINESS" or "PERSONAL":
-- BUSINESS: Office supplies, business services, professional fees, business travel, client meals, equipment, software licenses, advertising, etc.
-- PERSONAL: Personal groceries, personal dining, entertainment, personal healthcare, household bills, personal shopping, etc.
+AVAILABLE CATEGORIES (choose the MOST SPECIFIC one):
+
+BUSINESS CATEGORIES:
+- Office Supplies, Software & SaaS, Marketing & Advertising, Professional Services
+- Legal & Accounting, Business Insurance, Equipment & Machinery, Business Travel
+- Client Entertainment, Employee Benefits, Contractor Payments, Business Utilities
+- Rent & Lease, Shipping & Logistics, Research & Development, Training & Education
+- Telecommunications, Website & Hosting, Bank Fees, Business Licenses
+- Inventory & Supplies, Vehicle Expenses
+
+PERSONAL CATEGORIES:
+- Groceries, Dining & Restaurants, Entertainment, Personal Shopping
+- Healthcare, Home Utilities, Rent/Mortgage, Personal Insurance
+- Personal Care, Fitness & Wellness, Hobbies, Personal Travel
+- Gifts, Subscriptions, Phone & Internet, Transportation
+- Gas & Fuel, Vehicle Maintenance, Education, Childcare
+
+INCOME CATEGORIES:
+- Salary, Freelance Income, Business Revenue, Investment Income
+- Dividends, Interest, Refunds, Rental Income, Side Business, Commissions
+
+FINANCIAL CATEGORIES:
+- Credit Card Payment, Loan Payment, Savings Transfer, Investment, Taxes
+
+CRITICAL: Classify each transaction as "BUSINESS" or "PERSONAL":
+- BUSINESS: Any expense that is clearly business-related (office items, professional services, business software, client meetings, business travel, equipment, business insurance, marketing, etc.)
+- PERSONAL: Any expense that is clearly personal/household (personal groceries, personal meals, entertainment, personal healthcare, home utilities, personal shopping, hobbies, personal travel, etc.)
+
+For ambiguous merchants (Amazon, Walmart, Target, Costco, etc.), consider:
+1. Amount (larger = more likely business)
+2. Description details (any business keywords?)
+3. Context from other transactions${industryContext ? '\n4. Industry context provided' : ''}
 
 Return JSON:
 {
   "categorizedTransactions": [
     {
       "originalTransaction": original_transaction_object,
-      "suggestedCategory": "category",
-      "confidence": 0.95,
-      "reasoning": "brief",
-      "merchant": "merchant name",
-      "isRecurring": false,
-      "profileType": "BUSINESS" or "PERSONAL"
+      "suggestedCategory": "EXACT category from list above",
+      "confidence": 0.XX (be honest about uncertainty),
+      "reasoning": "why this category and profile",
+      "merchant": "cleaned merchant name",
+      "isRecurring": true/false,
+      "profileType": "BUSINESS" or "PERSONAL",
+      "profileConfidence": 0.XX (separate confidence for profile classification)
     }
   ]
 }
+
+Be CONSERVATIVE with confidence scores. Use:
+- 0.95-1.0: Absolutely certain
+- 0.85-0.94: Very confident
+- 0.70-0.84: Confident
+- 0.50-0.69: Uncertain (these will be flagged for review)
+- Below 0.50: Very uncertain
 
 Raw JSON only.`
             }],

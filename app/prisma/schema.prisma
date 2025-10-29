@@ -140,6 +140,10 @@ model User {
   educationSavings          EducationSavings[]
   healthcareExpenses        HealthcareExpense[]
   wishLists                 WishList[]
+  merchantRules             MerchantRule[]
+  transactionReviews        TransactionReview[]
+  userCorrections           UserCorrection[]
+  recurringPatterns         RecurringPattern[]
 }
 
 model VerificationToken {
@@ -1361,6 +1365,10 @@ model BusinessProfile {
   educationSavings          EducationSavings[]
   healthcareExpenses        HealthcareExpense[]
   wishLists                 WishList[]
+  merchantRules             MerchantRule[]
+  transactionReviews        TransactionReview[]
+  userCorrections           UserCorrection[]
+  recurringPatterns         RecurringPattern[]
 
   @@unique([userId, name])
   @@index([userId, type])
@@ -3511,4 +3519,103 @@ model FinancialReport {
   summary           Json             // Contains income, expenses, netIncome, transactionCount
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
+}
+
+// ====================================
+// 100% ACCURACY SYSTEM - NEW MODELS
+// ====================================
+
+// User-defined merchant rules for automatic routing
+model MerchantRule {
+  id                String           @id @default(cuid())
+  userId            String
+  businessProfileId String?          // Which profile to route to
+  merchantName      String           // Merchant name or pattern
+  merchantPattern   String?          // Regex pattern for matching (optional)
+  suggestedCategory String           // Category to assign
+  profileType       String           // BUSINESS or PERSONAL
+  priority          Int              @default(0) // Higher priority rules applied first
+  isActive          Boolean          @default(true)
+  autoApply         Boolean          @default(true) // Automatically apply without review
+  appliedCount      Int              @default(0)    // Track how many times this rule was used
+  lastApplied       DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessProfile   BusinessProfile? @relation(fields: [businessProfileId], references: [id])
+
+  @@index([userId, merchantName])
+  @@index([userId, isActive])
+}
+
+// Queue for manual review of low-confidence transactions
+model TransactionReview {
+  id                String           @id @default(cuid())
+  userId            String
+  transactionId     String           // Reference to Transaction
+  businessProfileId String?
+  status            String           @default("PENDING") // PENDING, APPROVED, REJECTED, CORRECTED
+  confidence        Float            // AI confidence score
+  aiSuggestion      Json             // AI's suggested category/profile/etc
+  userCorrection    Json?            // User's correction (if any)
+  issueType         String?          // LOW_CONFIDENCE, CATEGORY_MISMATCH, PROFILE_MISMATCH, etc
+  issueSeverity     String?          // LOW, MEDIUM, HIGH
+  issueDescription  String?
+  suggestedFix      String?
+  reviewedAt        DateTime?
+  reviewedBy        String?          // User ID who reviewed
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessProfile   BusinessProfile? @relation(fields: [businessProfileId], references: [id])
+
+  @@index([userId, status])
+  @@index([userId, transactionId])
+}
+
+// Learning system - tracks user corrections for future improvements
+model UserCorrection {
+  id                String           @id @default(cuid())
+  userId            String
+  transactionId     String           // Original transaction
+  businessProfileId String?
+  correctionType    String           // CATEGORY, PROFILE, MERCHANT, AMOUNT, DATE
+  originalValue     String           // What AI suggested
+  correctedValue    String           // What user corrected to
+  merchantName      String?          // For pattern learning
+  merchantPattern   String?          // Extracted pattern
+  confidence        Float?           // How confident the AI was
+  appliedAsRule     Boolean          @default(false) // Was this converted to a merchant rule?
+  ruleId            String?          // If converted to rule, store rule ID
+  createdAt         DateTime         @default(now())
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessProfile   BusinessProfile? @relation(fields: [businessProfileId], references: [id])
+
+  @@index([userId, merchantName])
+  @@index([userId, correctionType])
+  @@index([userId, createdAt])
+}
+
+// Detected recurring patterns across statements
+model RecurringPattern {
+  id                String           @id @default(cuid())
+  userId            String
+  businessProfileId String?
+  merchantName      String
+  category          String
+  profileType       String           // BUSINESS or PERSONAL
+  averageAmount     Float
+  frequency         String           // WEEKLY, MONTHLY, QUARTERLY, ANNUALLY
+  detectedFrom      Int              @default(1) // Number of occurrences detected
+  lastOccurrence    DateTime
+  nextExpected      DateTime?
+  confidence        Float            @default(0.8)
+  isActive          Boolean          @default(true)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessProfile   BusinessProfile? @relation(fields: [businessProfileId], references: [id])
+
+  @@unique([userId, merchantName, businessProfileId])
+  @@index([userId, isActive])
 }

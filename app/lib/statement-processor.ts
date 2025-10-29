@@ -126,9 +126,14 @@ export async function processStatementWithValidation(statementId: string) {
       }
     });
 
-    // Categorize transactions
-    console.log(`[Processing] Categorizing transactions`);
-    const categorizedTransactions = await aiProcessor.categorizeTransactions(extractedData.transactions || []);
+    // Categorize transactions with user context for industry-aware processing
+    console.log(`[Processing] Categorizing transactions with enhanced accuracy system`);
+    const userContext = {
+      industry: statement.user.industry,
+      businessType: statement.user.businessType,
+      companyName: statement.user.companyName
+    };
+    const categorizedTransactions = await aiProcessor.categorizeTransactions(extractedData.transactions || [], userContext);
 
     // Update processing stage
     await prisma.bankStatement.update({
@@ -165,14 +170,29 @@ export async function processStatementWithValidation(statementId: string) {
     
     console.log(`[Processing] Found profiles - Business: ${businessProfile?.name || 'None'}, Personal: ${personalProfile?.name || 'None'}`);
 
-    // Create transactions in database with intelligent routing
-    console.log(`[Processing] Creating ${categorizedTransactions.length} transactions in database with cross-profile routing`);
+    // ========================================
+    // ENHANCED ACCURACY SYSTEM - MULTI-PASS PROCESSING
+    // ========================================
+    
+    // Import accuracy enhancement functions
+    const {
+      applyMerchantRules,
+      detectRecurringPattern,
+      analyzeHistoricalPatterns,
+      calculateEnhancedConfidence,
+      queueForReview
+    } = await import('@/lib/accuracy-enhancer');
+    
+    // Create transactions in database with 100% accuracy system
+    console.log(`[Processing] Creating ${categorizedTransactions.length} transactions with enhanced accuracy (merchant rules + patterns + learning)`);
     const createdTransactions = [];
     const businessTransactions = [];
     const personalTransactions = [];
+    const reviewQueue = [];
     
     for (const catTxn of categorizedTransactions) {
       const originalTxn = catTxn.originalTransaction;
+      const merchantName = catTxn.merchant || originalTxn.description?.substring(0, 50) || 'Unknown';
       
       // Determine transaction type based on debit/credit from AI
       // Debit = money leaving account = EXPENSE
@@ -205,15 +225,80 @@ export async function processStatementWithValidation(statementId: string) {
         type = 'TRANSFER';
       }
 
+      // ========================================
+      // PHASE 1: APPLY MERCHANT RULES (Highest Priority)
+      // ========================================
+      const merchantRule = await applyMerchantRules(
+        statement.userId,
+        merchantName,
+        statement.businessProfileId
+      );
+
+      let finalCategory = catTxn.suggestedCategory;
+      let finalProfileType = catTxn.profileType?.toUpperCase();
+      let finalConfidence = catTxn.confidence || 0.7;
+      let usedMerchantRule = false;
+
+      if (merchantRule.matched && merchantRule.rule?.autoApply) {
+        // Merchant rule overrides AI suggestion
+        finalCategory = merchantRule.category!;
+        finalProfileType = merchantRule.profileType!;
+        finalConfidence = 0.95; // High confidence for user-defined rules
+        usedMerchantRule = true;
+        console.log(`[Processing] ✅ Applied merchant rule: ${merchantName} → ${finalCategory} (${finalProfileType})`);
+      }
+
+      // ========================================
+      // PHASE 2: CHECK HISTORICAL PATTERNS
+      // ========================================
+      const historicalPattern = await analyzeHistoricalPatterns(
+        statement.userId,
+        merchantName
+      );
+
+      if (!usedMerchantRule && historicalPattern.confidence > 0.7 && historicalPattern.confidence > finalConfidence) {
+        // Historical pattern suggests different classification with high confidence
+        if (historicalPattern.suggestedCategory && historicalPattern.suggestedProfile) {
+          console.log(`[Processing] 📊 Applying historical pattern: ${merchantName} → ${historicalPattern.suggestedCategory} (confidence: ${(historicalPattern.confidence * 100).toFixed(0)}%)`);
+          finalCategory = historicalPattern.suggestedCategory;
+          finalProfileType = historicalPattern.suggestedProfile;
+          finalConfidence = historicalPattern.confidence;
+        }
+      }
+
+      // ========================================
+      // PHASE 3: DETECT RECURRING PATTERNS
+      // ========================================
+      const recurringInfo = await detectRecurringPattern(
+        statement.userId,
+        merchantName,
+        amount,
+        new Date(originalTxn.date),
+        statement.businessProfileId
+      );
+
+      const isRecurring = recurringInfo.isRecurring || catTxn.isRecurring || false;
+
+      // ========================================
+      // PHASE 4: CALCULATE ENHANCED CONFIDENCE
+      // ========================================
+      finalConfidence = calculateEnhancedConfidence(
+        catTxn.confidence || 0.7,
+        historicalPattern.confidence > 0,
+        historicalPattern.confidence,
+        usedMerchantRule,
+        isRecurring
+      );
+
+      // ========================================
       // INTELLIGENT PROFILE ROUTING
-      // Determine which profile this transaction should belong to based on AI classification
+      // ========================================
       let targetProfileId: string | null = null;
-      const aiProfileType = catTxn.profileType?.toUpperCase();
       
-      if (aiProfileType === 'BUSINESS' && businessProfile) {
+      if (finalProfileType === 'BUSINESS' && businessProfile) {
         targetProfileId = businessProfile.id;
         console.log(`[Processing] 🏢 Routing to BUSINESS profile: ${originalTxn.description}`);
-      } else if (aiProfileType === 'PERSONAL' && personalProfile) {
+      } else if (finalProfileType === 'PERSONAL' && personalProfile) {
         targetProfileId = personalProfile.id;
         console.log(`[Processing] 🏠 Routing to PERSONAL profile: ${originalTxn.description}`);
       } else {
@@ -222,11 +307,11 @@ export async function processStatementWithValidation(statementId: string) {
         console.log(`[Processing] ⚠️ Using original profile (no AI classification): ${originalTxn.description}`);
       }
 
-      // Find or create category
+      // Find or create category using final category
       let category = await prisma.category.findFirst({
         where: {
           userId: statement.userId,
-          name: catTxn.suggestedCategory
+          name: finalCategory
         }
       });
 
@@ -234,10 +319,10 @@ export async function processStatementWithValidation(statementId: string) {
         category = await prisma.category.create({
           data: {
             userId: statement.userId,
-            name: catTxn.suggestedCategory,
+            name: finalCategory,
             type: type === 'INCOME' ? 'INCOME' : 'EXPENSE',
-            color: getCategoryColor(catTxn.suggestedCategory),
-            icon: getCategoryIcon(catTxn.suggestedCategory)
+            color: getCategoryColor(finalCategory),
+            icon: getCategoryIcon(finalCategory)
           }
         });
       }
@@ -245,20 +330,62 @@ export async function processStatementWithValidation(statementId: string) {
       const transaction = await prisma.transaction.create({
         data: {
           userId: statement.userId,
-          businessProfileId: targetProfileId, // Use AI-determined profile
+          businessProfileId: targetProfileId, // Use enhanced routing
           bankStatementId: statementId,
           date: new Date(originalTxn.date),
           amount: amount,
           description: originalTxn.description || 'Unknown transaction',
-          merchant: catTxn.merchant,
+          merchant: merchantName,
           category: category.name,
           categoryId: category.id,
           type: type,
           aiCategorized: true,
-          confidence: catTxn.confidence,
-          isRecurring: catTxn.isRecurring || false
+          confidence: finalConfidence, // Use enhanced confidence
+          isRecurring: isRecurring
         }
       });
+      
+      // ========================================
+      // PHASE 5: QUEUE LOW-CONFIDENCE FOR REVIEW
+      // ========================================
+      if (finalConfidence < 0.85 && !usedMerchantRule) {
+        // Queue for manual review if confidence is below threshold
+        let issueType = 'LOW_CONFIDENCE';
+        let issueSeverity: 'LOW' | 'MEDIUM' | 'HIGH' = 'MEDIUM';
+        let issueDescription = `AI confidence is ${(finalConfidence * 100).toFixed(0)}% for this transaction`;
+        let suggestedFix = `Please review and confirm the category "${finalCategory}" and profile "${finalProfileType}"`;
+        
+        if (finalConfidence < 0.70) {
+          issueSeverity = 'HIGH';
+          issueDescription = `Low confidence (${(finalConfidence * 100).toFixed(0)}%). Transaction may be miscategorized.`;
+          suggestedFix = 'Please verify the category and profile assignment';
+        } else if (finalConfidence < 0.50) {
+          issueSeverity = 'HIGH';
+          issueDescription = `Very low confidence (${(finalConfidence * 100).toFixed(0)}%). Likely miscategorization.`;
+          suggestedFix = 'Manual categorization recommended';
+        }
+        
+        await queueForReview(
+          statement.userId,
+          transaction.id,
+          finalConfidence,
+          {
+            category: finalCategory,
+            profileType: finalProfileType,
+            merchant: merchantName,
+            reasoning: catTxn.reasoning || 'No reasoning provided'
+          },
+          issueType,
+          issueSeverity,
+          issueDescription,
+          suggestedFix
+        );
+        
+        reviewQueue.push(transaction);
+        console.log(`[Processing] ⚠️ Queued for review: ${originalTxn.description} (confidence: ${(finalConfidence * 100).toFixed(0)}%)`);
+      } else {
+        console.log(`[Processing] ✅ High confidence: ${originalTxn.description} (${(finalConfidence * 100).toFixed(0)}%)`);
+      }
       
       createdTransactions.push({ transaction, catTxn });
       
@@ -273,6 +400,12 @@ export async function processStatementWithValidation(statementId: string) {
     console.log(`[Processing] ✅ Created ${createdTransactions.length} transactions total`);
     console.log(`[Processing] 🏢 Business transactions: ${businessTransactions.length}`);
     console.log(`[Processing] 🏠 Personal transactions: ${personalTransactions.length}`);
+    console.log(`[Processing] ⚠️ Queued for review: ${reviewQueue.length} low-confidence transactions`);
+    console.log(`[Processing] ✅ High-confidence: ${createdTransactions.length - reviewQueue.length} transactions (${((createdTransactions.length - reviewQueue.length) / createdTransactions.length * 100).toFixed(1)}%)`);
+    
+    if (reviewQueue.length > 0) {
+      console.log(`[Processing] 📋 Review queue created - user can review and correct these transactions to improve future accuracy`);
+    }
     
     // Create recurring charges for recurring transactions in each profile
     if (businessTransactions.length > 0 && businessProfile) {
