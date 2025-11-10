@@ -501,9 +501,9 @@ function deduplicateTransactions(transactions: any[]): any[] {
     const amount = normalizeAmount(txn.amount);
     const description = normalizeDescription(txn.description);
     
-    // Create a unique key using date, amount, and first 20 chars of description
-    const descriptionPrefix = description.substring(0, 20).toLowerCase();
-    const key = `${date}|${amount}|${descriptionPrefix}`;
+    // Create a unique key using date, amount, and FULL description
+    // This prevents legitimate different transactions from being incorrectly deduplicated
+    const key = `${date}|${amount}|${description.toLowerCase()}`;
     
     // Check if this transaction already exists
     const existing = transactionMap.get(key);

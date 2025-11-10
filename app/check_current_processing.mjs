@@ -1,65 +1,53 @@
-import { config } from 'dotenv';
-import { PrismaClient } from '@prisma/client';
-
-// Load environment variables
-config();
-
+import 'dotenv/config';
+import pkg from '@prisma/client';
+const { PrismaClient } = pkg;
 const prisma = new PrismaClient();
 
 async function checkProcessing() {
   try {
+    console.log('\n📊 Checking Current Processing Status\n');
+    
+    // Check statements
     const statements = await prisma.bankStatement.findMany({
-      where: {
-        OR: [
-          { status: 'PENDING' },
-          { status: 'PROCESSING' }
-        ]
-      },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        _count: {
-          select: { transactions: true }
-        }
-      }
-    });
-    
-    console.log(`\nFound ${statements.length} statements in PENDING or PROCESSING state\n`);
-    
-    for (const stmt of statements) {
-      console.log('='.repeat(80));
-      console.log(`Statement ID: ${stmt.id}`);
-      console.log(`File Name: ${stmt.fileName}`);
-      console.log(`Original Name: ${stmt.originalName}`);
-      console.log(`Status: ${stmt.status}`);
-      console.log(`Processing Stage: ${stmt.processingStage}`);
-      console.log(`Record Count: ${stmt.recordCount}`);
-      console.log(`Processed Count: ${stmt.processedCount}`);
-      console.log(`Transaction Count in DB: ${stmt._count.transactions}`);
-      console.log(`Created At: ${stmt.createdAt}`);
-      console.log(`User ID: ${stmt.userId}`);
-      console.log('='.repeat(80));
-      console.log('');
-    }
-    
-    // Also show all recent statements
-    const recentStatements = await prisma.bankStatement.findMany({
       orderBy: { createdAt: 'desc' },
       take: 5,
       include: {
-        _count: {
-          select: { transactions: true }
-        }
+        user: { select: { email: true } }
       }
     });
     
-    console.log('\n\nMost recent 5 statements:');
-    console.log('='.repeat(80));
-    for (const stmt of recentStatements) {
-      console.log(`${stmt.fileName} | Status: ${stmt.status} | Stage: ${stmt.processingStage} | Transactions: ${stmt._count.transactions} | Created: ${stmt.createdAt}`);
+    console.log(`📄 Recent Statements: ${statements.length}`);
+    for (const stmt of statements) {
+      console.log(`\n  ID: ${stmt.id}`);
+      console.log(`  File: ${stmt.fileName}`);
+      console.log(`  User: ${stmt.user.email}`);
+      console.log(`  Status: ${stmt.status}`);
+      console.log(`  Stage: ${stmt.processingStage || 'N/A'}`);
+      console.log(`  Record Count: ${stmt.recordCount || 0}`);
+      console.log(`  File Size: ${(stmt.fileSize / 1024).toFixed(1)}KB`);
+      console.log(`  Created: ${stmt.createdAt}`);
+      
+      if (stmt.errorLog) {
+        console.log(`  Error: ${stmt.errorLog.substring(0, 200)}`);
+      }
+    }
+    
+    // Check transactions
+    const transactions = await prisma.transaction.findMany({
+      orderBy: { date: 'desc' },
+      take: 10
+    });
+    
+    console.log(`\n💰 Recent Transactions: ${transactions.length}`);
+    if (transactions.length > 0) {
+      console.log('  Latest transactions:');
+      transactions.slice(0, 5).forEach(t => {
+        console.log(`    ${t.date} | ${t.description.substring(0, 40)} | $${t.amount}`);
+      });
     }
     
   } catch (error) {
-    console.error('Error:', error);
+    console.error('❌ Error:', error.message);
   } finally {
     await prisma.$disconnect();
   }
