@@ -237,7 +237,7 @@ function parsePersonalStatement(text: string): ParsedStatement {
   };
 }
 
-// Parse PNC Business Statement
+// Parse PNC Business Statement with MULTI-LINE transaction support
 function parseBusinessStatement(text: string): ParsedStatement {
   const transactions: ParsedTransaction[] = [];
   
@@ -271,6 +271,36 @@ function parseBusinessStatement(text: string): ParsedStatement {
   let inTransactionSection = false;
   let inDailyBalanceSection = false;
   
+  // Variables for multi-line transaction handling
+  let pendingTransaction: ParsedTransaction | null = null;
+  let descriptionBuffer: string[] = [];
+  
+  // Helper function to finalize a pending transaction
+  const finalizePendingTransaction = () => {
+    if (pendingTransaction) {
+      // Combine all description lines
+      const fullDescription = descriptionBuffer.join(' ').trim();
+      
+      // Extract reference number if present (usually at the end)
+      const refMatch = fullDescription.match(/(\d{10,})\s*$/);
+      const referenceNumber = refMatch ? refMatch[1] : undefined;
+      const cleanDescription = refMatch ? fullDescription.replace(/\s*\d{10,}\s*$/, '').trim() : fullDescription;
+      
+      pendingTransaction.description = cleanDescription;
+      pendingTransaction.referenceNumber = referenceNumber;
+      pendingTransaction.category = categorizeMerchant(cleanDescription);
+      
+      transactions.push(pendingTransaction);
+      
+      if (transactions.length % 20 === 0) {
+        console.log(`[Parser] Extracted ${transactions.length} transactions so far...`);
+      }
+      
+      pendingTransaction = null;
+      descriptionBuffer = [];
+    }
+  };
+  
   // Process line by line to capture ALL transactions across all pages
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -278,6 +308,7 @@ function parseBusinessStatement(text: string): ParsedStatement {
     
     // Detect Daily Balance section (skip these - they're not transactions)
     if (trimmed === 'Daily Balance' || trimmed.includes('Daily Balance')) {
+      finalizePendingTransaction();
       inDailyBalanceSection = true;
       inTransactionSection = false;
       currentSection = '';
@@ -299,60 +330,70 @@ function parseBusinessStatement(text: string): ParsedStatement {
     
     // Detect transaction section headers
     if (trimmed.match(/^(Deposits)$/) && !trimmed.includes('ATM')) {
+      finalizePendingTransaction();
       currentSection = 'Deposits';
       inTransactionSection = false; // Wait for Date posted header
       console.log('[Parser] Found section: Deposits');
       continue;
     }
     if (trimmed === 'ATM Deposits and Additions') {
+      finalizePendingTransaction();
       currentSection = 'ATM Deposits';
       inTransactionSection = false;
       console.log('[Parser] Found section: ATM Deposits');
       continue;
     }
     if (trimmed === 'ACH Additions') {
+      finalizePendingTransaction();
       currentSection = 'ACH Additions';
       inTransactionSection = false;
       console.log('[Parser] Found section: ACH Additions');
       continue;
     }
     if (trimmed === 'Checks and Substitute Checks') {
+      finalizePendingTransaction();
       currentSection = 'Checks';
       inTransactionSection = false;
       console.log('[Parser] Found section: Checks');
       continue;
     }
     if (trimmed === 'Debit Card Purchases') {
+      finalizePendingTransaction();
       currentSection = 'Debit Card Purchases';
       inTransactionSection = false;
       console.log('[Parser] Found section: Debit Card Purchases');
       continue;
     }
     if (trimmed === 'POS Purchases') {
+      finalizePendingTransaction();
       currentSection = 'POS Purchases';
       inTransactionSection = false;
       console.log('[Parser] Found section: POS Purchases');
       continue;
     }
     if (trimmed.includes('ATM') && trimmed.includes('Debit Card') && trimmed.includes('Transactions')) {
+      finalizePendingTransaction();
       currentSection = 'ATM/Misc';
       inTransactionSection = false;
       console.log('[Parser] Found section: ATM/Misc');
       continue;
     }
     if (trimmed === 'ACH Deductions') {
+      finalizePendingTransaction();
       currentSection = 'ACH Deductions';
       inTransactionSection = false;
       console.log('[Parser] Found section: ACH Deductions');
       continue;
     }
     if (trimmed === 'Service Charges and Fees') {
+      finalizePendingTransaction();
       currentSection = 'Service Charges';
       inTransactionSection = false;
       console.log('[Parser] Found section: Service Charges');
       continue;
     }
     if (trimmed === 'Other Deductions') {
+      finalizePendingTransaction();
       currentSection = 'Other Deductions';
       inTransactionSection = false;
       console.log('[Parser] Found section: Other Deductions');
@@ -369,6 +410,7 @@ function parseBusinessStatement(text: string): ParsedStatement {
     
     // Look for continuation markers
     if (trimmed.includes('continued on next page') || trimmed.includes('- continued')) {
+      finalizePendingTransaction();
       console.log('[Parser] Found continuation marker for:', currentSection);
       continue;
     }
@@ -386,6 +428,9 @@ function parseBusinessStatement(text: string): ParsedStatement {
     if (trimmed.includes('Member FDIC')) {
       continue;
     }
+    if (trimmed.includes('Business Checking Plus') && trimmed.includes('Account Number')) {
+      continue;
+    }
     
     // Check for section end markers  
     if (inTransactionSection && (
@@ -393,6 +438,7 @@ function parseBusinessStatement(text: string): ParsedStatement {
       (trimmed === 'Checks and Other Deductions' || trimmed === 'Checks') && currentSection !== 'Checks'
     )) {
       if (currentSection) {
+        finalizePendingTransaction();
         console.log('[Parser] Ending section:', currentSection);
         inTransactionSection = false;
         currentSection = '';
@@ -402,7 +448,7 @@ function parseBusinessStatement(text: string): ParsedStatement {
     
     // Parse transaction lines - look for date pattern at start (with layout-preserved spacing)
     if (inTransactionSection && currentSection) {
-      let match = null;
+      let isNewTransaction = false;
       let dateStr = '';
       let amountStr = '';
       let description = '';
@@ -412,64 +458,123 @@ function parseBusinessStatement(text: string): ParsedStatement {
       if (currentSection === 'Checks' && line.match(/^\d{2}\/\d{2}\s+\d+/)) {
         // Format: DATE CHECK_NUMBER AMOUNT DESCRIPTION REFERENCE
         // Example: 01/03      1157 *                         1,000.00       013138290
-        const checkMatch = line.match(/^(\d{2}\/\d{2})\s+(\d+)\s*\*?\s+([\d,]+\.\d{2})\s+(.+)/);
+        const checkMatch = line.match(/^(\d{2}\/\d{2})\s+(\d+)\s*\*?\s+([\d,]+\.\d{2})\s*(.*)$/);
         if (checkMatch) {
+          finalizePendingTransaction(); // Finish previous transaction
+          
           dateStr = checkMatch[1];
           checkNumber = checkMatch[2];
           amountStr = checkMatch[3];
-          description = `Check #${checkNumber}`;
-          match = checkMatch;
+          description = `Check #${checkNumber}` + (checkMatch[4] ? ' ' + checkMatch[4].trim() : '');
+          isNewTransaction = true;
+          
+          // Parse date
+          const [month, day] = dateStr.split('/');
+          const date = new Date(year, parseInt(month) - 1, parseInt(day));
+          const formattedDate = date.toISOString().split('T')[0];
+          
+          // Parse amount
+          const amount = parseFloat(amountStr.replace(/,/g, ''));
+          
+          pendingTransaction = {
+            date: formattedDate,
+            amount: -amount, // Checks are debits
+            description: '',
+            type: 'debit',
+            category: '',
+            rawText: line,
+          };
+          
+          descriptionBuffer = [description];
         }
       } else if (line.match(/^\d{2}\/\d{2}\s+[\d,]+\.\d{2}/)) {
         // Standard format: DATE AMOUNT DESCRIPTION
-        const standardMatch = line.match(/^(\d{2}\/\d{2})\s+([\d,]+\.\d{2})\s+(.+)/);
+        // This is a NEW transaction line
+        const standardMatch = line.match(/^(\d{2}\/\d{2})\s+([\d,]+\.\d{2})\s+(.*)$/);
         if (standardMatch) {
+          finalizePendingTransaction(); // Finish previous transaction
+          
           dateStr = standardMatch[1];
           amountStr = standardMatch[2];
-          description = standardMatch[3];
-          match = standardMatch;
+          description = standardMatch[3].trim();
+          isNewTransaction = true;
+          
+          // Parse date
+          const [month, day] = dateStr.split('/');
+          const date = new Date(year, parseInt(month) - 1, parseInt(day));
+          const formattedDate = date.toISOString().split('T')[0];
+          
+          // Parse amount
+          const amount = parseFloat(amountStr.replace(/,/g, ''));
+          
+          // Determine transaction type based on section
+          const isCredit = currentSection === 'Deposits' || 
+                           currentSection === 'ATM Deposits' || 
+                           currentSection === 'ACH Additions';
+          
+          const finalAmount = isCredit ? amount : -amount;
+          
+          pendingTransaction = {
+            date: formattedDate,
+            amount: finalAmount,
+            description: '',
+            type: isCredit ? 'credit' : 'debit',
+            category: '',
+            rawText: line,
+          };
+          
+          descriptionBuffer = [description];
         }
-      }
-      
-      if (match) {
-        // Parse date
-        const [month, day] = dateStr.split('/');
-        const date = new Date(year, parseInt(month) - 1, parseInt(day));
-        const formattedDate = date.toISOString().split('T')[0];
-        
-        // Parse amount
-        const amount = parseFloat(amountStr.replace(/,/g, ''));
-        
-        // Determine transaction type based on section
-        const isCredit = currentSection === 'Deposits' || 
-                         currentSection === 'ATM Deposits' || 
-                         currentSection === 'ACH Additions';
-        
-        const finalAmount = isCredit ? amount : -amount;
-        
-        // Extract reference number if present (usually at the end)
-        const refMatch = description.match(/(\d{10,})\s*$/);
-        const referenceNumber = refMatch ? refMatch[1] : undefined;
-        const cleanDescription = refMatch ? description.replace(/\s*\d{10,}\s*$/, '').trim() : description.trim();
-        
-        transactions.push({
-          date: formattedDate,
-          amount: finalAmount,
-          description: cleanDescription,
-          type: isCredit ? 'credit' : 'debit',
-          category: categorizeMerchant(cleanDescription),
-          referenceNumber,
-          rawText: line,
-        });
-        
-        if (transactions.length % 20 === 0) {
-          console.log(`[Parser] Extracted ${transactions.length} transactions so far...`);
-        }
+      } else if (pendingTransaction && trimmed && !trimmed.match(/^Page \d+ of \d+/)) {
+        // This is a CONTINUATION line for the previous transaction
+        // Only add if it's not empty and not a page marker
+        descriptionBuffer.push(trimmed);
       }
     }
   }
   
+  // Don't forget to finalize the last transaction!
+  finalizePendingTransaction();
+  
   console.log(`[Parser] ✅ Total transactions extracted: ${transactions.length}`);
+  
+  // Log count by section
+  const sectionCounts: Record<string, number> = {};
+  transactions.forEach(t => {
+    // Try to determine original section from description
+    let section = 'Unknown';
+    if (t.amount > 0) {
+      if (t.description.includes('Mobile Deposit') || t.description.includes('Deposit')) {
+        section = 'Deposits';
+      } else if (t.description.includes('POS Return') || t.description.includes('ATM Deposit')) {
+        section = 'ATM Deposits';
+      } else if (t.description.includes('ACH') || t.description.includes('Corporate ACH') || t.description.includes('Stripe') || t.description.includes('Etsy')) {
+        section = 'ACH Additions';
+      }
+    } else {
+      if (t.description.includes('Check')) {
+        section = 'Checks';
+      } else if (t.description.includes('7526 Debit Card')) {
+        section = 'Debit Card Purchases';
+      } else if (t.description.includes('POS Purchase')) {
+        section = 'POS Purchases';
+      } else if (t.description.includes('ATM Withdrawal') || t.description.includes('Misc')) {
+        section = 'ATM/Misc';
+      } else if (t.description.includes('Corporate ACH')) {
+        section = 'ACH Deductions';
+      } else if (t.description.includes('Service Charge') || t.description.includes('Fee')) {
+        section = 'Service Charges';
+      } else if (t.description.includes('Zelle') || t.description.includes('Wire')) {
+        section = 'Other Deductions';
+      }
+    }
+    sectionCounts[section] = (sectionCounts[section] || 0) + 1;
+  });
+  
+  console.log('[Parser] Transactions by section:');
+  Object.entries(sectionCounts).sort((a, b) => b[1] - a[1]).forEach(([section, count]) => {
+    console.log(`[Parser]   ${section}: ${count}`);
+  });
   
   // Log count by category
   const categoryCounts: Record<string, number> = {};
