@@ -69,48 +69,121 @@ async function processStatement(statementId: string) {
     }
 
     let extractedData: any;
+    let extractionMethod = 'unknown';
 
     if (statement.fileType === 'PDF') {
-      // Process PDF using the direct parser for 100% accuracy
-      console.log('[Process Route] Using direct PDF parser for accurate extraction');
       const arrayBuffer = await fileResponse.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       
-      // Import the parser
-      const { parsePNCStatement } = await import('@/lib/pdf-parser');
-      const parsed = await parsePNCStatement(buffer);
-      
-      // Convert parsed format to extractedData format expected by the rest of the pipeline
-      extractedData = {
-        bankInfo: {
-          bankName: 'PNC Bank',
-          accountNumber: parsed.accountNumber,
-          statementPeriod: `${parsed.periodStart} to ${parsed.periodEnd}`,
-          accountType: parsed.statementType
-        },
-        transactions: parsed.transactions.map(t => ({
-          date: t.date,
-          description: t.description,
-          amount: t.amount,
-          type: t.type,
-          category: t.category || 'Uncategorized',
-          balance: undefined
-        })),
-        summary: {
-          startingBalance: parsed.beginningBalance,
-          endingBalance: parsed.endingBalance,
-          transactionCount: parsed.transactions.length
+      // TIER 1: Try direct PDF text extraction first
+      console.log('[Process Route] 🔍 TIER 1: Attempting direct PDF text extraction');
+      try {
+        const { parsePNCStatement } = await import('@/lib/pdf-parser');
+        const parsed = await parsePNCStatement(buffer);
+        
+        extractedData = {
+          bankInfo: {
+            bankName: 'PNC Bank',
+            accountNumber: parsed.accountNumber,
+            statementPeriod: `${parsed.periodStart} to ${parsed.periodEnd}`,
+            accountType: parsed.statementType
+          },
+          transactions: parsed.transactions.map(t => ({
+            date: t.date,
+            description: t.description,
+            amount: t.amount,
+            type: t.type,
+            category: t.category || 'Uncategorized',
+            balance: undefined
+          })),
+          summary: {
+            startingBalance: parsed.beginningBalance,
+            endingBalance: parsed.endingBalance,
+            transactionCount: parsed.transactions.length
+          }
+        };
+        
+        const txCount = extractedData.transactions.length;
+        console.log(`[Process Route] TIER 1 Result: ${txCount} transactions extracted`);
+        
+        // Check if extraction was successful (should have at least 50 transactions for typical statements)
+        if (txCount >= 50) {
+          console.log(`[Process Route] ✅ TIER 1 SUCCESS: ${txCount} transactions (above threshold)`);
+          extractionMethod = 'direct_pdf_parser';
+        } else {
+          console.log(`[Process Route] ⚠️ TIER 1 LOW COUNT: ${txCount} transactions (below 50, trying OCR)`);
+          throw new Error('Transaction count below threshold, falling back to OCR');
         }
-      };
-      
-      console.log(`[Process Route] ✅ Extracted ${extractedData.transactions.length} transactions using direct parser`);
+      } catch (pdfError) {
+        console.log(`[Process Route] ❌ TIER 1 FAILED: ${pdfError}`);
+        
+        // TIER 2: Fall back to Azure OCR
+        console.log('[Process Route] 🔍 TIER 2: Attempting Azure OCR extraction');
+        try {
+          const { processBankStatementWithOCR } = await import('@/lib/azure-ocr');
+          const ocrResult = await processBankStatementWithOCR(buffer, statement.fileName);
+          
+          extractedData = {
+            bankInfo: {
+              bankName: ocrResult.accountInfo.bankName || 'Unknown Bank',
+              accountNumber: ocrResult.accountInfo.accountNumber || 'Unknown',
+              statementPeriod: ocrResult.accountInfo.periodStart && ocrResult.accountInfo.periodEnd 
+                ? `${ocrResult.accountInfo.periodStart} to ${ocrResult.accountInfo.periodEnd}`
+                : 'Unknown Period',
+              accountType: 'business'
+            },
+            transactions: ocrResult.transactions.map(t => ({
+              date: t.date,
+              description: t.description,
+              amount: t.type === 'credit' ? t.amount : -t.amount,
+              type: t.type,
+              category: 'Uncategorized',
+              balance: undefined
+            })),
+            summary: {
+              startingBalance: 0,
+              endingBalance: 0,
+              transactionCount: ocrResult.transactions.length
+            }
+          };
+          
+          const txCount = extractedData.transactions.length;
+          console.log(`[Process Route] ✅ TIER 2 SUCCESS: ${txCount} transactions via OCR (confidence: ${(ocrResult.confidence * 100).toFixed(1)}%)`);
+          extractionMethod = 'azure_ocr';
+          
+          if (txCount === 0) {
+            throw new Error('OCR extracted 0 transactions');
+          }
+        } catch (ocrError) {
+          console.log(`[Process Route] ❌ TIER 2 FAILED: ${ocrError}`);
+          
+          // TIER 3: Last resort - AI extraction
+          console.log('[Process Route] 🔍 TIER 3: Attempting AI extraction (last resort)');
+          try {
+            // Convert buffer to base64 for AI processor
+            const base64Content = buffer.toString('base64');
+            const pdfData = await aiProcessor.extractDataFromPDF(base64Content, statement.fileName);
+            extractedData = pdfData;
+            extractionMethod = 'ai_extraction';
+            console.log(`[Process Route] ✅ TIER 3 SUCCESS: ${extractedData.transactions?.length || 0} transactions via AI`);
+          } catch (aiError) {
+            console.error(`[Process Route] ❌ TIER 3 FAILED: ${aiError}`);
+            throw new Error('All extraction methods failed. Please check if the PDF is a valid bank statement.');
+          }
+        }
+      }
     } else {
       // Process CSV
       const csvContent = await fileResponse.text();
       extractedData = await aiProcessor.processCSVData(csvContent);
+      extractionMethod = 'csv_parser';
     }
+    
+    // Log extraction method used
+    console.log(`[Process Route] 📊 Final Extraction Method: ${extractionMethod}`);
+    console.log(`[Process Route] 📊 Total Transactions: ${extractedData.transactions?.length || 0}`);
 
-    // Update with extracted data
+    // Update with extracted data (note: extraction method logged in console)
     await prisma.bankStatement.update({
       where: { id: statementId },
       data: {
