@@ -12,6 +12,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { 
   FileText, 
   File, 
@@ -27,7 +37,8 @@ import {
   RefreshCw,
   AlertCircle,
   Building2,
-  CreditCard
+  CreditCard,
+  Trash2
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { toast } from 'sonner';
@@ -76,6 +87,9 @@ const UploadHistory = forwardRef<UploadHistoryRef>((props, ref) => {
   const [selectedStatement, setSelectedStatement] = useState<BankStatement | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [statementToDelete, setStatementToDelete] = useState<BankStatement | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useImperativeHandle(ref, () => ({
     refresh: fetchStatements
@@ -120,6 +134,39 @@ const UploadHistory = forwardRef<UploadHistoryRef>((props, ref) => {
       toast.error('Failed to load statement details');
     } finally {
       setDetailsLoading(false);
+    }
+  };
+
+  const handleDeleteClick = (statement: BankStatement) => {
+    setStatementToDelete(statement);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!statementToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/bank-statements/delete?id=${statementToDelete.id}`, {
+        method: 'DELETE'
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success('Bank statement deleted successfully');
+        // Refresh the list
+        await fetchStatements();
+        setDeleteConfirmOpen(false);
+        setStatementToDelete(null);
+      } else {
+        toast.error(data.error || 'Failed to delete statement');
+      }
+    } catch (error) {
+      console.error('Error deleting statement:', error);
+      toast.error('Failed to delete statement');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -370,6 +417,16 @@ const UploadHistory = forwardRef<UploadHistoryRef>((props, ref) => {
                     <Download className="h-3 w-3" />
                   </Button>
                 )}
+                
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-xs hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                  onClick={() => handleDeleteClick(statement)}
+                  disabled={isDeleting}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -670,6 +727,47 @@ const UploadHistory = forwardRef<UploadHistoryRef>((props, ref) => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Bank Statement?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{statementToDelete?.originalName}</strong>?
+              <br /><br />
+              This will permanently delete:
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>The uploaded file</li>
+                <li>{statementToDelete?.transactionCount || 0} transaction(s)</li>
+                <li>All processing history and AI analysis</li>
+              </ul>
+              <br />
+              <span className="text-red-600 font-semibold">This action cannot be undone.</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {isDeleting ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 });
