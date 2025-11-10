@@ -328,83 +328,82 @@ function parseBusinessStatement(text: string): ParsedStatement {
       continue;
     }
     
-    // Detect transaction section headers
+    // Detect transaction section headers and START EXTRACTION IMMEDIATELY
     if (trimmed.match(/^(Deposits)$/) && !trimmed.includes('ATM')) {
       finalizePendingTransaction();
       currentSection = 'Deposits';
-      inTransactionSection = false; // Wait for Date posted header
-      console.log('[Parser] Found section: Deposits');
+      inTransactionSection = true; // Start extracting immediately
+      console.log('[Parser] Found section: Deposits (extraction started)');
       continue;
     }
     if (trimmed === 'ATM Deposits and Additions') {
       finalizePendingTransaction();
       currentSection = 'ATM Deposits';
-      inTransactionSection = false;
-      console.log('[Parser] Found section: ATM Deposits');
+      inTransactionSection = true;
+      console.log('[Parser] Found section: ATM Deposits (extraction started)');
       continue;
     }
     if (trimmed === 'ACH Additions') {
       finalizePendingTransaction();
       currentSection = 'ACH Additions';
-      inTransactionSection = false;
-      console.log('[Parser] Found section: ACH Additions');
+      inTransactionSection = true;
+      console.log('[Parser] Found section: ACH Additions (extraction started)');
       continue;
     }
     if (trimmed === 'Checks and Substitute Checks') {
       finalizePendingTransaction();
       currentSection = 'Checks';
-      inTransactionSection = false;
-      console.log('[Parser] Found section: Checks');
+      inTransactionSection = true;
+      console.log('[Parser] Found section: Checks (extraction started)');
       continue;
     }
     if (trimmed === 'Debit Card Purchases') {
       finalizePendingTransaction();
       currentSection = 'Debit Card Purchases';
-      inTransactionSection = false;
-      console.log('[Parser] Found section: Debit Card Purchases');
+      inTransactionSection = true;
+      console.log('[Parser] Found section: Debit Card Purchases (extraction started)');
       continue;
     }
     if (trimmed === 'POS Purchases') {
       finalizePendingTransaction();
       currentSection = 'POS Purchases';
-      inTransactionSection = false;
-      console.log('[Parser] Found section: POS Purchases');
+      inTransactionSection = true;
+      console.log('[Parser] Found section: POS Purchases (extraction started)');
       continue;
     }
     if (trimmed.includes('ATM') && trimmed.includes('Debit Card') && trimmed.includes('Transactions')) {
       finalizePendingTransaction();
       currentSection = 'ATM/Misc';
-      inTransactionSection = false;
-      console.log('[Parser] Found section: ATM/Misc');
+      inTransactionSection = true;
+      console.log('[Parser] Found section: ATM/Misc (extraction started)');
       continue;
     }
     if (trimmed === 'ACH Deductions') {
       finalizePendingTransaction();
       currentSection = 'ACH Deductions';
-      inTransactionSection = false;
-      console.log('[Parser] Found section: ACH Deductions');
+      inTransactionSection = true;
+      console.log('[Parser] Found section: ACH Deductions (extraction started)');
       continue;
     }
     if (trimmed === 'Service Charges and Fees') {
       finalizePendingTransaction();
       currentSection = 'Service Charges';
-      inTransactionSection = false;
-      console.log('[Parser] Found section: Service Charges');
+      inTransactionSection = true;
+      console.log('[Parser] Found section: Service Charges (extraction started)');
       continue;
     }
     if (trimmed === 'Other Deductions') {
       finalizePendingTransaction();
       currentSection = 'Other Deductions';
-      inTransactionSection = false;
-      console.log('[Parser] Found section: Other Deductions');
+      inTransactionSection = true;
+      console.log('[Parser] Found section: Other Deductions (extraction started)');
       continue;
     }
     
-    // Look for "Date" header OR "posted" on next line to start extracting transactions
-    if ((line.includes('Date') && line.includes('Transaction')) || 
-        (line.includes('posted') && line.includes('Amount')) && currentSection) {
-      inTransactionSection = true;
-      console.log('[Parser] Starting transaction extraction for:', currentSection);
+    // Skip header lines like "Date posted Amount Transaction description"
+    if ((line.includes('Date') && (line.includes('Transaction') || line.includes('Check'))) || 
+        line.includes('posted') || line.includes('Reference') || line.includes('number')) {
+      // These are header lines, skip them but keep extraction mode active
       continue;
     }
     
