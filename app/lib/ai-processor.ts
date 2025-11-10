@@ -38,16 +38,39 @@ export class AIBankStatementProcessor {
               }
             }, {
               type: "text", 
-              text: `Extract ALL transactions from this bank statement PDF. This is CRITICAL - you MUST extract EVERY SINGLE transaction from ALL PAGES and ALL SECTIONS.
+              text: `🚨 CRITICAL ACCURACY REQUIREMENT: Extract EVERY SINGLE transaction from this bank statement PDF. You MUST achieve 100% extraction accuracy.
 
-IMPORTANT INSTRUCTIONS:
-1. Process EVERY page of the PDF (page 1, 2, 3, 4, 5, etc.)
-2. Extract from ALL transaction sections (Deposits, ATM, ACH, Debit Card, POS Purchases, Checks, Fees, etc.)
-3. Do NOT skip any transactions - if the statement has 100+ transactions, return ALL 100+
-4. Do NOT truncate or summarize - return complete transaction list
-5. For PNC Bank statements: Extract from ALL categories (Deposits, ATM Deposits, ACH Additions, Debit Card Purchases, POS Purchases, ACH Deductions, Service Charges, Other Deductions, etc.)
+📋 STEP-BY-STEP EXTRACTION PROCESS:
+1. Read the ENTIRE PDF - all 5+ pages from top to bottom
+2. Process EACH transaction category separately:
+   - Deposits (all entries)
+   - ATM Deposits and Additions (all entries)
+   - ACH Additions (all entries)
+   - Debit Card Purchases (all entries)
+   - POS Purchases (all entries)
+   - ACH Deductions (all entries)
+   - Service Charges (all entries)
+   - Other Deductions (all entries)
+   - Checks (all entries)
+   - Any other categories present
+3. For EACH category, extract EVERY line item - do not skip ANY transaction
+4. Continue extracting until you reach the end of the statement on the last page
+5. Count your extracted transactions and verify against the statement's total
 
-Return JSON in this exact format:
+⚠️ CRITICAL RULES - NO EXCEPTIONS:
+- DO NOT truncate the output - return ALL transactions even if there are 100+
+- DO NOT summarize - every transaction must be listed individually
+- DO NOT skip pages - process page 1, 2, 3, 4, 5 and all continuation pages
+- DO NOT stop early - extract until the last transaction on the final page
+- If the statement says "118 transactions", you MUST return exactly 118 in your JSON
+- Each transaction takes one array item - no grouping or combining
+
+📊 EXPECTED OUTPUT: For a typical PNC business statement, expect:
+- 100-120+ transactions total across all categories
+- Multiple pages of transactions
+- Various transaction types (deposits, debits, ACH, cards, checks, fees)
+
+Return JSON in this EXACT format:
 {
   "bankInfo": {
     "bankName": "bank name from statement",
@@ -60,30 +83,28 @@ Return JSON in this exact format:
       "description": "full transaction description from statement",
       "amount": number (positive for credits/deposits/income, negative for debits/expenses),
       "type": "debit|credit",
-      "category": "transaction category from statement if shown (e.g., 'ACH Debit', 'POS Purchase', 'Deposit')",
-      "balance": number (if running balance is shown)
+      "category": "transaction category from statement (e.g., 'Deposits', 'ACH Debit', 'POS Purchase', 'Debit Card Purchase')",
+      "balance": number (if running balance shown, otherwise omit)
     }
   ],
   "summary": {
     "startingBalance": number,
     "endingBalance": number,
-    "transactionCount": number (MUST match total count of transactions array)
+    "transactionCount": number (MUST equal transactions.length - this is your accuracy check!)
   }
 }
 
-CRITICAL REQUIREMENTS:
-- Extract EVERY transaction from EVERY page
-- Count all transactions and ensure summary.transactionCount equals transactions.length
-- If statement shows 91 transactions, return all 91
-- If statement shows 116 transactions, return all 116
-- Do NOT skip any pages or sections
-- Include ALL transaction types/categories
+✅ VERIFICATION BEFORE RESPONDING:
+1. Count your transactions array length
+2. Verify it matches summary.transactionCount
+3. Verify you processed all pages and all categories
+4. If count is less than 100 for a multi-page PNC statement, you missed transactions - GO BACK and extract them all
 
-Respond with complete JSON only - no truncation, no markdown, just raw JSON.`
+Respond with complete JSON only - no markdown formatting, no explanations, just raw JSON starting with {`
             }]
           }],
           response_format: { type: "json_object" },
-          max_tokens: 120000,
+          max_tokens: 200000,
         }),
         signal: controller.signal
       });
@@ -210,9 +231,25 @@ Respond with complete JSON only - no truncation, no markdown, just raw JSON.`
         throw new Error('No transactions were extracted from the PDF. The file may be corrupted, encrypted, or in an unsupported format.');
       }
       
-      // For PNC statements, we expect high transaction counts
-      if (extractedData.bankInfo?.bankName?.toLowerCase().includes('pnc') && extractedCount < 20) {
-        console.warn(`[AI Processor] ⚠️ Low transaction count for PNC statement: ${extractedCount}. PNC statements typically have 50+ transactions across multiple pages.`);
+      // For PNC statements, we expect high transaction counts (typically 100-120+)
+      if (extractedData.bankInfo?.bankName?.toLowerCase().includes('pnc')) {
+        if (extractedCount < 100) {
+          console.error(`[AI Processor] 🚨 CRITICAL: Low transaction count for PNC statement: ${extractedCount}. PNC business statements typically have 100-120+ transactions across 5 pages.`);
+          console.error(`[AI Processor] 🚨 The AI may have stopped early or hit a processing limit. This will result in incomplete data.`);
+          
+          if (!extractedData.warnings) {
+            extractedData.warnings = [];
+          }
+          extractedData.warnings.push({
+            type: 'PNC_INCOMPLETE_EXTRACTION',
+            message: `CRITICAL: Only ${extractedCount} transactions extracted from PNC statement. Expected 100-120+ transactions. Data is incomplete.`,
+            severity: 'CRITICAL',
+            extractedCount: extractedCount,
+            expectedMinimum: 100
+          });
+        } else {
+          console.log(`[AI Processor] ✅ Good extraction for PNC statement: ${extractedCount} transactions`);
+        }
       }
       
       return extractedData;
