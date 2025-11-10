@@ -18,7 +18,7 @@ export class AIBankStatementProcessor {
     try {
       // Create abort controller for timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minutes timeout
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes timeout
       
       const response = await fetch('https://apps.abacus.ai/v1/chat/completions', {
         method: 'POST',
@@ -27,7 +27,7 @@ export class AIBankStatementProcessor {
           'Authorization': `Bearer ${this.apiKey}`
         },
         body: JSON.stringify({
-          model: 'gpt-4.1',
+          model: 'gpt-4o',
           messages: [{
             role: "user", 
             content: [{
@@ -38,52 +38,34 @@ export class AIBankStatementProcessor {
               }
             }, {
               type: "text", 
-              text: `You are a precise bank statement data extractor. Your task is to extract EVERY SINGLE transaction from this statement with 100% completeness.
-
-CRITICAL RULES:
-1. Extract EVERY transaction listed - do NOT skip any
-2. Do NOT summarize or group transactions
-3. Do NOT truncate the list
-4. If you see 99 transactions, you MUST return all 99
-5. Include transactions even if amounts are zero or missing
-6. Count all transaction rows, including checks, deposits, withdrawals, fees, interest
-7. Process the ENTIRE document from first to last transaction
-
-Return JSON with this EXACT structure:
+              text: `Extract ALL transactions from this bank statement. Return JSON:
 {
   "bankInfo": {
-    "bankName": "name",
+    "bankName": "bank name",
     "accountNumber": "last 4 digits",
     "statementPeriod": "YYYY-MM-DD to YYYY-MM-DD"
   },
   "transactions": [
     {
       "date": "YYYY-MM-DD",
-      "description": "brief description (max 50 chars)",
-      "amount": number (use 0 if missing, include sign: positive for credits/deposits, negative for debits/withdrawals)",
+      "description": "transaction description",
+      "amount": number (positive for credits/deposits, negative for debits/withdrawals),
       "type": "debit|credit",
-      "balance": number (running balance after this transaction, if shown)
+      "balance": number (if shown)
     }
   ],
   "summary": {
     "startingBalance": number,
     "endingBalance": number,
-    "transactionCount": number (MUST match actual count in statement)
+    "transactionCount": number
   }
 }
 
-VALIDATION CHECKLIST BEFORE RESPONDING:
-✓ Did you extract EVERY transaction from start to end?
-✓ Does your transactions array length match the transactionCount?
-✓ Did you include all pages of the statement?
-✓ Did you skip any rows because they looked similar?
-✓ Did you stop early due to length concerns?
-
-Respond with raw JSON only. No markdown, no explanations.`
+CRITICAL: Extract EVERY transaction (no summaries, no truncation). If 99 transactions exist, return all 99. Respond with JSON only.`
             }]
           }],
           response_format: { type: "json_object" },
-          max_tokens: 64000,
+          max_tokens: 16000,
         }),
         signal: controller.signal
       });
@@ -93,18 +75,24 @@ Respond with raw JSON only. No markdown, no explanations.`
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('[AI Processor] API error response:', errorText);
+        console.error('[AI Processor] API error response:', errorText.substring(0, 500));
         
         // Check for timeout or gateway errors
         if (response.status === 524 || response.status === 504 || response.status === 408) {
+          console.log(`[AI Processor] Gateway timeout error (${response.status}), attempt ${retryCount + 1}/3`);
+          
           if (retryCount < 2) {
-            console.log(`[AI Processor] Timeout error (${response.status}), retrying in ${(retryCount + 1) * 2} seconds...`);
-            await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 2000));
+            const waitTime = (retryCount + 1) * 3; // 3s, 6s
+            console.log(`[AI Processor] Retrying in ${waitTime} seconds...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime * 1000));
             return this.extractDataFromPDF(base64Content, fileName, retryCount + 1);
           }
+          
+          // All retries exhausted
+          throw new Error(`PDF processing timeout after ${retryCount + 1} attempts. The file may be too large or complex. Try uploading a smaller statement or contact support.`);
         }
         
-        throw new Error(`API request failed with status ${response.status}: ${errorText}`);
+        throw new Error(`API request failed with status ${response.status}: ${errorText.substring(0, 200)}`);
       }
 
       const data = await response.json();
