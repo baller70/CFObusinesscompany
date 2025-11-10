@@ -42,26 +42,41 @@ export class AIBankStatementProcessor {
               type: "text", 
               text: `🎯 SUPREME AI EXTRACTION MODE - 100% ACCURACY REQUIRED
 
-You are the PRIMARY and ONLY extraction method for this bank statement. You must achieve PERFECT accuracy.
+You are the PRIMARY and ONLY extraction method for this PNC Bank statement. You must achieve PERFECT accuracy.
 
 🚨 CRITICAL ACCURACY REQUIREMENT: Extract EVERY SINGLE transaction from this bank statement PDF. You MUST achieve 100% extraction accuracy.
 
-📋 STEP-BY-STEP EXTRACTION PROCESS:
-1. Read the ENTIRE PDF - all 5+ pages from top to bottom
-2. Process EACH transaction category separately:
-   - Deposits (all entries)
-   - ATM Deposits and Additions (all entries)
-   - ACH Additions (all entries)
-   - Debit Card Purchases (all entries)
-   - POS Purchases (all entries)
-   - ACH Deductions (all entries)
-   - Service Charges (all entries)
-   - Other Deductions (all entries)
-   - Checks (all entries)
-   - Any other categories present
-3. For EACH category, extract EVERY line item - do not skip ANY transaction
-4. Continue extracting until you reach the end of the statement on the last page
-5. Count your extracted transactions and verify against the statement's total
+📋 PNC STATEMENT STRUCTURE - EXACT CATEGORIES TO EXTRACT:
+
+The statement contains these EXACT section headers (look for these):
+1. **Deposits** - Mobile deposits with reference numbers
+2. **ATM Deposits and Additions** - POS returns and deposits
+3. **ACH Additions** - Corporate ACH transfers and payouts (Stripe, Etsy, etc.)
+4. **Debit Card Purchases** - Card 7526 purchases (CONTINUES ACROSS MULTIPLE PAGES)
+5. **POS Purchases** - Point-of-sale transactions (CONTINUES ACROSS MULTIPLE PAGES)
+6. **ATM/Misc. Debit Card Transactions** - Recurring payments and bills
+7. **ACH Deductions** - ACH debits, bills, utilities (CONTINUES ACROSS MULTIPLE PAGES)
+8. **Service Charges and Fees** - Bank fees
+9. **Other Deductions** - Wire transfers and other deductions
+
+⚠️ CRITICAL: Sections like "Debit Card Purchases", "POS Purchases", and "ACH Deductions" 
+often span MULTIPLE PAGES with continuation headers like "Debit Card Purchases - continued"
+
+📋 EXTRACTION PROCESS (FOLLOW EXACTLY):
+1. **Start at page 1** and read through ALL pages sequentially
+2. **For EACH section header**, extract EVERY transaction line until the next section starts
+3. **Watch for continuation pages** - sections don't end until a NEW section header appears
+4. **Count as you go** - track transactions per category:
+   - Deposits: X transactions
+   - ATM Deposits and Additions: X transactions
+   - ACH Additions: X transactions
+   - Debit Card Purchases: X transactions (often 40-50+ across pages 2-4)
+   - POS Purchases: X transactions (often 20-30+ across pages 4-5)
+   - ATM/Misc. Debit Card Transactions: X transactions
+   - ACH Deductions: X transactions (often 20+ across pages 5-6)
+   - Service Charges and Fees: X transactions
+   - Other Deductions: X transactions
+5. **Verify your count** matches the statement period summary
 
 ⚠️ CRITICAL RULES - NO EXCEPTIONS:
 - DO NOT truncate the output - return ALL transactions even if there are 100+
@@ -70,11 +85,40 @@ You are the PRIMARY and ONLY extraction method for this bank statement. You must
 - DO NOT stop early - extract until the last transaction on the final page
 - If the statement says "118 transactions", you MUST return exactly 118 in your JSON
 - Each transaction takes one array item - no grouping or combining
+- PRESERVE the exact category names from the statement headers
 
 📊 EXPECTED OUTPUT: For a typical PNC business statement, expect:
-- 100-120+ transactions total across all categories
-- Multiple pages of transactions
-- Various transaction types (deposits, debits, ACH, cards, checks, fees)
+- **Total: 118 transactions** (for Jan 2024 statement)
+- Breakdown by category:
+  * Deposits: ~3 transactions
+  * ATM Deposits and Additions: ~1 transaction
+  * ACH Additions: ~15 transactions
+  * Debit Card Purchases: ~45 transactions (spans pages 2-4)
+  * POS Purchases: ~27 transactions (spans pages 4-5)
+  * ATM/Misc. Debit Card Transactions: ~4 transactions
+  * ACH Deductions: ~21 transactions (spans pages 5-6)
+  * Service Charges and Fees: ~1 transaction
+  * Other Deductions: ~1 transaction
+
+🔍 TRANSACTION FORMAT EXAMPLES (from actual PNC statement):
+
+**Deposits:**
+Date: 01/23 | Amount: 6,700.00 | Description: Mobile Deposit | Reference: 086934199
+
+**ACH Additions:**
+Date: 01/16 | Amount: 3,987.71 | Description: Corporate ACH Transfer Stripe St-E5E4U5N7R5F2 | Reference: 00024016004205590
+
+**Debit Card Purchases:**
+Date: 01/02 | Amount: 54.82 | Description: 7526 Debit Card Purchase Tst* Johnny Napkins - Union NJ | Reference: 75364970061447526365
+
+**POS Purchases:**
+Date: 01/02 | Amount: 430.23 | Description: POS Purchase Costco Whse #0 Union NJ | Reference: POS99032013 5357999
+
+**ACH Deductions:**
+Date: 01/02 | Amount: 213.05 | Description: ACH Debit Payment Chrysler Capital XXXXXX4737 | Reference: 00023363005356722
+
+**Service Charges:**
+Date: 01/02 | Amount: 64.00 | Description: Service Charge Period Ending 12/29/2023 | Reference: (none)
 
 Return JSON in this EXACT format:
 {
