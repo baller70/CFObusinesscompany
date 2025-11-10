@@ -62,7 +62,7 @@ export default function StatementUploader({ onUploadComplete }: StatementUploade
       'application/vnd.ms-excel': ['.xls', '.xlsx']
     },
     multiple: true,
-    maxSize: 10 * 1024 * 1024 // 10MB
+    maxSize: 50 * 1024 * 1024 // 50MB
   });
 
   const uploadAllFiles = async () => {
@@ -287,7 +287,7 @@ export default function StatementUploader({ onUploadComplete }: StatementUploade
               </h3>
               
               <p className="text-body text-muted-foreground mb-4">
-                Bank & Credit Card Statements • CSV and PDF files • Individual or bulk upload • Max 10MB per file
+                Bank & Credit Card Statements • CSV and PDF files • Individual or bulk upload • Max 50MB per file
               </p>
 
               <div className="flex flex-wrap gap-2 justify-center mb-6">

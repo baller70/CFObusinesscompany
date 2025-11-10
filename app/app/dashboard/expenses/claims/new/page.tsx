@@ -197,7 +197,7 @@ export default function NewExpenseClaimPage() {
                         {selectedFile ? selectedFile.name : 'Upload Receipt'}
                       </span>
                       <span className="mt-1 block text-xs text-gray-500">
-                        PNG, JPG, PDF up to 10MB
+                        PNG, JPG, PDF up to 50MB
                       </span>
                       <input
                         id="receipt-upload"

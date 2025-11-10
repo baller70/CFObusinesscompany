@@ -49,9 +49,9 @@ export default function NewExpensePage() {
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
-      // Check file size (10MB limit)
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error('File size must be less than 10MB')
+      // Check file size (50MB limit)
+      if (file.size > 50 * 1024 * 1024) {
+        toast.error('File size must be less than 50MB')
         return
       }
       
@@ -262,7 +262,7 @@ export default function NewExpensePage() {
                     </Button>
                   </div>
                   <p className="mt-2 text-sm text-gray-500">
-                    PNG, JPG, PDF up to 10MB
+                    PNG, JPG, PDF up to 50MB
                   </p>
                 </div>
               </div>

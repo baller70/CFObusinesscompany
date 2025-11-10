@@ -155,7 +155,7 @@ export default function ImportPage() {
                           {selectedFile ? selectedFile.name : 'Click to upload or drag and drop'}
                         </span>
                         <span className="mt-1 block text-xs text-gray-500">
-                          CSV, XLSX, XLS up to 10MB
+                          CSV, XLSX, XLS up to 50MB
                         </span>
                         <input
                           id="file-upload"

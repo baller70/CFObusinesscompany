@@ -50,8 +50,8 @@ export function FileUploadStep({ onFileUpload }: FileUploadStepProps) {
         throw new Error('Please select a CSV file')
       }
 
-      if (file.size > 10 * 1024 * 1024) { // 10MB limit
-        throw new Error('File size must be less than 10MB')
+      if (file.size > 50 * 1024 * 1024) { // 50MB limit
+        throw new Error('File size must be less than 50MB')
       }
 
       // Read and parse CSV
@@ -136,7 +136,7 @@ export function FileUploadStep({ onFileUpload }: FileUploadStepProps) {
                     Drop your CSV file here, or click to browse
                   </p>
                   <p className="text-sm text-gray-500">
-                    Supports files up to 10MB with up to 10,000 transactions
+                    Supports files up to 50MB with up to 10,000 transactions
                   </p>
                 </div>
                 <input

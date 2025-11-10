@@ -43,11 +43,11 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      // Check file size (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
+      // Check file size (max 50MB)
+      if (file.size > 50 * 1024 * 1024) {
         uploadResults.push({
           fileName: file.name,
-          error: 'File size exceeds 10MB limit.'
+          error: 'File size exceeds 50MB limit.'
         });
         continue;
       }
