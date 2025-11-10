@@ -31,6 +31,7 @@ interface UploadFile {
   error?: string;
   result?: any;
   sourceType?: 'BANK' | 'CREDIT_CARD';
+  transactionCount?: number;
 }
 
 interface StatementUploaderProps {
@@ -156,14 +157,17 @@ export default function StatementUploader({ onUploadComplete }: StatementUploade
       prev.map(file => {
         const statusUpdate = statuses.find(s => s.fileId === file.id);
         if (statusUpdate?.status) {
-          const { processingStage, status } = statusUpdate.status;
+          const { processingStage, status, recordCount, processedCount } = statusUpdate.status;
           
-          let progress = 25;
-          if (processingStage === 'EXTRACTING_DATA') progress = 40;
+          let progress = 10;
+          if (processingStage === 'UPLOADED') progress = 10;
+          else if (processingStage === 'PROCESSING') progress = 20;
+          else if (processingStage === 'EXTRACTING_DATA') progress = 40;
           else if (processingStage === 'CATEGORIZING_TRANSACTIONS') progress = 60;
           else if (processingStage === 'ANALYZING_PATTERNS') progress = 80;
           else if (processingStage === 'DISTRIBUTING_DATA') progress = 90;
           else if (processingStage === 'COMPLETED') progress = 100;
+          else if (processingStage === 'FAILED') progress = 0;
 
           const newStatus = status === 'COMPLETED' ? 'completed' : 
                            status === 'FAILED' ? 'error' : 'processing';
@@ -172,6 +176,7 @@ export default function StatementUploader({ onUploadComplete }: StatementUploade
             ...file,
             status: newStatus,
             progress,
+            transactionCount: processedCount || recordCount || 0,
             error: status === 'FAILED' ? statusUpdate.status.errorLog : undefined
           };
         }
@@ -182,7 +187,12 @@ export default function StatementUploader({ onUploadComplete }: StatementUploade
     // Continue polling if there are still processing files
     const stillProcessing = uploadFiles.some(f => f.status === 'processing');
     if (stillProcessing) {
-      setTimeout(pollProcessingStatus, 2000);
+      setTimeout(pollProcessingStatus, 3000); // Poll every 3 seconds
+    } else {
+      // All processing complete, refresh the upload history
+      if (onUploadComplete) {
+        onUploadComplete();
+      }
     }
   };
 
@@ -416,9 +426,14 @@ export default function StatementUploader({ onUploadComplete }: StatementUploade
                     
                     <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                       <span>{(uploadFile.file.size / 1024 / 1024).toFixed(2)} MB</span>
-                      {uploadFile.progress > 0 && (
-                        <span>{uploadFile.progress}%</span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {uploadFile.transactionCount !== undefined && uploadFile.transactionCount > 0 && (
+                          <span className="font-medium text-primary">{uploadFile.transactionCount} transactions</span>
+                        )}
+                        {uploadFile.progress > 0 && (
+                          <span>{uploadFile.progress}%</span>
+                        )}
+                      </div>
                     </div>
                     
                     {uploadFile.progress > 0 && (

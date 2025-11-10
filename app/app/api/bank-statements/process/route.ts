@@ -83,6 +83,15 @@ async function processStatement(statementId: string) {
       console.log('[Process Route] 🚀 Starting TRIPLE-LAYER EXTRACTION SYSTEM');
       console.log('[Process Route] 📄 Running all three methods: PDF Parser → OCR → AI');
       
+      // Update status to show extraction is starting
+      await prisma.bankStatement.update({
+        where: { id: statementId },
+        data: {
+          processingStage: 'EXTRACTING_DATA',
+          recordCount: 0
+        }
+      });
+      
       const allTransactions: any[] = [];
       const bankInfo: any = {
         bankName: 'PNC Bank',
@@ -129,6 +138,14 @@ async function processStatement(statementId: string) {
         
         allTransactions.push(...pdfTransactions);
         extractionMethods.push('pdf_parser');
+        
+        // Update record count
+        await prisma.bankStatement.update({
+          where: { id: statementId },
+          data: {
+            recordCount: pdfTransactions.length
+          }
+        });
         
         // Log category breakdown
         const categoryCounts: Record<string, number> = {};
@@ -225,6 +242,14 @@ async function processStatement(statementId: string) {
       console.log(`[Process Route] ✅ Final count after deduplication: ${deduplicatedTransactions.length} unique transactions`);
       console.log(`[Process Route] 📊 Extraction methods used: ${extractionMethods.join(', ')}`);
       
+      // Update record count with final deduplicated count
+      await prisma.bankStatement.update({
+        where: { id: statementId },
+        data: {
+          recordCount: deduplicatedTransactions.length
+        }
+      });
+      
       // Log source breakdown
       const sourceCounts: Record<string, number> = {};
       deduplicatedTransactions.forEach(t => {
@@ -239,6 +264,22 @@ async function processStatement(statementId: string) {
       // Check if any transactions were extracted
       if (deduplicatedTransactions.length === 0) {
         throw new Error('All extraction methods failed. No transactions could be extracted from the PDF.');
+      }
+      
+      // Validation: Check if transaction count seems suspiciously low
+      const fileSizeKB = (statement.fileSize || 0) / 1024;
+      const expectedMinTransactions = Math.floor(fileSizeKB / 3); // Rough estimate: 1 transaction per 3KB
+      
+      if (deduplicatedTransactions.length < expectedMinTransactions && fileSizeKB > 50) {
+        console.warn(`[Process Route] ⚠️ WARNING: Low transaction count (${deduplicatedTransactions.length}) for file size (${fileSizeKB.toFixed(1)}KB)`);
+        console.warn(`[Process Route] ⚠️ Expected at least ${expectedMinTransactions} transactions`);
+        console.warn(`[Process Route] ⚠️ This may indicate incomplete extraction`);
+        
+        // Log which methods succeeded and which failed
+        console.log(`[Process Route] 📊 Extraction summary:`);
+        console.log(`[Process Route]   - Total transactions before dedup: ${allTransactions.length}`);
+        console.log(`[Process Route]   - After deduplication: ${deduplicatedTransactions.length}`);
+        console.log(`[Process Route]   - Methods that succeeded: ${extractionMethods.join(', ')}`);
       }
       
       // Prepare final extracted data
