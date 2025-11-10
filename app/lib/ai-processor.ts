@@ -58,11 +58,13 @@ Return JSON with:
   }
 }
 
-Keep descriptions brief. Respond with raw JSON only.`
+Keep descriptions brief. Respond with raw JSON only.
+
+IMPORTANT: Extract ALL transactions from the statement. Do not skip or summarize any transactions. If there are more than 100 transactions, continue extracting all of them.`
             }]
           }],
           response_format: { type: "json_object" },
-          max_tokens: 16000,
+          max_tokens: 32000,
         }),
       });
 
@@ -112,7 +114,16 @@ Keep descriptions brief. Respond with raw JSON only.`
         }
       }
       
-      console.log(`[AI Processor] Successfully extracted data from PDF: ${extractedData.transactions?.length || 0} transactions`);
+      const extractedCount = extractedData.transactions?.length || 0;
+      const summaryCount = extractedData.summary?.transactionCount || 0;
+      
+      console.log(`[AI Processor] Successfully extracted data from PDF: ${extractedCount} transactions`);
+      
+      // Warn if there's a mismatch between extracted count and summary count
+      if (summaryCount > 0 && extractedCount !== summaryCount) {
+        console.warn(`[AI Processor] ⚠️ Transaction count mismatch! Extracted: ${extractedCount}, Summary states: ${summaryCount}`);
+        console.warn(`[AI Processor] ⚠️ ${Math.abs(extractedCount - summaryCount)} transactions may be missing from extraction`);
+      }
       
       return extractedData;
     } catch (error) {

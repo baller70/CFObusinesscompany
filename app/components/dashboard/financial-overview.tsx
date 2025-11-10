@@ -2,6 +2,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,7 @@ import {
   Calculator,
   RefreshCw
 } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface FinancialMetrics {
   monthlyIncome?: number | null
@@ -32,18 +34,39 @@ interface FinancialOverviewProps {
 
 export function FinancialOverview({ metrics, userId }: FinancialOverviewProps) {
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [localMetrics, setLocalMetrics] = useState<FinancialMetrics | null>(metrics)
+  const router = useRouter()
+
+  // Update local metrics when props change
+  useEffect(() => {
+    setLocalMetrics(metrics)
+  }, [metrics])
 
   const refreshMetrics = async () => {
     setIsRefreshing(true)
     try {
-      await fetch('/api/financial-metrics/calculate', {
+      const response = await fetch('/api/financial-metrics/calculate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId })
       })
-      window.location.reload()
+      
+      if (response.ok) {
+        // Fetch updated metrics
+        const metricsResponse = await fetch('/api/financial-metrics')
+        if (metricsResponse.ok) {
+          const updatedMetrics = await metricsResponse.json()
+          setLocalMetrics(updatedMetrics)
+          toast.success('Metrics refreshed successfully')
+        } else {
+          toast.error('Failed to fetch updated metrics')
+        }
+      } else {
+        toast.error('Failed to calculate metrics')
+      }
     } catch (error) {
       console.error('Failed to refresh metrics:', error)
+      toast.error('Failed to refresh metrics')
     } finally {
       setIsRefreshing(false)
     }
@@ -58,10 +81,10 @@ export function FinancialOverview({ metrics, userId }: FinancialOverviewProps) {
   }
 
   const calculateBurnRateMonths = () => {
-    if (!metrics?.totalAssets || !metrics?.monthlyBurnRate || metrics.monthlyBurnRate <= 0) {
+    if (!localMetrics?.totalAssets || !localMetrics?.monthlyBurnRate || localMetrics.monthlyBurnRate <= 0) {
       return null
     }
-    return Math.floor(metrics.totalAssets / metrics.monthlyBurnRate)
+    return Math.floor(localMetrics.totalAssets / localMetrics.monthlyBurnRate)
   }
 
   const burnRateMonths = calculateBurnRateMonths()
@@ -90,7 +113,7 @@ export function FinancialOverview({ metrics, userId }: FinancialOverviewProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              +{formatCurrency(metrics?.monthlyIncome)}
+              +{formatCurrency(localMetrics?.monthlyIncome)}
             </div>
             <p className="text-xs text-muted-foreground">
               Average over last 3 months
@@ -106,7 +129,7 @@ export function FinancialOverview({ metrics, userId }: FinancialOverviewProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              -{formatCurrency(metrics?.monthlyExpenses)}
+              -{formatCurrency(localMetrics?.monthlyExpenses)}
             </div>
             <p className="text-xs text-muted-foreground">
               Average over last 3 months
@@ -121,8 +144,8 @@ export function FinancialOverview({ metrics, userId }: FinancialOverviewProps) {
             <DollarSign className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${(metrics?.netWorth || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {formatCurrency(metrics?.netWorth)}
+            <div className={`text-2xl font-bold ${(localMetrics?.netWorth || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {formatCurrency(localMetrics?.netWorth)}
             </div>
             <p className="text-xs text-muted-foreground">
               Assets minus debts
@@ -148,12 +171,12 @@ export function FinancialOverview({ metrics, userId }: FinancialOverviewProps) {
       </div>
 
       {/* Debt to Income Ratio */}
-      {metrics?.debtToIncomeRatio && (
+      {localMetrics?.debtToIncomeRatio && (
         <Card className="mt-6">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-medium">Debt-to-Income Ratio</CardTitle>
-              {(metrics.debtToIncomeRatio || 0) > 0.4 && (
+              {(localMetrics.debtToIncomeRatio || 0) > 0.4 && (
                 <AlertTriangle className="h-4 w-4 text-red-600" />
               )}
             </div>
@@ -162,16 +185,16 @@ export function FinancialOverview({ metrics, userId }: FinancialOverviewProps) {
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Current Ratio</span>
-                <span className={`font-medium ${(metrics.debtToIncomeRatio || 0) > 0.4 ? 'text-red-600' : 'text-green-600'}`}>
-                  {((metrics.debtToIncomeRatio || 0) * 100).toFixed(1)}%
+                <span className={`font-medium ${(localMetrics.debtToIncomeRatio || 0) > 0.4 ? 'text-red-600' : 'text-green-600'}`}>
+                  {((localMetrics.debtToIncomeRatio || 0) * 100).toFixed(1)}%
                 </span>
               </div>
               <Progress 
-                value={(metrics.debtToIncomeRatio || 0) * 100} 
+                value={(localMetrics.debtToIncomeRatio || 0) * 100} 
                 className="h-2"
               />
               <p className="text-xs text-muted-foreground">
-                {(metrics.debtToIncomeRatio || 0) > 0.4 
+                {(localMetrics.debtToIncomeRatio || 0) > 0.4 
                   ? 'High debt ratio - consider debt reduction strategies'
                   : 'Healthy debt ratio - keep it up!'
                 }
