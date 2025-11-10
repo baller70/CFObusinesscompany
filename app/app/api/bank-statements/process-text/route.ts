@@ -80,20 +80,10 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // Validate and filter transactions
-      const validTransactions = extractedData.transactions.filter((t: any) => {
-        if (!t.date) {
-          console.warn('[Process Text] Skipping transaction with no date:', t);
-          return false;
-        }
-        if (t.amount === 0) {
-          console.warn('[Process Text] Skipping transaction with zero amount:', t);
-          return false;
-        }
-        return true;
-      });
+      // NO VALIDATION - Save all extracted transactions
+      const validTransactions = extractedData.transactions;
 
-      console.log(`[Process Text] Valid transactions: ${validTransactions.length}`);
+      console.log(`[Process Text] Total transactions to save: ${validTransactions.length}`);
 
       // Get all categories for the business profile
       const categories = await prisma.category.findMany({
@@ -111,19 +101,33 @@ export async function POST(request: NextRequest) {
             (c: any) => c.name.toLowerCase() === transaction.category?.toLowerCase()
           );
 
-          // Determine transaction type
+          // Determine transaction type from AI or amount
           let type = 'EXPENSE';
-          if (transaction.amount > 0) {
+          if (transaction.type?.toUpperCase() === 'INCOME') {
             type = 'INCOME';
           } else if (transaction.type?.toUpperCase() === 'TRANSFER') {
             type = 'TRANSFER';
+          } else if (transaction.amount > 0) {
+            type = 'INCOME';
+          }
+
+          // Ensure we have a valid date
+          let transactionDate;
+          try {
+            transactionDate = new Date(transaction.date);
+            if (isNaN(transactionDate.getTime())) {
+              // If date is invalid, use statement date
+              transactionDate = new Date(statementDate);
+            }
+          } catch {
+            transactionDate = new Date(statementDate);
           }
 
           await prisma.transaction.create({
             data: {
-              date: new Date(transaction.date),
+              date: transactionDate,
               description: transaction.description || 'No description',
-              amount: Math.abs(transaction.amount),
+              amount: Math.abs(transaction.amount || 0),
               type: type as 'INCOME' | 'EXPENSE' | 'TRANSFER',
               category: category?.name || transaction.category || 'Uncategorized',
               merchant: transaction.merchant || transaction.description || '',
@@ -140,8 +144,8 @@ export async function POST(request: NextRequest) {
 
           savedCount++;
         } catch (error) {
-          console.error('[Process Text] Error saving transaction:', error);
-          errors.push(`Failed to save transaction: ${transaction.description}`);
+          console.error('[Process Text] Error saving transaction:', transaction.description, error);
+          errors.push(`Failed to save: ${transaction.description}`);
         }
       }
 
