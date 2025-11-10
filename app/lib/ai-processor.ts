@@ -1116,23 +1116,30 @@ Look for section headers like:
 🎯 EXTRACTION RULES:
 
 1. **Transaction Format Detection:**
-   - Date can be: MM/DD, MM/DD/YY, MM/DD/YYYY
-   - Amount is always numerical with decimals
-   - Description is between date and amount
+   - Date posted can be: MM/DD, MM/DD/YY, MM/DD/YYYY
+   - Amount is always numerical with decimals (e.g., 123.45, -50.00)
+   - Description is typically between date and amount
 
-2. **Multi-line Transaction Handling:**
+2. **Reference Number Extraction (CRITICAL):**
+   - Look for patterns like: "REF: 12345", "REF#", "Transaction ID:", "Confirmation:", "Check #"
+   - Extract as separate field: referenceNumber
+   - If no reference number found, set to null or empty string
+   - Reference numbers are usually on same line or next line after description
+
+3. **Multi-line Transaction Handling:**
    - Combine ALL lines that belong to one transaction
-   - Reference numbers (REF:), transaction IDs, confirmation codes are part of the description
    - Keep reading lines until you hit the next date or amount
+   - Separate description and reference number into different fields
 
-3. **Category Assignment:**
+4. **Category Assignment:**
    - Deposits/Credits = INCOME
    - All other transactions = EXPENSE
    - Look for explicit category headers in the text
 
-4. **Accuracy Validation:**
+5. **Accuracy Validation:**
    - Count transactions as you extract them
    - If you see "Total deposits: X" or similar, make sure your count matches
+   - Every transaction MUST have: date, description, amount, and optionally reference number
 
 📊 REQUIRED OUTPUT FORMAT (JSON):
 
@@ -1141,11 +1148,12 @@ Return a JSON object with this EXACT structure:
   "transactions": [
     {
       "date": "YYYY-MM-DD",
-      "description": "Full transaction description including reference numbers",
+      "description": "Full transaction description",
       "amount": 123.45,
       "type": "EXPENSE" or "INCOME",
       "category": "Category name from section header",
       "merchant": "Merchant name if identifiable",
+      "referenceNumber": "REF: 12345 or transaction ID or confirmation code",
       "notes": "Any additional info"
     }
   ],

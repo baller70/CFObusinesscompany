@@ -70,6 +70,15 @@ export async function POST(request: NextRequest) {
       const extractedData = await aiProcessor.extractDataFromText(statementText);
 
       console.log(`[Process Text] AI extraction complete: ${extractedData.transactions.length} transactions`);
+      
+      // Log sample transactions with reference numbers
+      if (extractedData.transactions.length > 0) {
+        console.log('[Process Text] Sample transactions with reference numbers:');
+        extractedData.transactions.slice(0, 3).forEach((t: any, idx: number) => {
+          console.log(`  ${idx + 1}. Date: ${t.date}, Amount: ${t.amount}, Description: ${t.description}`);
+          console.log(`     Reference: ${t.referenceNumber || 'N/A'}`);
+        });
+      }
 
       // Validate and filter transactions
       const validTransactions = extractedData.transactions.filter((t: any) => {
@@ -122,6 +131,10 @@ export async function POST(request: NextRequest) {
               businessProfileId: activeProfile.id,
               bankStatementId: bankStatement.id,
               categoryId: category?.id,
+              metadata: transaction.referenceNumber ? {
+                referenceNumber: transaction.referenceNumber,
+                notes: transaction.notes || undefined
+              } : undefined,
             },
           });
 
