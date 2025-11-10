@@ -1067,7 +1067,7 @@ Respond with raw JSON only.`
     try {
       // Create abort controller for timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minutes timeout
+      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes timeout
       
       const response = await fetch('https://apps.abacus.ai/v1/chat/completions', {
         method: 'POST',
@@ -1077,7 +1077,7 @@ Respond with raw JSON only.`
         },
         body: JSON.stringify({
           model: 'gpt-4o',
-          max_tokens: 20000,
+          max_tokens: 100000,
           temperature: 0.1,
           messages: [{
             role: "user", 
