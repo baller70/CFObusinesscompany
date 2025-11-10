@@ -28,6 +28,8 @@ export class AIBankStatementProcessor {
         },
         body: JSON.stringify({
           model: 'gpt-4o',
+          max_tokens: 16000,
+          temperature: 0.1,
           messages: [{
             role: "user", 
             content: [{
@@ -38,7 +40,11 @@ export class AIBankStatementProcessor {
               }
             }, {
               type: "text", 
-              text: `🚨 CRITICAL ACCURACY REQUIREMENT: Extract EVERY SINGLE transaction from this bank statement PDF. You MUST achieve 100% extraction accuracy.
+              text: `🎯 SUPREME AI EXTRACTION MODE - 100% ACCURACY REQUIRED
+
+You are the PRIMARY and ONLY extraction method for this bank statement. You must achieve PERFECT accuracy.
+
+🚨 CRITICAL ACCURACY REQUIREMENT: Extract EVERY SINGLE transaction from this bank statement PDF. You MUST achieve 100% extraction accuracy.
 
 📋 STEP-BY-STEP EXTRACTION PROCESS:
 1. Read the ENTIRE PDF - all 5+ pages from top to bottom
@@ -103,8 +109,7 @@ Return JSON in this EXACT format:
 Respond with complete JSON only - no markdown formatting, no explanations, just raw JSON starting with {`
             }]
           }],
-          response_format: { type: "json_object" },
-          max_tokens: 200000,
+          response_format: { type: "json_object" }
         }),
         signal: controller.signal
       });

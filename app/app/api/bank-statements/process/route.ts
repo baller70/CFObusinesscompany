@@ -69,19 +69,20 @@ async function processStatement(statementId: string) {
     }
 
     let extractedData: any;
-    let extractionMethods: string[] = [];
+    let extractionMethods: string[] = ['ai_processor'];
 
     if (statement.fileType === 'PDF') {
       const arrayBuffer = await fileResponse.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       
       // ========================================
-      // TRIPLE-LAYER EXTRACTION SYSTEM
-      // All three methods run sequentially, results are combined
+      // 🎯 AI-ONLY EXTRACTION MODE
+      // Using GPT-4o with maximum accuracy settings
       // ========================================
       
-      console.log('[Process Route] 🚀 Starting TRIPLE-LAYER EXTRACTION SYSTEM');
-      console.log('[Process Route] 📄 Running all three methods: PDF Parser → OCR → AI');
+      console.log('[Process Route] 🚀 Starting AI-ONLY EXTRACTION MODE');
+      console.log('[Process Route] 🤖 Using GPT-4o (strongest model) with supreme accuracy settings');
+      console.log('[Process Route] 📄 Bypassing PDF parser and OCR - AI handles everything');
       
       // Update status to show extraction is starting
       await prisma.bankStatement.update({
@@ -92,200 +93,59 @@ async function processStatement(statementId: string) {
         }
       });
       
-      const allTransactions: any[] = [];
-      const bankInfo: any = {
-        bankName: 'PNC Bank',
-        accountNumber: 'Unknown',
-        statementPeriod: 'Unknown',
-        accountType: 'business'
-      };
-      let summary: any = {
-        startingBalance: 0,
-        endingBalance: 0,
-        transactionCount: 0
-      };
+      // ========================================
+      // AI-POWERED EXTRACTION (ONLY METHOD)
+      // ========================================
+      console.log('[Process Route] 🔍 Starting AI extraction...');
       
-      // ========================================
-      // LAYER 1: Direct PDF Text Extraction
-      // ========================================
-      console.log('[Process Route] 🔍 LAYER 1: Direct PDF text extraction');
-      try {
-        const { parsePNCStatement } = await import('@/lib/pdf-parser');
-        const parsed = await parsePNCStatement(buffer);
-        
-        console.log(`[Process Route] ✅ PDF PARSER: ${parsed.transactions.length} transactions extracted`);
-        console.log(`[Process Route] 📊 Account: ${parsed.accountName || 'Unknown'}`);
-        console.log(`[Process Route] 📅 Period: ${parsed.periodStart} to ${parsed.periodEnd}`);
-        
-        // Update bank info from PDF parser
-        bankInfo.accountNumber = parsed.accountNumber || bankInfo.accountNumber;
-        bankInfo.statementPeriod = `${parsed.periodStart} to ${parsed.periodEnd}`;
-        bankInfo.accountType = parsed.statementType || bankInfo.accountType;
-        
-        summary.startingBalance = parsed.beginningBalance || summary.startingBalance;
-        summary.endingBalance = parsed.endingBalance || summary.endingBalance;
-        
-        // Add PDF parser transactions
-        const pdfTransactions = parsed.transactions.map(t => ({
-          date: t.date,
-          description: t.description,
-          amount: t.amount,
-          type: t.type,
-          category: t.category || 'Uncategorized',
-          balance: undefined,
-          source: 'pdf_parser'
-        }));
-        
-        allTransactions.push(...pdfTransactions);
-        extractionMethods.push('pdf_parser');
-        
-        // Update record count
-        await prisma.bankStatement.update({
-          where: { id: statementId },
-          data: {
-            recordCount: pdfTransactions.length
-          }
-        });
-        
-        // Log category breakdown
-        const categoryCounts: Record<string, number> = {};
-        parsed.transactions.forEach(t => {
-          const cat = t.category || 'Unknown';
-          categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
-        });
-        console.log('[Process Route] 📋 PDF Parser categories:');
-        Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]).forEach(([cat, count]) => {
-          console.log(`[Process Route]   ${cat}: ${count}`);
-        });
-        
-      } catch (parserError) {
-        console.error(`[Process Route] ❌ PDF PARSER FAILED: ${parserError}`);
-        console.log('[Process Route] ⚠️ Continuing to next layer...');
+      // Convert buffer to base64 for AI processing
+      const base64Content = buffer.toString('base64');
+      const aiResult = await aiProcessor.extractDataFromPDF(base64Content, statement.fileName);
+      
+      console.log(`[Process Route] ✅ AI EXTRACTION COMPLETE: ${aiResult.transactions?.length || 0} transactions`);
+      
+      if (!aiResult.transactions || aiResult.transactions.length === 0) {
+        throw new Error('AI extraction failed. No transactions were extracted from the PDF.');
       }
       
-      // ========================================
-      // LAYER 2: Azure OCR Extraction
-      // ========================================
-      console.log('[Process Route] 🔍 LAYER 2: Azure OCR extraction');
-      try {
-        const { processBankStatementWithOCR } = await import('@/lib/azure-ocr');
-        const ocrResult = await processBankStatementWithOCR(buffer, statement.fileName);
-        
-        console.log(`[Process Route] ✅ OCR: ${ocrResult.transactions.length} transactions (confidence: ${(ocrResult.confidence * 100).toFixed(1)}%)`);
-        
-        // Add OCR transactions
-        const ocrTransactions = ocrResult.transactions.map(t => ({
-          date: t.date,
-          description: t.description,
-          amount: t.type === 'credit' ? t.amount : -t.amount,
-          type: t.type,
-          category: 'Uncategorized',
-          balance: undefined,
-          source: 'azure_ocr'
-        }));
-        
-        allTransactions.push(...ocrTransactions);
-        extractionMethods.push('azure_ocr');
-        
-        // Update bank info if missing
-        if (bankInfo.accountNumber === 'Unknown' && ocrResult.accountInfo.accountNumber) {
-          bankInfo.accountNumber = ocrResult.accountInfo.accountNumber;
-        }
-        if (bankInfo.statementPeriod === 'Unknown' && ocrResult.accountInfo.periodStart && ocrResult.accountInfo.periodEnd) {
-          bankInfo.statementPeriod = `${ocrResult.accountInfo.periodStart} to ${ocrResult.accountInfo.periodEnd}`;
-        }
-        
-      } catch (ocrError) {
-        console.error(`[Process Route] ❌ OCR FAILED: ${ocrError}`);
-        console.log('[Process Route] ⚠️ Continuing to next layer...');
-      }
+      // Log category breakdown
+      const categoryCounts: Record<string, number> = {};
+      aiResult.transactions.forEach((t: any) => {
+        const cat = t.category || 'Uncategorized';
+        categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+      });
+      console.log('[Process Route] 📋 Transaction categories:');
+      Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]).forEach(([cat, count]) => {
+        console.log(`[Process Route]   ${cat}: ${count}`);
+      });
       
-      // ========================================
-      // LAYER 3: AI-Powered Extraction
-      // ========================================
-      console.log('[Process Route] 🔍 LAYER 3: AI-powered extraction');
-      try {
-        // Convert buffer to base64 for AI processing
-        const base64Content = buffer.toString('base64');
-        const aiResult = await aiProcessor.extractDataFromPDF(base64Content, statement.fileName);
-        
-        console.log(`[Process Route] ✅ AI: ${aiResult.transactions?.length || 0} transactions extracted`);
-        
-        // Add AI transactions
-        if (aiResult.transactions && aiResult.transactions.length > 0) {
-          const aiTransactions = aiResult.transactions.map((t: any) => ({
-            date: t.date,
-            description: t.description,
-            amount: t.amount,
-            type: t.type,
-            category: 'Uncategorized',
-            balance: undefined,
-            source: 'ai_processor'
-          }));
-          
-          allTransactions.push(...aiTransactions);
-          extractionMethods.push('ai_processor');
-        }
-        
-      } catch (aiError) {
-        console.error(`[Process Route] ❌ AI FAILED: ${aiError}`);
-        console.log('[Process Route] ⚠️ AI extraction failed, using results from other layers');
-      }
-      
-      // ========================================
-      // DEDUPLICATION & MERGING
-      // ========================================
-      console.log(`[Process Route] 🔄 Deduplicating ${allTransactions.length} total transactions from ${extractionMethods.length} methods`);
-      
-      const deduplicatedTransactions = deduplicateTransactions(allTransactions);
-      
-      console.log(`[Process Route] ✅ Final count after deduplication: ${deduplicatedTransactions.length} unique transactions`);
-      console.log(`[Process Route] 📊 Extraction methods used: ${extractionMethods.join(', ')}`);
-      
-      // Update record count with final deduplicated count
+      // Update record count
       await prisma.bankStatement.update({
         where: { id: statementId },
         data: {
-          recordCount: deduplicatedTransactions.length
+          recordCount: aiResult.transactions.length
         }
       });
-      
-      // Log source breakdown
-      const sourceCounts: Record<string, number> = {};
-      deduplicatedTransactions.forEach(t => {
-        const src = t.source || 'unknown';
-        sourceCounts[src] = (sourceCounts[src] || 0) + 1;
-      });
-      console.log('[Process Route] 📋 Transaction sources after deduplication:');
-      Object.entries(sourceCounts).forEach(([src, count]) => {
-        console.log(`[Process Route]   ${src}: ${count}`);
-      });
-      
-      // Check if any transactions were extracted
-      if (deduplicatedTransactions.length === 0) {
-        throw new Error('All extraction methods failed. No transactions could be extracted from the PDF.');
-      }
       
       // Validation: Check if transaction count seems suspiciously low
       const fileSizeKB = (statement.fileSize || 0) / 1024;
       const expectedMinTransactions = Math.floor(fileSizeKB / 3); // Rough estimate: 1 transaction per 3KB
       
-      if (deduplicatedTransactions.length < expectedMinTransactions && fileSizeKB > 50) {
-        console.warn(`[Process Route] ⚠️ WARNING: Low transaction count (${deduplicatedTransactions.length}) for file size (${fileSizeKB.toFixed(1)}KB)`);
+      if (aiResult.transactions.length < expectedMinTransactions && fileSizeKB > 50) {
+        console.warn(`[Process Route] ⚠️ WARNING: Low transaction count (${aiResult.transactions.length}) for file size (${fileSizeKB.toFixed(1)}KB)`);
         console.warn(`[Process Route] ⚠️ Expected at least ${expectedMinTransactions} transactions`);
         console.warn(`[Process Route] ⚠️ This may indicate incomplete extraction`);
-        
-        // Log which methods succeeded and which failed
-        console.log(`[Process Route] 📊 Extraction summary:`);
-        console.log(`[Process Route]   - Total transactions before dedup: ${allTransactions.length}`);
-        console.log(`[Process Route]   - After deduplication: ${deduplicatedTransactions.length}`);
-        console.log(`[Process Route]   - Methods that succeeded: ${extractionMethods.join(', ')}`);
       }
       
-      // Prepare final extracted data
+      // Prepare final extracted data (no deduplication needed with single method)
       extractedData = {
-        bankInfo: bankInfo,
-        transactions: deduplicatedTransactions.map(t => ({
+        bankInfo: aiResult.bankInfo || {
+          bankName: 'PNC Bank',
+          accountNumber: 'Unknown',
+          statementPeriod: 'Unknown',
+          accountType: 'business'
+        },
+        transactions: aiResult.transactions.map((t: any) => ({
           date: t.date,
           description: t.description,
           amount: t.amount,
@@ -293,10 +153,10 @@ async function processStatement(statementId: string) {
           category: t.category || 'Uncategorized',
           balance: t.balance
         })),
-        summary: {
-          startingBalance: summary.startingBalance,
-          endingBalance: summary.endingBalance,
-          transactionCount: deduplicatedTransactions.length
+        summary: aiResult.summary || {
+          startingBalance: 0,
+          endingBalance: 0,
+          transactionCount: aiResult.transactions.length
         },
         extractionMethods: extractionMethods
       };
