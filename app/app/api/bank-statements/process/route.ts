@@ -69,14 +69,37 @@ async function processStatement(statementId: string) {
     }
 
     let extractedData: any;
-    let extractionMethod = 'unknown';
+    let extractionMethods: string[] = [];
 
     if (statement.fileType === 'PDF') {
       const arrayBuffer = await fileResponse.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       
-      // PRIMARY METHOD: Direct PDF Text Extraction (100% accuracy for PNC statements)
-      console.log('[Process Route] 🔍 PRIMARY: Direct PDF text extraction');
+      // ========================================
+      // TRIPLE-LAYER EXTRACTION SYSTEM
+      // All three methods run sequentially, results are combined
+      // ========================================
+      
+      console.log('[Process Route] 🚀 Starting TRIPLE-LAYER EXTRACTION SYSTEM');
+      console.log('[Process Route] 📄 Running all three methods: PDF Parser → OCR → AI');
+      
+      const allTransactions: any[] = [];
+      const bankInfo: any = {
+        bankName: 'PNC Bank',
+        accountNumber: 'Unknown',
+        statementPeriod: 'Unknown',
+        accountType: 'business'
+      };
+      let summary: any = {
+        startingBalance: 0,
+        endingBalance: 0,
+        transactionCount: 0
+      };
+      
+      // ========================================
+      // LAYER 1: Direct PDF Text Extraction
+      // ========================================
+      console.log('[Process Route] 🔍 LAYER 1: Direct PDF text extraction');
       try {
         const { parsePNCStatement } = await import('@/lib/pdf-parser');
         const parsed = await parsePNCStatement(buffer);
@@ -85,95 +108,168 @@ async function processStatement(statementId: string) {
         console.log(`[Process Route] 📊 Account: ${parsed.accountName || 'Unknown'}`);
         console.log(`[Process Route] 📅 Period: ${parsed.periodStart} to ${parsed.periodEnd}`);
         
-        extractedData = {
-          bankInfo: {
-            bankName: 'PNC Bank',
-            accountNumber: parsed.accountNumber,
-            statementPeriod: `${parsed.periodStart} to ${parsed.periodEnd}`,
-            accountType: parsed.statementType
-          },
-          transactions: parsed.transactions.map(t => ({
-            date: t.date,
-            description: t.description,
-            amount: t.amount,
-            type: t.type,
-            category: t.category || 'Uncategorized',
-            balance: undefined
-          })),
-          summary: {
-            startingBalance: parsed.beginningBalance,
-            endingBalance: parsed.endingBalance,
-            transactionCount: parsed.transactions.length
-          }
-        };
+        // Update bank info from PDF parser
+        bankInfo.accountNumber = parsed.accountNumber || bankInfo.accountNumber;
+        bankInfo.statementPeriod = `${parsed.periodStart} to ${parsed.periodEnd}`;
+        bankInfo.accountType = parsed.statementType || bankInfo.accountType;
         
-        extractionMethod = 'pdf_parser_primary';
+        summary.startingBalance = parsed.beginningBalance || summary.startingBalance;
+        summary.endingBalance = parsed.endingBalance || summary.endingBalance;
         
-        // Log category breakdown for verification
+        // Add PDF parser transactions
+        const pdfTransactions = parsed.transactions.map(t => ({
+          date: t.date,
+          description: t.description,
+          amount: t.amount,
+          type: t.type,
+          category: t.category || 'Uncategorized',
+          balance: undefined,
+          source: 'pdf_parser'
+        }));
+        
+        allTransactions.push(...pdfTransactions);
+        extractionMethods.push('pdf_parser');
+        
+        // Log category breakdown
         const categoryCounts: Record<string, number> = {};
         parsed.transactions.forEach(t => {
           const cat = t.category || 'Unknown';
           categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
         });
-        console.log('[Process Route] 📋 Transaction categories:');
+        console.log('[Process Route] 📋 PDF Parser categories:');
         Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]).forEach(([cat, count]) => {
           console.log(`[Process Route]   ${cat}: ${count}`);
         });
         
       } catch (parserError) {
         console.error(`[Process Route] ❌ PDF PARSER FAILED: ${parserError}`);
-        
-        // FALLBACK: Try Azure OCR if direct parsing fails
-        console.log('[Process Route] 🔍 FALLBACK: Attempting Azure OCR extraction');
-        try {
-          const { processBankStatementWithOCR } = await import('@/lib/azure-ocr');
-          const ocrResult = await processBankStatementWithOCR(buffer, statement.fileName);
-          
-          console.log(`[Process Route] ✅ OCR FALLBACK: ${ocrResult.transactions.length} transactions (confidence: ${(ocrResult.confidence * 100).toFixed(1)}%)`);
-          
-          // Convert to standard format
-          extractedData = {
-            bankInfo: {
-              bankName: ocrResult.accountInfo.bankName || 'PNC Bank',
-              accountNumber: ocrResult.accountInfo.accountNumber || 'Unknown',
-              statementPeriod: ocrResult.accountInfo.periodStart && ocrResult.accountInfo.periodEnd 
-                ? `${ocrResult.accountInfo.periodStart} to ${ocrResult.accountInfo.periodEnd}`
-                : 'Unknown Period',
-              accountType: 'business'
-            },
-            transactions: ocrResult.transactions.map(t => ({
-              date: t.date,
-              description: t.description,
-              amount: t.type === 'credit' ? t.amount : -t.amount,
-              type: t.type,
-              category: 'Uncategorized',
-              balance: undefined
-            })),
-            summary: {
-              startingBalance: 0,
-              endingBalance: 0,
-              transactionCount: ocrResult.transactions.length
-            },
-            rawOCRText: ocrResult.text,
-            ocrConfidence: ocrResult.confidence
-          };
-          
-          extractionMethod = 'azure_ocr_fallback';
-          
-        } catch (ocrError) {
-          console.error(`[Process Route] ❌ ALL METHODS FAILED: ${ocrError}`);
-          throw new Error('Unable to extract transactions. Please ensure the PDF is a valid bank statement.');
-        }
+        console.log('[Process Route] ⚠️ Continuing to next layer...');
       }
+      
+      // ========================================
+      // LAYER 2: Azure OCR Extraction
+      // ========================================
+      console.log('[Process Route] 🔍 LAYER 2: Azure OCR extraction');
+      try {
+        const { processBankStatementWithOCR } = await import('@/lib/azure-ocr');
+        const ocrResult = await processBankStatementWithOCR(buffer, statement.fileName);
+        
+        console.log(`[Process Route] ✅ OCR: ${ocrResult.transactions.length} transactions (confidence: ${(ocrResult.confidence * 100).toFixed(1)}%)`);
+        
+        // Add OCR transactions
+        const ocrTransactions = ocrResult.transactions.map(t => ({
+          date: t.date,
+          description: t.description,
+          amount: t.type === 'credit' ? t.amount : -t.amount,
+          type: t.type,
+          category: 'Uncategorized',
+          balance: undefined,
+          source: 'azure_ocr'
+        }));
+        
+        allTransactions.push(...ocrTransactions);
+        extractionMethods.push('azure_ocr');
+        
+        // Update bank info if missing
+        if (bankInfo.accountNumber === 'Unknown' && ocrResult.accountInfo.accountNumber) {
+          bankInfo.accountNumber = ocrResult.accountInfo.accountNumber;
+        }
+        if (bankInfo.statementPeriod === 'Unknown' && ocrResult.accountInfo.periodStart && ocrResult.accountInfo.periodEnd) {
+          bankInfo.statementPeriod = `${ocrResult.accountInfo.periodStart} to ${ocrResult.accountInfo.periodEnd}`;
+        }
+        
+      } catch (ocrError) {
+        console.error(`[Process Route] ❌ OCR FAILED: ${ocrError}`);
+        console.log('[Process Route] ⚠️ Continuing to next layer...');
+      }
+      
+      // ========================================
+      // LAYER 3: AI-Powered Extraction
+      // ========================================
+      console.log('[Process Route] 🔍 LAYER 3: AI-powered extraction');
+      try {
+        // Convert buffer to base64 for AI processing
+        const base64Content = buffer.toString('base64');
+        const aiResult = await aiProcessor.extractDataFromPDF(base64Content, statement.fileName);
+        
+        console.log(`[Process Route] ✅ AI: ${aiResult.transactions?.length || 0} transactions extracted`);
+        
+        // Add AI transactions
+        if (aiResult.transactions && aiResult.transactions.length > 0) {
+          const aiTransactions = aiResult.transactions.map((t: any) => ({
+            date: t.date,
+            description: t.description,
+            amount: t.amount,
+            type: t.type,
+            category: 'Uncategorized',
+            balance: undefined,
+            source: 'ai_processor'
+          }));
+          
+          allTransactions.push(...aiTransactions);
+          extractionMethods.push('ai_processor');
+        }
+        
+      } catch (aiError) {
+        console.error(`[Process Route] ❌ AI FAILED: ${aiError}`);
+        console.log('[Process Route] ⚠️ AI extraction failed, using results from other layers');
+      }
+      
+      // ========================================
+      // DEDUPLICATION & MERGING
+      // ========================================
+      console.log(`[Process Route] 🔄 Deduplicating ${allTransactions.length} total transactions from ${extractionMethods.length} methods`);
+      
+      const deduplicatedTransactions = deduplicateTransactions(allTransactions);
+      
+      console.log(`[Process Route] ✅ Final count after deduplication: ${deduplicatedTransactions.length} unique transactions`);
+      console.log(`[Process Route] 📊 Extraction methods used: ${extractionMethods.join(', ')}`);
+      
+      // Log source breakdown
+      const sourceCounts: Record<string, number> = {};
+      deduplicatedTransactions.forEach(t => {
+        const src = t.source || 'unknown';
+        sourceCounts[src] = (sourceCounts[src] || 0) + 1;
+      });
+      console.log('[Process Route] 📋 Transaction sources after deduplication:');
+      Object.entries(sourceCounts).forEach(([src, count]) => {
+        console.log(`[Process Route]   ${src}: ${count}`);
+      });
+      
+      // Check if any transactions were extracted
+      if (deduplicatedTransactions.length === 0) {
+        throw new Error('All extraction methods failed. No transactions could be extracted from the PDF.');
+      }
+      
+      // Prepare final extracted data
+      extractedData = {
+        bankInfo: bankInfo,
+        transactions: deduplicatedTransactions.map(t => ({
+          date: t.date,
+          description: t.description,
+          amount: t.amount,
+          type: t.type,
+          category: t.category || 'Uncategorized',
+          balance: t.balance
+        })),
+        summary: {
+          startingBalance: summary.startingBalance,
+          endingBalance: summary.endingBalance,
+          transactionCount: deduplicatedTransactions.length
+        },
+        extractionMethods: extractionMethods
+      };
+      
     } else {
       // Process CSV
       const csvContent = await fileResponse.text();
       extractedData = await aiProcessor.processCSVData(csvContent);
-      extractionMethod = 'csv_parser';
+      extractionMethods = ['csv_parser'];
     }
     
-    // Log extraction method used
-    console.log(`[Process Route] 📊 Final Extraction Method: ${extractionMethod}`);
+    // Log extraction summary
+    console.log(`[Process Route] 🎉 EXTRACTION COMPLETE`);
+    console.log(`[Process Route] 📊 Methods used: ${extractionMethods.join(' + ')}`);
     console.log(`[Process Route] 📊 Total Transactions: ${extractedData.transactions?.length || 0}`);
 
     // Update with extracted data (note: extraction method logged in console)
@@ -335,6 +431,123 @@ async function processStatement(statementId: string) {
     });
 
     throw error;
+  }
+}
+
+/**
+ * Deduplicates transactions from multiple extraction sources
+ * Intelligently merges duplicates by keeping the best quality transaction
+ */
+function deduplicateTransactions(transactions: any[]): any[] {
+  if (transactions.length === 0) return [];
+  
+  console.log('[Deduplication] Starting deduplication process...');
+  
+  // Sort transactions by source priority (PDF parser > OCR > AI)
+  const sourcePriority: Record<string, number> = {
+    'pdf_parser': 1,
+    'azure_ocr': 2,
+    'ai_processor': 3
+  };
+  
+  // Create a map to track unique transactions
+  // Key format: "date|amount|description_prefix"
+  const transactionMap = new Map<string, any>();
+  
+  transactions.forEach(txn => {
+    // Normalize data for comparison
+    const date = normalizeDate(txn.date);
+    const amount = normalizeAmount(txn.amount);
+    const description = normalizeDescription(txn.description);
+    
+    // Create a unique key using date, amount, and first 20 chars of description
+    const descriptionPrefix = description.substring(0, 20).toLowerCase();
+    const key = `${date}|${amount}|${descriptionPrefix}`;
+    
+    // Check if this transaction already exists
+    const existing = transactionMap.get(key);
+    
+    if (!existing) {
+      // New transaction, add it
+      transactionMap.set(key, txn);
+    } else {
+      // Duplicate found, keep the one from the higher priority source
+      const existingPriority = sourcePriority[existing.source] || 999;
+      const newPriority = sourcePriority[txn.source] || 999;
+      
+      if (newPriority < existingPriority) {
+        // New transaction has higher priority, replace
+        console.log(`[Deduplication] Replacing ${existing.source} with ${txn.source} for: ${description.substring(0, 30)}...`);
+        transactionMap.set(key, txn);
+      } else {
+        console.log(`[Deduplication] Keeping ${existing.source} over ${txn.source} for: ${description.substring(0, 30)}...`);
+      }
+    }
+  });
+  
+  const deduplicated = Array.from(transactionMap.values());
+  console.log(`[Deduplication] Reduced ${transactions.length} transactions to ${deduplicated.length} unique transactions`);
+  
+  return deduplicated;
+}
+
+/**
+ * Normalizes date to YYYY-MM-DD format for comparison
+ */
+function normalizeDate(date: any): string {
+  try {
+    if (!date) return 'unknown';
+    
+    // If it's already a Date object
+    if (date instanceof Date) {
+      return date.toISOString().split('T')[0];
+    }
+    
+    // If it's a string, try to parse it
+    const parsed = new Date(date);
+    if (!isNaN(parsed.getTime())) {
+      return parsed.toISOString().split('T')[0];
+    }
+    
+    return 'unknown';
+  } catch (e) {
+    return 'unknown';
+  }
+}
+
+/**
+ * Normalizes amount to a fixed precision for comparison
+ */
+function normalizeAmount(amount: any): string {
+  try {
+    if (typeof amount === 'number') {
+      return amount.toFixed(2);
+    }
+    if (typeof amount === 'string') {
+      const parsed = parseFloat(amount);
+      if (!isNaN(parsed)) {
+        return parsed.toFixed(2);
+      }
+    }
+    return '0.00';
+  } catch (e) {
+    return '0.00';
+  }
+}
+
+/**
+ * Normalizes description by removing extra whitespace and special characters
+ */
+function normalizeDescription(description: any): string {
+  try {
+    if (!description) return 'unknown';
+    
+    return String(description)
+      .trim()
+      .replace(/\s+/g, ' ')
+      .replace(/[^\w\s]/g, '');
+  } catch (e) {
+    return 'unknown';
   }
 }
 
