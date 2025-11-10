@@ -96,11 +96,10 @@ async function processStatement(statementId: string) {
       // ========================================
       // AI-POWERED EXTRACTION (ONLY METHOD)
       // ========================================
-      console.log('[Process Route] 🔍 Starting AI extraction...');
+      console.log('[Process Route] 🔍 Starting AI extraction (text-based)...');
       
-      // Convert buffer to base64 for AI processing
-      const base64Content = buffer.toString('base64');
-      const aiResult = await aiProcessor.extractDataFromPDF(base64Content, statement.fileName);
+      // Pass buffer directly to AI processor (it will use pdftotext internally)
+      const aiResult = await aiProcessor.extractDataFromPDF(buffer, statement.fileName);
       
       console.log(`[Process Route] ✅ AI EXTRACTION COMPLETE: ${aiResult.transactions?.length || 0} transactions`);
       

@@ -96,10 +96,10 @@ export async function processStatementWithValidation(statementId: string) {
     let extractedData: any;
 
     if (statement.fileType === 'PDF') {
-      // Process PDF
-      console.log(`[Processing] Extracting data from PDF`);
-      const base64Content = Buffer.from(arrayBuffer).toString('base64');
-      extractedData = await aiProcessor.extractDataFromPDF(base64Content, statement.fileName || 'statement.pdf');
+      // Process PDF (text-based extraction via pdftotext)
+      console.log(`[Processing] Extracting data from PDF using text-based method`);
+      const pdfBuffer = Buffer.from(arrayBuffer);
+      extractedData = await aiProcessor.extractDataFromPDF(pdfBuffer, statement.fileName || 'statement.pdf');
     } else {
       // Process CSV
       console.log(`[Processing] Processing CSV data`);
