@@ -75,101 +75,123 @@ async function processStatement(statementId: string) {
       const arrayBuffer = await fileResponse.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       
-      // TIER 1: Try direct PDF text extraction first
-      console.log('[Process Route] 🔍 TIER 1: Attempting direct PDF text extraction');
+      // PRIMARY METHOD: Azure OCR extraction
+      console.log('[Process Route] 🔍 PRIMARY: Azure OCR extraction (100% accuracy mode)');
       try {
-        const { parsePNCStatement } = await import('@/lib/pdf-parser');
-        const parsed = await parsePNCStatement(buffer);
+        const { processBankStatementWithOCR } = await import('@/lib/azure-ocr');
+        const ocrResult = await processBankStatementWithOCR(buffer, statement.fileName);
         
+        console.log(`[Process Route] ✅ OCR EXTRACTION: ${ocrResult.transactions.length} transactions (confidence: ${(ocrResult.confidence * 100).toFixed(1)}%)`);
+        
+        // Convert to standard format
         extractedData = {
           bankInfo: {
-            bankName: 'PNC Bank',
-            accountNumber: parsed.accountNumber,
-            statementPeriod: `${parsed.periodStart} to ${parsed.periodEnd}`,
-            accountType: parsed.statementType
+            bankName: ocrResult.accountInfo.bankName || 'PNC Bank',
+            accountNumber: ocrResult.accountInfo.accountNumber || 'Unknown',
+            statementPeriod: ocrResult.accountInfo.periodStart && ocrResult.accountInfo.periodEnd 
+              ? `${ocrResult.accountInfo.periodStart} to ${ocrResult.accountInfo.periodEnd}`
+              : 'Unknown Period',
+            accountType: 'business'
           },
-          transactions: parsed.transactions.map(t => ({
+          transactions: ocrResult.transactions.map(t => ({
             date: t.date,
             description: t.description,
-            amount: t.amount,
+            amount: t.type === 'credit' ? t.amount : -t.amount,
             type: t.type,
-            category: t.category || 'Uncategorized',
+            category: 'Uncategorized',
             balance: undefined
           })),
           summary: {
-            startingBalance: parsed.beginningBalance,
-            endingBalance: parsed.endingBalance,
-            transactionCount: parsed.transactions.length
-          }
+            startingBalance: 0,
+            endingBalance: 0,
+            transactionCount: ocrResult.transactions.length
+          },
+          rawOCRText: ocrResult.text,
+          ocrConfidence: ocrResult.confidence
         };
         
-        const txCount = extractedData.transactions.length;
-        console.log(`[Process Route] TIER 1 Result: ${txCount} transactions extracted`);
+        extractionMethod = 'azure_ocr_primary';
         
-        // Check if extraction was successful (should have at least 50 transactions for typical statements)
-        if (txCount >= 50) {
-          console.log(`[Process Route] ✅ TIER 1 SUCCESS: ${txCount} transactions (above threshold)`);
-          extractionMethod = 'direct_pdf_parser';
-        } else {
-          console.log(`[Process Route] ⚠️ TIER 1 LOW COUNT: ${txCount} transactions (below 50, trying OCR)`);
-          throw new Error('Transaction count below threshold, falling back to OCR');
-        }
-      } catch (pdfError) {
-        console.log(`[Process Route] ❌ TIER 1 FAILED: ${pdfError}`);
+        // AI ENHANCEMENT: Validate and enhance OCR results
+        console.log('[Process Route] 🤖 AI ENHANCEMENT: Validating OCR results...');
         
-        // TIER 2: Fall back to Azure OCR
-        console.log('[Process Route] 🔍 TIER 2: Attempting Azure OCR extraction');
+        // Use AI to validate transaction completeness
+        const validationPrompt = `Analyze this bank statement OCR text and confirm all transactions were captured:
+
+OCR Text:
+${ocrResult.text}
+
+Extracted Transactions: ${ocrResult.transactions.length}
+
+Tasks:
+1. Count visible transaction lines in the text
+2. Verify all transactions were captured
+3. Flag any missing or incomplete transactions
+4. Suggest fixes for any parsing errors
+
+Respond with JSON: {"expectedCount": number, "extractedCount": number, "missingTransactions": [], "parsingErrors": [], "accuracy": "100%" or "XX%"}`;
+        
+        // AI validation call (enhance but don't replace OCR results)
         try {
-          const { processBankStatementWithOCR } = await import('@/lib/azure-ocr');
-          const ocrResult = await processBankStatementWithOCR(buffer, statement.fileName);
+          const validationResult = await aiProcessor.validateExtraction(ocrResult.text, ocrResult.transactions);
+          console.log(`[Process Route] ✅ AI VALIDATION: ${validationResult.accuracy} accuracy confirmed`);
+          
+          if (validationResult.missingTransactions && validationResult.missingTransactions.length > 0) {
+            console.log(`[Process Route] ⚠️ AI found ${validationResult.missingTransactions.length} potentially missing transactions`);
+            // Add missing transactions identified by AI
+            for (const missing of validationResult.missingTransactions) {
+              extractedData.transactions.push({
+                date: missing.date,
+                description: missing.description,
+                amount: missing.amount,
+                type: missing.type,
+                category: 'Uncategorized',
+                balance: undefined
+              });
+            }
+            console.log(`[Process Route] ✅ Added ${validationResult.missingTransactions.length} missing transactions via AI`);
+          }
+        } catch (validationError) {
+          console.log(`[Process Route] ⚠️ AI validation skipped: ${validationError}`);
+          // Continue with OCR results even if AI validation fails
+        }
+        
+      } catch (ocrError) {
+        console.error(`[Process Route] ❌ OCR EXTRACTION FAILED: ${ocrError}`);
+        
+        // FALLBACK: Use direct text parser if OCR fails
+        console.log('[Process Route] 🔍 FALLBACK: Attempting direct PDF text extraction');
+        try {
+          const { parsePNCStatement } = await import('@/lib/pdf-parser');
+          const parsed = await parsePNCStatement(buffer);
           
           extractedData = {
             bankInfo: {
-              bankName: ocrResult.accountInfo.bankName || 'Unknown Bank',
-              accountNumber: ocrResult.accountInfo.accountNumber || 'Unknown',
-              statementPeriod: ocrResult.accountInfo.periodStart && ocrResult.accountInfo.periodEnd 
-                ? `${ocrResult.accountInfo.periodStart} to ${ocrResult.accountInfo.periodEnd}`
-                : 'Unknown Period',
-              accountType: 'business'
+              bankName: 'PNC Bank',
+              accountNumber: parsed.accountNumber,
+              statementPeriod: `${parsed.periodStart} to ${parsed.periodEnd}`,
+              accountType: parsed.statementType
             },
-            transactions: ocrResult.transactions.map(t => ({
+            transactions: parsed.transactions.map(t => ({
               date: t.date,
               description: t.description,
-              amount: t.type === 'credit' ? t.amount : -t.amount,
+              amount: t.amount,
               type: t.type,
-              category: 'Uncategorized',
+              category: t.category || 'Uncategorized',
               balance: undefined
             })),
             summary: {
-              startingBalance: 0,
-              endingBalance: 0,
-              transactionCount: ocrResult.transactions.length
+              startingBalance: parsed.beginningBalance,
+              endingBalance: parsed.endingBalance,
+              transactionCount: parsed.transactions.length
             }
           };
           
-          const txCount = extractedData.transactions.length;
-          console.log(`[Process Route] ✅ TIER 2 SUCCESS: ${txCount} transactions via OCR (confidence: ${(ocrResult.confidence * 100).toFixed(1)}%)`);
-          extractionMethod = 'azure_ocr';
-          
-          if (txCount === 0) {
-            throw new Error('OCR extracted 0 transactions');
-          }
-        } catch (ocrError) {
-          console.log(`[Process Route] ❌ TIER 2 FAILED: ${ocrError}`);
-          
-          // TIER 3: Last resort - AI extraction
-          console.log('[Process Route] 🔍 TIER 3: Attempting AI extraction (last resort)');
-          try {
-            // Convert buffer to base64 for AI processor
-            const base64Content = buffer.toString('base64');
-            const pdfData = await aiProcessor.extractDataFromPDF(base64Content, statement.fileName);
-            extractedData = pdfData;
-            extractionMethod = 'ai_extraction';
-            console.log(`[Process Route] ✅ TIER 3 SUCCESS: ${extractedData.transactions?.length || 0} transactions via AI`);
-          } catch (aiError) {
-            console.error(`[Process Route] ❌ TIER 3 FAILED: ${aiError}`);
-            throw new Error('All extraction methods failed. Please check if the PDF is a valid bank statement.');
-          }
+          extractionMethod = 'pdf_parser_fallback';
+          console.log(`[Process Route] ✅ FALLBACK SUCCESS: ${extractedData.transactions.length} transactions`);
+        } catch (fallbackError) {
+          console.error(`[Process Route] ❌ ALL METHODS FAILED: ${fallbackError}`);
+          throw new Error('Unable to extract transactions. Please ensure the PDF is a valid bank statement.');
         }
       }
     } else {

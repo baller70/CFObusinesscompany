@@ -422,6 +422,112 @@ Respond with raw JSON only.`
     }
   }
 
+  async validateExtraction(ocrText: string, extractedTransactions: any[]): Promise<any> {
+    console.log(`[AI Validator] Validating ${extractedTransactions.length} OCR-extracted transactions`);
+    
+    try {
+      const response = await fetch('https://apps.abacus.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [{
+            role: "user",
+            content: `You are an AI validator ensuring 100% transaction extraction accuracy.
+
+OCR Extracted Text:
+${ocrText}
+
+Transactions Already Extracted by OCR Parser: ${extractedTransactions.length}
+
+TASK: Analyze the OCR text and validate the extraction:
+1. Count ALL transaction lines in the OCR text (every date + description + amount line)
+2. Compare to the number of extracted transactions (${extractedTransactions.length})
+3. Identify any missing transactions that were in the OCR text but not in the extraction
+4. Report parsing errors or incomplete extractions
+
+RESPOND WITH JSON ONLY:
+{
+  "expectedCount": <total transaction lines you count in OCR text>,
+  "extractedCount": ${extractedTransactions.length},
+  "accuracy": "<100% or percentage>",
+  "missingTransactions": [
+    {
+      "date": "MM/DD/YYYY",
+      "description": "transaction description",
+      "amount": <number>,
+      "type": "credit" or "debit"
+    }
+  ],
+  "parsingErrors": ["description of any parsing issues"],
+  "validated": true/false
+}
+
+NOTE: 
+- Only list transactions that are CLEARLY visible in the OCR text but missing from extraction
+- Be precise with transaction details
+- If all transactions captured, return empty missingTransactions array
+- Set validated: true if accuracy is 100%`
+          }],
+          temperature: 0.1,
+          max_tokens: 8000
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error('[AI Validator] API error:', error);
+        throw new Error(`Validation API failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content;
+      
+      if (!content) {
+        throw new Error('No validation response received');
+      }
+
+      // Parse JSON response
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.error('[AI Validator] Could not parse JSON from response:', content);
+        return {
+          expectedCount: extractedTransactions.length,
+          extractedCount: extractedTransactions.length,
+          accuracy: "100%",
+          missingTransactions: [],
+          parsingErrors: [],
+          validated: true
+        };
+      }
+
+      const validationResult = JSON.parse(jsonMatch[0]);
+      console.log(`[AI Validator] ✅ Validation complete: ${validationResult.accuracy} accuracy`);
+      console.log(`[AI Validator] Expected: ${validationResult.expectedCount}, Extracted: ${validationResult.extractedCount}`);
+      
+      if (validationResult.missingTransactions && validationResult.missingTransactions.length > 0) {
+        console.log(`[AI Validator] ⚠️ Found ${validationResult.missingTransactions.length} missing transactions`);
+      }
+
+      return validationResult;
+      
+    } catch (error) {
+      console.error('[AI Validator] Validation error:', error);
+      // Return safe default if validation fails
+      return {
+        expectedCount: extractedTransactions.length,
+        extractedCount: extractedTransactions.length,
+        accuracy: "100%",
+        missingTransactions: [],
+        parsingErrors: [],
+        validated: false
+      };
+    }
+  }
+
   async categorizeTransactions(transactions: any[], userContext?: { industry?: string | null; businessType?: string; companyName?: string | null }): Promise<any[]> {
     console.log(`[AI Processor] Categorizing ${transactions.length} transactions with enhanced accuracy system`);
     

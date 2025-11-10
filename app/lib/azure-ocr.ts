@@ -145,7 +145,8 @@ export async function processBankStatementWithOCR(buffer: Buffer, fileName: stri
   }
 }
 
-// Parse bank statement transactions from OCR text
+// Enhanced parser for bank statement transactions from OCR text
+// Handles PNC-specific formats with high accuracy
 function parseBankStatementFromOCRText(text: string): {
   transactions: Array<{
     date: string;
@@ -160,15 +161,16 @@ function parseBankStatementFromOCRText(text: string): {
     periodEnd?: string;
   };
 } {
-  const lines = text.split('\n').map(line => line.trim());
+  const lines = text.split('\n');
   const transactions: any[] = [];
   const accountInfo: any = {};
 
-  // Patterns for parsing
-  const datePattern = /(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/;
-  const amountPattern = /\$?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/;
+  // Enhanced patterns for PNC statements
+  const datePattern = /(\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?)/;
+  const amountPattern = /(\d{1,3}(?:,\d{3})*\.\d{2})/;
   const accountPattern = /(?:account|acct)[\s#:]*(\d{4,})/i;
   const bankPattern = /(PNC|Chase|Bank of America|Wells Fargo|Citibank)/i;
+  const periodPattern = /(\d{1,2}\/\d{1,2}\/\d{2,4})\s*(?:through|to|-)\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i;
 
   // Extract account info
   for (const line of lines) {
@@ -180,46 +182,94 @@ function parseBankStatementFromOCRText(text: string): {
       const match = line.match(accountPattern);
       if (match) accountInfo.accountNumber = match[1];
     }
+    if (!accountInfo.periodStart && periodPattern.test(line)) {
+      const match = line.match(periodPattern);
+      if (match) {
+        accountInfo.periodStart = match[1];
+        accountInfo.periodEnd = match[2];
+      }
+    }
   }
 
-  // Parse transactions
+  console.log('[OCR Parser] Starting transaction extraction...');
+  
+  // Parse transactions with section detection
+  let currentSection = '';
+  let inTransactionSection = false;
+  
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const line = lines[i].trim();
     
-    // Skip header lines
-    if (line.toLowerCase().includes('date') && line.toLowerCase().includes('description')) {
+    // Detect section headers
+    if (line.match(/^(Deposits|Deposits and other additions|ACH credits|ACH debits|Debit card purchases|Checks|Electronic debits|ATM|Wire transfers)/i)) {
+      currentSection = line;
+      inTransactionSection = true;
+      console.log(`[OCR Parser] Entering section: ${currentSection}`);
       continue;
     }
     
+    // Skip header lines
+    if (line.toLowerCase().includes('date') && (line.toLowerCase().includes('transaction') || line.toLowerCase().includes('description'))) {
+      continue;
+    }
+    if (line.toLowerCase().includes('posted') && line.toLowerCase().includes('amount')) {
+      continue;
+    }
+    
+    // Skip summary/total lines
+    if (line.toLowerCase().includes('total') || line.toLowerCase().includes('balance')) {
+      inTransactionSection = false;
+      continue;
+    }
+    
+    // Try to match transaction lines
     const dateMatch = line.match(datePattern);
     if (!dateMatch) continue;
-
-    const date = dateMatch[1];
     
-    // Extract amount (look in current line and next few lines)
+    let date = dateMatch[1];
     let amount = 0;
     let description = '';
     let type: 'credit' | 'debit' = 'debit';
     
-    // Check current line for amount
+    // Determine type from section
+    if (currentSection.toLowerCase().includes('deposit') || 
+        currentSection.toLowerCase().includes('credit') ||
+        currentSection.toLowerCase().includes('ach credit')) {
+      type = 'credit';
+    }
+    
+    // Extract amount and description
     const amountMatch = line.match(amountPattern);
     if (amountMatch) {
       amount = parseFloat(amountMatch[1].replace(/,/g, ''));
       
-      // Extract description (text between date and amount)
-      const datePart = line.substring(0, line.indexOf(dateMatch[0]) + dateMatch[0].length);
-      const amountPart = line.substring(line.indexOf(amountMatch[0]));
-      description = line.substring(datePart.length, line.indexOf(amountMatch[0])).trim();
+      // Extract description - text between date and amount
+      const dateIndex = line.indexOf(dateMatch[0]);
+      const amountIndex = line.indexOf(amountMatch[0]);
+      
+      if (amountIndex > dateIndex) {
+        description = line.substring(dateIndex + dateMatch[0].length, amountIndex).trim();
+      } else {
+        // Amount might be on a different part of the line
+        description = line.substring(dateIndex + dateMatch[0].length).trim();
+        // Remove amount from description if it's there
+        description = description.replace(amountMatch[0], '').trim();
+      }
     }
     
-    // Determine if credit or debit based on context
-    if (line.toLowerCase().includes('deposit') || 
-        line.toLowerCase().includes('credit') ||
-        description.toLowerCase().includes('deposit')) {
-      type = 'credit';
+    // Handle check format: DATE CHECK# AMOUNT
+    if (!amountMatch || !description) {
+      const checkMatch = line.match(/(\d{1,2}\/\d{1,2})\s+(\d+)\s+(\d{1,3}(?:,\d{3})*\.\d{2})/);
+      if (checkMatch) {
+        date = checkMatch[1];
+        description = `Check #${checkMatch[2]}`;
+        amount = parseFloat(checkMatch[3].replace(/,/g, ''));
+        type = 'debit';
+      }
     }
-
-    if (amount > 0 && description) {
+    
+    // Only add valid transactions
+    if (amount > 0 && description && description.length > 2) {
       transactions.push({
         date,
         description,
@@ -229,6 +279,8 @@ function parseBankStatementFromOCRText(text: string): {
     }
   }
 
+  console.log(`[OCR Parser] ✅ Extracted ${transactions.length} transactions`);
+  
   return {
     transactions,
     accountInfo
