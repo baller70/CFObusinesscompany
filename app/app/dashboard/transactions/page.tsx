@@ -189,7 +189,7 @@ export default function TransactionsPage() {
             <div className="flex items-center">
               <ArrowDownLeft className="h-5 w-5 text-green-500 mr-2" />
               <div className="text-2xl font-bold text-green-600">
-                ${totalIncome.toLocaleString()}
+                +${totalIncome.toLocaleString()}
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-1">This period</p>
@@ -204,7 +204,7 @@ export default function TransactionsPage() {
             <div className="flex items-center">
               <ArrowUpRight className="h-5 w-5 text-red-500 mr-2" />
               <div className="text-2xl font-bold text-red-600">
-                ${totalExpenses.toLocaleString()}
+                -${totalExpenses.toLocaleString()}
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-1">This period</p>

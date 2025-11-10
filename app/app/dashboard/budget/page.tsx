@@ -185,7 +185,7 @@ function BudgetPageClient() {
                     <div className="flex items-center">
                       <DollarSign className="h-5 w-5 text-green-500 mr-2" />
                       <span className="text-2xl font-bold text-green-600">
-                        ${budgetData?.summary.totalIncome.toFixed(2)}
+                        +${budgetData?.summary.totalIncome.toFixed(2)}
                       </span>
                     </div>
                   </CardContent>
@@ -211,9 +211,9 @@ function BudgetPageClient() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center">
-                      <DollarSign className="h-5 w-5 text-purple-500 mr-2" />
-                      <span className="text-2xl font-bold text-purple-600">
-                        ${budgetData?.summary.totalSpent.toFixed(2)}
+                      <DollarSign className="h-5 w-5 text-red-500 mr-2" />
+                      <span className="text-2xl font-bold text-red-600">
+                        -${budgetData?.summary.totalSpent.toFixed(2)}
                       </span>
                     </div>
                     <div className="mt-2">

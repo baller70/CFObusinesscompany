@@ -89,7 +89,7 @@ export default async function ExpensesPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-small text-muted-foreground mb-1">Monthly Expenses</p>
-                  <p className="text-financial-large text-financial-negative">$0.00</p>
+                  <p className="text-financial-large text-financial-negative">-$0.00</p>
                 </div>
                 <div className="bg-red-50 p-3 rounded-xl">
                   <TrendingDown className="h-6 w-6 text-red-500" />
