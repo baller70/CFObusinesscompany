@@ -23,7 +23,7 @@ export class AIBankStatementProcessor {
           'Authorization': `Bearer ${this.apiKey}`
         },
         body: JSON.stringify({
-          model: 'gpt-4.1-mini',
+          model: 'gpt-4.1',
           messages: [{
             role: "user", 
             content: [{
@@ -34,9 +34,18 @@ export class AIBankStatementProcessor {
               }
             }, {
               type: "text", 
-              text: `Extract key transaction data from this bank statement. Be concise.
+              text: `You are a precise bank statement data extractor. Your task is to extract EVERY SINGLE transaction from this statement with 100% completeness.
 
-Return JSON with:
+CRITICAL RULES:
+1. Extract EVERY transaction listed - do NOT skip any
+2. Do NOT summarize or group transactions
+3. Do NOT truncate the list
+4. If you see 99 transactions, you MUST return all 99
+5. Include transactions even if amounts are zero or missing
+6. Count all transaction rows, including checks, deposits, withdrawals, fees, interest
+7. Process the ENTIRE document from first to last transaction
+
+Return JSON with this EXACT structure:
 {
   "bankInfo": {
     "bankName": "name",
@@ -47,24 +56,30 @@ Return JSON with:
     {
       "date": "YYYY-MM-DD",
       "description": "brief description (max 50 chars)",
-      "amount": number,
-      "type": "debit|credit"
+      "amount": number (use 0 if missing, include sign: positive for credits/deposits, negative for debits/withdrawals)",
+      "type": "debit|credit",
+      "balance": number (running balance after this transaction, if shown)
     }
   ],
   "summary": {
     "startingBalance": number,
     "endingBalance": number,
-    "transactionCount": number
+    "transactionCount": number (MUST match actual count in statement)
   }
 }
 
-Keep descriptions brief. Respond with raw JSON only.
+VALIDATION CHECKLIST BEFORE RESPONDING:
+✓ Did you extract EVERY transaction from start to end?
+✓ Does your transactions array length match the transactionCount?
+✓ Did you include all pages of the statement?
+✓ Did you skip any rows because they looked similar?
+✓ Did you stop early due to length concerns?
 
-IMPORTANT: Extract ALL transactions from the statement. Do not skip or summarize any transactions. If there are more than 100 transactions, continue extracting all of them.`
+Respond with raw JSON only. No markdown, no explanations.`
             }]
           }],
           response_format: { type: "json_object" },
-          max_tokens: 32000,
+          max_tokens: 64000,
         }),
       });
 
@@ -119,10 +134,34 @@ IMPORTANT: Extract ALL transactions from the statement. Do not skip or summarize
       
       console.log(`[AI Processor] Successfully extracted data from PDF: ${extractedCount} transactions`);
       
+      // Validate transaction amounts - check for zero/missing amounts
+      let zeroAmountCount = 0;
+      extractedData.transactions?.forEach((txn: any, idx: number) => {
+        if (!txn.amount || txn.amount === 0) {
+          console.warn(`[AI Processor] ⚠️ Transaction #${idx + 1} has zero or missing amount: ${txn.description}`);
+          zeroAmountCount++;
+        }
+      });
+      
+      if (zeroAmountCount > 0) {
+        console.warn(`[AI Processor] ⚠️ Found ${zeroAmountCount} transactions with zero or missing amounts`);
+      }
+      
       // Warn if there's a mismatch between extracted count and summary count
       if (summaryCount > 0 && extractedCount !== summaryCount) {
+        const missing = summaryCount - extractedCount;
         console.warn(`[AI Processor] ⚠️ Transaction count mismatch! Extracted: ${extractedCount}, Summary states: ${summaryCount}`);
-        console.warn(`[AI Processor] ⚠️ ${Math.abs(extractedCount - summaryCount)} transactions may be missing from extraction`);
+        console.warn(`[AI Processor] ⚠️ ${Math.abs(missing)} transactions may be missing from extraction`);
+        
+        // Add warning to extracted data
+        if (!extractedData.warnings) {
+          extractedData.warnings = [];
+        }
+        extractedData.warnings.push({
+          type: 'INCOMPLETE_EXTRACTION',
+          message: `Expected ${summaryCount} transactions but only extracted ${extractedCount}. ${Math.abs(missing)} transactions may be missing.`,
+          severity: 'HIGH'
+        });
       }
       
       return extractedData;
