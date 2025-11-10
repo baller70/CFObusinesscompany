@@ -1056,4 +1056,172 @@ Respond with raw JSON only.`
       }
     };
   }
+
+  /**
+   * Extract transaction data from pasted statement text
+   * Uses the same AI model as PDF extraction but directly processes text
+   */
+  async extractDataFromText(statementText: string): Promise<any> {
+    console.log(`[AI Processor] Extracting data from pasted text: ${statementText.length} characters`);
+    
+    try {
+      // Create abort controller for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minutes timeout
+      
+      const response = await fetch('https://apps.abacus.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          max_tokens: 20000,
+          temperature: 0.1,
+          messages: [{
+            role: "user", 
+            content: `🎯 SUPREME AI EXTRACTION MODE - 100% ACCURACY REQUIRED
+
+I've pasted text from a bank statement. Your job is to parse this text and return structured JSON data.
+
+📄 PASTED STATEMENT TEXT:
+\`\`\`
+${statementText}
+\`\`\`
+
+You are the PRIMARY and ONLY extraction method for this bank statement. You must achieve PERFECT accuracy.
+
+🚨 CRITICAL ACCURACY REQUIREMENT: Extract EVERY SINGLE transaction from this bank statement text. You MUST achieve 100% extraction accuracy.
+
+📋 BANK STATEMENT STRUCTURE - EXTRACT ALL CATEGORIES:
+
+Look for section headers like:
+- Deposits
+- ATM Deposits and Additions
+- ACH Additions
+- Debit Card Purchases
+- POS Purchases
+- ATM/Misc. Debit Card Transactions
+- ACH Deductions
+- Checks
+- Electronic Withdrawals
+- Fees and Service Charges
+
+⚠️ MULTI-PAGE HANDLING:
+- Transactions may continue across multiple pages
+- Look for "continued" markers
+- Don't stop until you reach "Daily Balance Detail" or the end of transactions
+
+🎯 EXTRACTION RULES:
+
+1. **Transaction Format Detection:**
+   - Date can be: MM/DD, MM/DD/YY, MM/DD/YYYY
+   - Amount is always numerical with decimals
+   - Description is between date and amount
+
+2. **Multi-line Transaction Handling:**
+   - Combine ALL lines that belong to one transaction
+   - Reference numbers (REF:), transaction IDs, confirmation codes are part of the description
+   - Keep reading lines until you hit the next date or amount
+
+3. **Category Assignment:**
+   - Deposits/Credits = INCOME
+   - All other transactions = EXPENSE
+   - Look for explicit category headers in the text
+
+4. **Accuracy Validation:**
+   - Count transactions as you extract them
+   - If you see "Total deposits: X" or similar, make sure your count matches
+
+📊 REQUIRED OUTPUT FORMAT (JSON):
+
+Return a JSON object with this EXACT structure:
+{
+  "transactions": [
+    {
+      "date": "YYYY-MM-DD",
+      "description": "Full transaction description including reference numbers",
+      "amount": 123.45,
+      "type": "EXPENSE" or "INCOME",
+      "category": "Category name from section header",
+      "merchant": "Merchant name if identifiable",
+      "notes": "Any additional info"
+    }
+  ],
+  "summary": {
+    "totalTransactions": 118,
+    "totalDeposits": 10,
+    "totalWithdrawals": 108,
+    "categories": {
+      "Deposits": 5,
+      "ACH Additions": 5,
+      "Debit Card Purchases": 45,
+      "POS Purchases": 25,
+      "ACH Deductions": 28
+    }
+  }
+}
+
+🔍 VALIDATION BEFORE RETURNING:
+- Count all transactions in your JSON
+- Verify against any totals mentioned in the statement
+- If counts don't match, re-extract the missing transactions
+- NEVER return partial data - extract EVERYTHING
+
+Return ONLY valid JSON, no markdown formatting, no explanations.`
+            }]
+          }),
+          signal: controller.signal
+        });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`AI API returned ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (!result.choices || !result.choices[0]?.message?.content) {
+        throw new Error('Invalid AI response structure');
+      }
+
+      const content = result.choices[0].message.content.trim();
+      console.log('[AI Processor] Raw AI response preview:', content.substring(0, 500));
+      
+      // Parse JSON response
+      let extractedData;
+      try {
+        // Remove markdown code blocks if present
+        const jsonStr = content
+          .replace(/^```json?\s*/i, '')
+          .replace(/```\s*$/, '')
+          .trim();
+        
+        extractedData = JSON.parse(jsonStr);
+      } catch (parseError) {
+        console.error('[AI Processor] Failed to parse AI response as JSON:', parseError);
+        console.error('[AI Processor] Response content:', content);
+        throw new Error('AI returned invalid JSON format');
+      }
+
+      console.log(`[AI Processor] ✅ AI extraction complete: ${extractedData.transactions?.length || 0} transactions`);
+      
+      // Validate response structure
+      if (!extractedData.transactions || !Array.isArray(extractedData.transactions)) {
+        throw new Error('AI response missing transactions array');
+      }
+
+      return extractedData;
+      
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.error('[AI Processor] Text processing timed out after 3 minutes');
+        throw new Error('Text processing timed out - statement might be too large');
+      }
+      console.error('[AI Processor] Text extraction error:', error);
+      throw error;
+    }
+  }
 }
