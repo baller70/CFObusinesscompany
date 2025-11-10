@@ -28,7 +28,7 @@ export class AIBankStatementProcessor {
         },
         body: JSON.stringify({
           model: 'gpt-4o',
-          max_tokens: 16000,
+          max_tokens: 20000,
           temperature: 0.1,
           messages: [{
             role: "user", 
