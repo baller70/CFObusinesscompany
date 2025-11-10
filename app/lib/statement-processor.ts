@@ -200,7 +200,7 @@ export async function processStatementWithValidation(statementId: string) {
       let type: 'INCOME' | 'EXPENSE' | 'TRANSFER' = 'EXPENSE';
       let amount = Math.abs(originalTxn.amount || 0);
       
-      // Check AI's type field first
+      // Check AI's type field first - this is the most reliable indicator
       if (originalTxn.type) {
         const txnType = originalTxn.type.toLowerCase();
         if (txnType === 'credit' || txnType === 'deposit') {
@@ -210,19 +210,33 @@ export async function processStatementWithValidation(statementId: string) {
         }
       }
       
-      // Check category hints
+      // Alternatively, check if amount is negative (debit) or positive (credit)
+      if (originalTxn.amount !== undefined) {
+        if (originalTxn.amount > 0) {
+          type = 'INCOME';  // Positive = money coming in
+        } else if (originalTxn.amount < 0) {
+          type = 'EXPENSE'; // Negative = money going out
+        }
+      }
+      
+      // Check category hints (but don't override credit/debit determination)
       const categoryLower = catTxn.suggestedCategory?.toLowerCase() || '';
       if (categoryLower.includes('income') || categoryLower.includes('salary') || 
           categoryLower.includes('freelance') || categoryLower.includes('dividend')) {
         type = 'INCOME';
-      } else if (categoryLower.includes('transfer')) {
-        type = 'TRANSFER';
       }
       
-      // Check description hints
+      // Only mark as TRANSFER if it's an internal transfer (like between own accounts)
+      // Don't override INCOME/EXPENSE based on just having "transfer" in description
+      // Payment processor transfers (Stripe, PayPal, etc.) are actually INCOME
       const descLower = originalTxn.description?.toLowerCase() || '';
-      if (descLower.includes('transfer')) {
-        type = 'TRANSFER';
+      if (descLower.includes('transfer to') || descLower.includes('transfer from')) {
+        // Only if it looks like an internal transfer between own accounts
+        if (!descLower.includes('stripe') && !descLower.includes('paypal') && 
+            !descLower.includes('venmo') && !descLower.includes('zelle') &&
+            !descLower.includes('payout') && !descLower.includes('payment')) {
+          type = 'TRANSFER';
+        }
       }
 
       // ========================================

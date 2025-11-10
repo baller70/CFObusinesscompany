@@ -48,6 +48,7 @@ interface Transaction {
   date: Date;
   description: string;
   amount: number;
+  type: 'INCOME' | 'EXPENSE' | 'TRANSFER';
   category: string;
   merchant?: string;
 }
@@ -549,9 +550,9 @@ const UploadHistory = forwardRef<UploadHistoryRef>((props, ref) => {
                             </div>
                           </div>
                           <div className={`text-sm font-semibold ${
-                            transaction.amount < 0 ? 'text-red-600' : 'text-green-600'
+                            transaction.type === 'INCOME' ? 'text-green-600' : 'text-red-600'
                           }`}>
-                            {transaction.amount < 0 ? '-' : '+'}${Math.abs(transaction.amount).toFixed(2)}
+                            {transaction.type === 'INCOME' ? '+' : '-'}${Math.abs(transaction.amount).toFixed(2)}
                           </div>
                         </div>
                       ))}
