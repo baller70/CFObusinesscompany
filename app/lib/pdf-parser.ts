@@ -359,8 +359,9 @@ function parseBusinessStatement(text: string): ParsedStatement {
       continue;
     }
     
-    // Look for "Date posted" header to start extracting transactions
-    if (line.includes('Date') && line.includes('posted') && currentSection) {
+    // Look for "Date" header OR "posted" on next line to start extracting transactions
+    if ((line.includes('Date') && line.includes('Transaction')) || 
+        (line.includes('posted') && line.includes('Amount')) && currentSection) {
       inTransactionSection = true;
       console.log('[Parser] Starting transaction extraction for:', currentSection);
       continue;

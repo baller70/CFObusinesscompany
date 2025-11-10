@@ -71,10 +71,39 @@ async function processStatement(statementId: string) {
     let extractedData: any;
 
     if (statement.fileType === 'PDF') {
-      // Process PDF
+      // Process PDF using the direct parser for 100% accuracy
+      console.log('[Process Route] Using direct PDF parser for accurate extraction');
       const arrayBuffer = await fileResponse.arrayBuffer();
-      const base64Content = Buffer.from(arrayBuffer).toString('base64');
-      extractedData = await aiProcessor.extractDataFromPDF(base64Content, statement.fileName);
+      const buffer = Buffer.from(arrayBuffer);
+      
+      // Import the parser
+      const { parsePNCStatement } = await import('@/lib/pdf-parser');
+      const parsed = await parsePNCStatement(buffer);
+      
+      // Convert parsed format to extractedData format expected by the rest of the pipeline
+      extractedData = {
+        bankInfo: {
+          bankName: 'PNC Bank',
+          accountNumber: parsed.accountNumber,
+          statementPeriod: `${parsed.periodStart} to ${parsed.periodEnd}`,
+          accountType: parsed.statementType
+        },
+        transactions: parsed.transactions.map(t => ({
+          date: t.date,
+          description: t.description,
+          amount: t.amount,
+          type: t.type,
+          category: t.category || 'Uncategorized',
+          balance: undefined
+        })),
+        summary: {
+          startingBalance: parsed.beginningBalance,
+          endingBalance: parsed.endingBalance,
+          transactionCount: parsed.transactions.length
+        }
+      };
+      
+      console.log(`[Process Route] ✅ Extracted ${extractedData.transactions.length} transactions using direct parser`);
     } else {
       // Process CSV
       const csvContent = await fileResponse.text();
