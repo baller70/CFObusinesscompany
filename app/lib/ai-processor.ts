@@ -18,7 +18,7 @@ export class AIBankStatementProcessor {
     try {
       // Create abort controller for timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes timeout
+      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes timeout for large multi-page PDFs
       
       const response = await fetch('https://apps.abacus.ai/v1/chat/completions', {
         method: 'POST',
@@ -38,34 +38,52 @@ export class AIBankStatementProcessor {
               }
             }, {
               type: "text", 
-              text: `Extract ALL transactions from this bank statement. Return JSON:
+              text: `Extract ALL transactions from this bank statement PDF. This is CRITICAL - you MUST extract EVERY SINGLE transaction from ALL PAGES and ALL SECTIONS.
+
+IMPORTANT INSTRUCTIONS:
+1. Process EVERY page of the PDF (page 1, 2, 3, 4, 5, etc.)
+2. Extract from ALL transaction sections (Deposits, ATM, ACH, Debit Card, POS Purchases, Checks, Fees, etc.)
+3. Do NOT skip any transactions - if the statement has 100+ transactions, return ALL 100+
+4. Do NOT truncate or summarize - return complete transaction list
+5. For PNC Bank statements: Extract from ALL categories (Deposits, ATM Deposits, ACH Additions, Debit Card Purchases, POS Purchases, ACH Deductions, Service Charges, Other Deductions, etc.)
+
+Return JSON in this exact format:
 {
   "bankInfo": {
-    "bankName": "bank name",
-    "accountNumber": "last 4 digits",
+    "bankName": "bank name from statement",
+    "accountNumber": "last 4 digits only",
     "statementPeriod": "YYYY-MM-DD to YYYY-MM-DD"
   },
   "transactions": [
     {
       "date": "YYYY-MM-DD",
-      "description": "transaction description",
-      "amount": number (positive for credits/deposits, negative for debits/withdrawals),
+      "description": "full transaction description from statement",
+      "amount": number (positive for credits/deposits/income, negative for debits/expenses),
       "type": "debit|credit",
-      "balance": number (if shown)
+      "category": "transaction category from statement if shown (e.g., 'ACH Debit', 'POS Purchase', 'Deposit')",
+      "balance": number (if running balance is shown)
     }
   ],
   "summary": {
     "startingBalance": number,
     "endingBalance": number,
-    "transactionCount": number
+    "transactionCount": number (MUST match total count of transactions array)
   }
 }
 
-CRITICAL: Extract EVERY transaction (no summaries, no truncation). If 99 transactions exist, return all 99. Respond with JSON only.`
+CRITICAL REQUIREMENTS:
+- Extract EVERY transaction from EVERY page
+- Count all transactions and ensure summary.transactionCount equals transactions.length
+- If statement shows 91 transactions, return all 91
+- If statement shows 116 transactions, return all 116
+- Do NOT skip any pages or sections
+- Include ALL transaction types/categories
+
+Respond with complete JSON only - no truncation, no markdown, just raw JSON.`
             }]
           }],
           response_format: { type: "json_object" },
-          max_tokens: 16000,
+          max_tokens: 120000,
         }),
         signal: controller.signal
       });
@@ -137,13 +155,20 @@ CRITICAL: Extract EVERY transaction (no summaries, no truncation). If 99 transac
       const summaryCount = extractedData.summary?.transactionCount || 0;
       
       console.log(`[AI Processor] Successfully extracted data from PDF: ${extractedCount} transactions`);
+      console.log(`[AI Processor] Summary transaction count: ${summaryCount}`);
+      console.log(`[AI Processor] Bank: ${extractedData.bankInfo?.bankName || 'Unknown'}`);
       
       // Validate transaction amounts - check for zero/missing amounts
       let zeroAmountCount = 0;
+      let missingDateCount = 0;
       extractedData.transactions?.forEach((txn: any, idx: number) => {
         if (!txn.amount || txn.amount === 0) {
           console.warn(`[AI Processor] ⚠️ Transaction #${idx + 1} has zero or missing amount: ${txn.description}`);
           zeroAmountCount++;
+        }
+        if (!txn.date) {
+          console.warn(`[AI Processor] ⚠️ Transaction #${idx + 1} has missing date: ${txn.description}`);
+          missingDateCount++;
         }
       });
       
@@ -151,21 +176,43 @@ CRITICAL: Extract EVERY transaction (no summaries, no truncation). If 99 transac
         console.warn(`[AI Processor] ⚠️ Found ${zeroAmountCount} transactions with zero or missing amounts`);
       }
       
-      // Warn if there's a mismatch between extracted count and summary count
+      if (missingDateCount > 0) {
+        console.warn(`[AI Processor] ⚠️ Found ${missingDateCount} transactions with missing dates`);
+      }
+      
+      // Critical validation: Check for transaction count mismatch
       if (summaryCount > 0 && extractedCount !== summaryCount) {
         const missing = summaryCount - extractedCount;
-        console.warn(`[AI Processor] ⚠️ Transaction count mismatch! Extracted: ${extractedCount}, Summary states: ${summaryCount}`);
-        console.warn(`[AI Processor] ⚠️ ${Math.abs(missing)} transactions may be missing from extraction`);
+        const percentMissing = Math.abs((missing / summaryCount) * 100);
         
-        // Add warning to extracted data
+        console.error(`[AI Processor] 🚨 CRITICAL: Transaction count mismatch!`);
+        console.error(`[AI Processor] 🚨 Expected: ${summaryCount} transactions`);
+        console.error(`[AI Processor] 🚨 Extracted: ${extractedCount} transactions`);
+        console.error(`[AI Processor] 🚨 Missing: ${Math.abs(missing)} transactions (${percentMissing.toFixed(1)}%)`);
+        
+        // Add critical warning to extracted data
         if (!extractedData.warnings) {
           extractedData.warnings = [];
         }
         extractedData.warnings.push({
           type: 'INCOMPLETE_EXTRACTION',
-          message: `Expected ${summaryCount} transactions but only extracted ${extractedCount}. ${Math.abs(missing)} transactions may be missing.`,
-          severity: 'HIGH'
+          message: `CRITICAL: Expected ${summaryCount} transactions but only extracted ${extractedCount}. ${Math.abs(missing)} transactions (${percentMissing.toFixed(1)}%) are missing. This may indicate the AI hit a token limit or failed to process all pages.`,
+          severity: 'CRITICAL',
+          expectedCount: summaryCount,
+          extractedCount: extractedCount,
+          missingCount: Math.abs(missing)
         });
+      }
+      
+      // Validate we got reasonable data
+      if (extractedCount === 0) {
+        console.error(`[AI Processor] 🚨 CRITICAL: No transactions extracted from PDF!`);
+        throw new Error('No transactions were extracted from the PDF. The file may be corrupted, encrypted, or in an unsupported format.');
+      }
+      
+      // For PNC statements, we expect high transaction counts
+      if (extractedData.bankInfo?.bankName?.toLowerCase().includes('pnc') && extractedCount < 20) {
+        console.warn(`[AI Processor] ⚠️ Low transaction count for PNC statement: ${extractedCount}. PNC statements typically have 50+ transactions across multiple pages.`);
       }
       
       return extractedData;
@@ -175,11 +222,11 @@ CRITICAL: Extract EVERY transaction (no summaries, no truncation). If 99 transac
       // Handle abort/timeout errors with retry
       if (error instanceof Error && error.name === 'AbortError') {
         if (retryCount < 2) {
-          console.log(`[AI Processor] Request timed out after 3 minutes, retrying in ${(retryCount + 1) * 2} seconds...`);
-          await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 2000));
+          console.log(`[AI Processor] Request timed out after 5 minutes, retrying in ${(retryCount + 1) * 3} seconds...`);
+          await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 3000));
           return this.extractDataFromPDF(base64Content, fileName, retryCount + 1);
         }
-        throw new Error('PDF processing timed out after 3 attempts. The PDF may be too large or complex. Please try splitting it into smaller files.');
+        throw new Error('PDF processing timed out after 3 attempts. The PDF may be too large or complex. Please try splitting it into smaller files or contact support.');
       }
       
       if (error instanceof Error) {
