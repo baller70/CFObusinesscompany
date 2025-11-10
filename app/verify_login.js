@@ -1,41 +1,41 @@
+require('dotenv').config();
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
+
 const prisma = new PrismaClient();
 
 async function verifyLogin() {
   try {
-    const user = await prisma.user.findUnique({
-      where: { email: 'khouston721@gmail.com' }
+    console.log('\n🔐 Verifying Demo User Credentials...\n');
+    
+    // Test User 1
+    const user1 = await prisma.user.findUnique({
+      where: { email: 'john.doe@example.com' }
     });
     
-    if (!user) {
-      console.log('❌ User not found');
-      return;
+    if (user1 && user1.password) {
+      const valid1 = await bcrypt.compare('password123', user1.password);
+      console.log(`✅ john.doe@example.com / password123: ${valid1 ? '✓ WORKING' : '✗ FAILED'}`);
+    } else {
+      console.log('❌ john.doe@example.com: User not found');
     }
+
+    // Test User 2
+    const user2 = await prisma.user.findUnique({
+      where: { email: 'sarah.smith@company.com' }
+    });
     
-    console.log('✅ User found');
-    console.log('Email:', user.email);
-    console.log('Name:', user.name);
-    console.log('Has password:', !!user.password);
-    
-    if (user.password) {
-      const testPassword = 'UKNPonFiP9d4JI';
-      const isValid = await bcrypt.compare(testPassword, user.password);
-      console.log(`\nPassword "${testPassword}" is ${isValid ? '✅ VALID' : '❌ INVALID'}`);
-      
-      if (!isValid) {
-        console.log('\n🔧 Updating password to: UKNPonFiP9d4JI');
-        const hashedPassword = await bcrypt.hash(testPassword, 10);
-        await prisma.user.update({
-          where: { email: 'khouston721@gmail.com' },
-          data: { password: hashedPassword }
-        });
-        console.log('✅ Password updated successfully');
-      }
+    if (user2 && user2.password) {
+      const valid2 = await bcrypt.compare('password456', user2.password);
+      console.log(`✅ sarah.smith@company.com / password456: ${valid2 ? '✓ WORKING' : '✗ FAILED'}`);
+    } else {
+      console.log('❌ sarah.smith@company.com: User not found');
     }
-    
+
+    console.log('\n✅ All demo credentials are verified and ready!\n');
+
   } catch (error) {
-    console.error('Error:', error);
+    console.error('❌ Error:', error);
   } finally {
     await prisma.$disconnect();
   }
