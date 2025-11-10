@@ -6,6 +6,10 @@ import { prisma } from '@/lib/db';
 import { downloadFile } from '@/lib/s3';
 import { AIBankStatementProcessor } from '@/lib/ai-processor';
 
+// Increase timeout for large PDF processing
+export const maxDuration = 300; // 5 minutes
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);

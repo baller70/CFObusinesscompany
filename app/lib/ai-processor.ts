@@ -12,10 +12,14 @@ export class AIBankStatementProcessor {
     console.log('[AI Processor] Initialized with API key');
   }
 
-  async extractDataFromPDF(base64Content: string, fileName: string): Promise<any> {
-    console.log(`[AI Processor] Extracting data from PDF: ${fileName}, size: ${base64Content.length} bytes`);
+  async extractDataFromPDF(base64Content: string, fileName: string, retryCount: number = 0): Promise<any> {
+    console.log(`[AI Processor] Extracting data from PDF: ${fileName}, size: ${base64Content.length} bytes (attempt ${retryCount + 1}/3)`);
     
     try {
+      // Create abort controller for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minutes timeout
+      
       const response = await fetch('https://apps.abacus.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -81,13 +85,25 @@ Respond with raw JSON only. No markdown, no explanations.`
           response_format: { type: "json_object" },
           max_tokens: 64000,
         }),
+        signal: controller.signal
       });
 
+      clearTimeout(timeoutId);
       console.log(`[AI Processor] PDF extraction API response status: ${response.status}`);
 
       if (!response.ok) {
         const errorText = await response.text();
         console.error('[AI Processor] API error response:', errorText);
+        
+        // Check for timeout or gateway errors
+        if (response.status === 524 || response.status === 504 || response.status === 408) {
+          if (retryCount < 2) {
+            console.log(`[AI Processor] Timeout error (${response.status}), retrying in ${(retryCount + 1) * 2} seconds...`);
+            await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 2000));
+            return this.extractDataFromPDF(base64Content, fileName, retryCount + 1);
+          }
+        }
+        
         throw new Error(`API request failed with status ${response.status}: ${errorText}`);
       }
 
@@ -167,6 +183,17 @@ Respond with raw JSON only. No markdown, no explanations.`
       return extractedData;
     } catch (error) {
       console.error('[AI Processor] PDF extraction error:', error);
+      
+      // Handle abort/timeout errors with retry
+      if (error instanceof Error && error.name === 'AbortError') {
+        if (retryCount < 2) {
+          console.log(`[AI Processor] Request timed out after 3 minutes, retrying in ${(retryCount + 1) * 2} seconds...`);
+          await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 2000));
+          return this.extractDataFromPDF(base64Content, fileName, retryCount + 1);
+        }
+        throw new Error('PDF processing timed out after 3 attempts. The PDF may be too large or complex. Please try splitting it into smaller files.');
+      }
+      
       if (error instanceof Error) {
         throw new Error(`Failed to extract data from PDF: ${error.message}`);
       }
