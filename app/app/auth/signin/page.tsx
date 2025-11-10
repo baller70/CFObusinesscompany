@@ -125,20 +125,25 @@ export default function SignInPage() {
                 )}
               </Button>
 
-              {/* Demo Credentials Info */}
+              {/* Test Account Info */}
               <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <div className="flex items-start gap-3">
                   <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <h4 className="text-sm font-semibold text-blue-900 mb-2">Demo Credentials</h4>
+                    <h4 className="text-sm font-semibold text-blue-900 mb-2">Test Account</h4>
                     <div className="space-y-2 text-sm">
                       <div className="bg-white p-2 rounded border border-blue-100">
-                        <p className="text-gray-600 text-xs mb-1">Personal Account:</p>
+                        <p className="text-gray-600 text-xs mb-1">Main Account:</p>
+                        <p className="font-mono text-xs text-gray-800">khouston@thebasketballfactorynj.com</p>
+                        <p className="font-mono text-xs text-gray-800">hunterrr777</p>
+                      </div>
+                      <div className="bg-white p-2 rounded border border-blue-100">
+                        <p className="text-gray-600 text-xs mb-1">Demo Personal:</p>
                         <p className="font-mono text-xs text-gray-800">john.doe@example.com</p>
                         <p className="font-mono text-xs text-gray-800">password123</p>
                       </div>
                       <div className="bg-white p-2 rounded border border-blue-100">
-                        <p className="text-gray-600 text-xs mb-1">Business Account:</p>
+                        <p className="text-gray-600 text-xs mb-1">Demo Business:</p>
                         <p className="font-mono text-xs text-gray-800">sarah.smith@company.com</p>
                         <p className="font-mono text-xs text-gray-800">password456</p>
                       </div>
