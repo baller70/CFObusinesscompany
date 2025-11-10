@@ -182,16 +182,47 @@ Respond with complete JSON only - no markdown formatting, no explanations, just 
       // Validate transaction amounts - check for zero/missing amounts
       let zeroAmountCount = 0;
       let missingDateCount = 0;
+      let invalidTransactionCount = 0;
+      
       extractedData.transactions?.forEach((txn: any, idx: number) => {
+        // Check if transaction object is valid
+        if (!txn || typeof txn !== 'object') {
+          console.warn(`[AI Processor] ⚠️ Transaction #${idx + 1} is null or not an object`);
+          invalidTransactionCount++;
+          return;
+        }
+        
         if (!txn.amount || txn.amount === 0) {
-          console.warn(`[AI Processor] ⚠️ Transaction #${idx + 1} has zero or missing amount: ${txn.description}`);
+          console.warn(`[AI Processor] ⚠️ Transaction #${idx + 1} has zero or missing amount: ${txn.description || 'No description'}`);
           zeroAmountCount++;
         }
         if (!txn.date) {
-          console.warn(`[AI Processor] ⚠️ Transaction #${idx + 1} has missing date: ${txn.description}`);
+          console.warn(`[AI Processor] ⚠️ Transaction #${idx + 1} has missing date: ${txn.description || 'No description'}`);
           missingDateCount++;
         }
+        if (!txn.description) {
+          console.warn(`[AI Processor] ⚠️ Transaction #${idx + 1} has missing description`);
+        }
       });
+      
+      // Filter out invalid transactions
+      if (extractedData.transactions) {
+        const originalCount = extractedData.transactions.length;
+        extractedData.transactions = extractedData.transactions.filter((txn: any) => 
+          txn && 
+          typeof txn === 'object' && 
+          txn.date && 
+          txn.description && 
+          typeof txn.amount === 'number' && 
+          txn.amount !== 0
+        );
+        const filteredCount = extractedData.transactions.length;
+        
+        if (originalCount !== filteredCount) {
+          console.warn(`[AI Processor] ⚠️ Filtered out ${originalCount - filteredCount} invalid transactions`);
+          console.log(`[AI Processor] Valid transactions after filtering: ${filteredCount}`);
+        }
+      }
       
       if (zeroAmountCount > 0) {
         console.warn(`[AI Processor] ⚠️ Found ${zeroAmountCount} transactions with zero or missing amounts`);
@@ -201,14 +232,21 @@ Respond with complete JSON only - no markdown formatting, no explanations, just 
         console.warn(`[AI Processor] ⚠️ Found ${missingDateCount} transactions with missing dates`);
       }
       
+      if (invalidTransactionCount > 0) {
+        console.warn(`[AI Processor] ⚠️ Found ${invalidTransactionCount} invalid transaction objects`);
+      }
+      
+      // Update extracted count after filtering
+      const finalExtractedCount = extractedData.transactions?.length || 0;
+      
       // Critical validation: Check for transaction count mismatch
-      if (summaryCount > 0 && extractedCount !== summaryCount) {
-        const missing = summaryCount - extractedCount;
+      if (summaryCount > 0 && finalExtractedCount !== summaryCount) {
+        const missing = summaryCount - finalExtractedCount;
         const percentMissing = Math.abs((missing / summaryCount) * 100);
         
         console.error(`[AI Processor] 🚨 CRITICAL: Transaction count mismatch!`);
         console.error(`[AI Processor] 🚨 Expected: ${summaryCount} transactions`);
-        console.error(`[AI Processor] 🚨 Extracted: ${extractedCount} transactions`);
+        console.error(`[AI Processor] 🚨 Extracted: ${finalExtractedCount} transactions`);
         console.error(`[AI Processor] 🚨 Missing: ${Math.abs(missing)} transactions (${percentMissing.toFixed(1)}%)`);
         
         // Add critical warning to extracted data
@@ -217,24 +255,24 @@ Respond with complete JSON only - no markdown formatting, no explanations, just 
         }
         extractedData.warnings.push({
           type: 'INCOMPLETE_EXTRACTION',
-          message: `CRITICAL: Expected ${summaryCount} transactions but only extracted ${extractedCount}. ${Math.abs(missing)} transactions (${percentMissing.toFixed(1)}%) are missing. This may indicate the AI hit a token limit or failed to process all pages.`,
+          message: `CRITICAL: Expected ${summaryCount} transactions but only extracted ${finalExtractedCount}. ${Math.abs(missing)} transactions (${percentMissing.toFixed(1)}%) are missing. This may indicate the AI hit a token limit or failed to process all pages.`,
           severity: 'CRITICAL',
           expectedCount: summaryCount,
-          extractedCount: extractedCount,
+          extractedCount: finalExtractedCount,
           missingCount: Math.abs(missing)
         });
       }
       
       // Validate we got reasonable data
-      if (extractedCount === 0) {
+      if (finalExtractedCount === 0) {
         console.error(`[AI Processor] 🚨 CRITICAL: No transactions extracted from PDF!`);
         throw new Error('No transactions were extracted from the PDF. The file may be corrupted, encrypted, or in an unsupported format.');
       }
       
       // For PNC statements, we expect high transaction counts (typically 100-120+)
       if (extractedData.bankInfo?.bankName?.toLowerCase().includes('pnc')) {
-        if (extractedCount < 100) {
-          console.error(`[AI Processor] 🚨 CRITICAL: Low transaction count for PNC statement: ${extractedCount}. PNC business statements typically have 100-120+ transactions across 5 pages.`);
+        if (finalExtractedCount < 100) {
+          console.error(`[AI Processor] 🚨 CRITICAL: Low transaction count for PNC statement: ${finalExtractedCount}. PNC business statements typically have 100-120+ transactions across 5 pages.`);
           console.error(`[AI Processor] 🚨 The AI may have stopped early or hit a processing limit. This will result in incomplete data.`);
           
           if (!extractedData.warnings) {
@@ -242,13 +280,13 @@ Respond with complete JSON only - no markdown formatting, no explanations, just 
           }
           extractedData.warnings.push({
             type: 'PNC_INCOMPLETE_EXTRACTION',
-            message: `CRITICAL: Only ${extractedCount} transactions extracted from PNC statement. Expected 100-120+ transactions. Data is incomplete.`,
+            message: `CRITICAL: Only ${finalExtractedCount} transactions extracted from PNC statement. Expected 100-120+ transactions. Data is incomplete.`,
             severity: 'CRITICAL',
-            extractedCount: extractedCount,
+            extractedCount: finalExtractedCount,
             expectedMinimum: 100
           });
         } else {
-          console.log(`[AI Processor] ✅ Good extraction for PNC statement: ${extractedCount} transactions`);
+          console.log(`[AI Processor] ✅ Good extraction for PNC statement: ${finalExtractedCount} transactions`);
         }
       }
       

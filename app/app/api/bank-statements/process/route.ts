@@ -95,8 +95,18 @@ async function processStatement(statementId: string) {
       }
     });
 
-    // Categorize transactions
-    const categorizedTransactions = await aiProcessor.categorizeTransactions(extractedData.transactions || []);
+    // Categorize transactions - filter out any invalid entries
+    const validTransactions = (extractedData.transactions || []).filter((t: any) => 
+      t && t.date && t.description && typeof t.amount === 'number'
+    );
+    
+    console.log(`[Process Route] Valid transactions to categorize: ${validTransactions.length} out of ${extractedData.transactions?.length || 0}`);
+    
+    if (validTransactions.length === 0) {
+      throw new Error('No valid transactions found in the extracted data. The PDF may be corrupted or in an unsupported format.');
+    }
+    
+    const categorizedTransactions = await aiProcessor.categorizeTransactions(validTransactions);
 
     // Update processing stage
     await prisma.bankStatement.update({
@@ -122,8 +132,14 @@ async function processStatement(statementId: string) {
       }
     });
 
-    // Create transactions in database
-    const transactionPromises = categorizedTransactions.map(async (catTxn: any) => {
+    // Create transactions in database - filter out any with missing originalTransaction
+    const validCategorizedTransactions = categorizedTransactions.filter((catTxn: any) => 
+      catTxn && catTxn.originalTransaction && catTxn.originalTransaction.date && catTxn.originalTransaction.description
+    );
+    
+    console.log(`[Process Route] Creating ${validCategorizedTransactions.length} transactions in database`);
+    
+    const transactionPromises = validCategorizedTransactions.map(async (catTxn: any) => {
       const originalTxn = catTxn.originalTransaction;
       
       // Determine transaction type based on amount
@@ -173,14 +189,19 @@ async function processStatement(statementId: string) {
     });
 
     await Promise.all(transactionPromises);
+    
+    const processedCount = validCategorizedTransactions.length;
+    console.log(`[Process Route] Successfully created ${processedCount} transactions`);
 
     // Update processed count
     await prisma.bankStatement.update({
       where: { id: statementId },
       data: {
-        processedCount: categorizedTransactions.length,
+        processedCount: processedCount,
+        transactionCount: processedCount,
         processingStage: 'COMPLETED',
-        status: 'COMPLETED'
+        status: 'COMPLETED',
+        processedAt: new Date()
       }
     });
 
@@ -193,20 +214,28 @@ async function processStatement(statementId: string) {
         userId: statement.userId,
         type: 'CSV_PROCESSED',
         title: 'Bank Statement Processed',
-        message: `Successfully processed ${categorizedTransactions.length} transactions from ${statement.fileName}`,
+        message: `Successfully processed ${processedCount} transactions from ${statement.fileName}`,
         isActive: true
       }
     });
 
   } catch (error) {
-    console.error('Statement processing error:', error);
+    console.error('[Process Route] Statement processing error:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred during processing';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    console.error('[Process Route] Error details:', {
+      message: errorMessage,
+      stack: errorStack
+    });
     
     await prisma.bankStatement.update({
       where: { id: statementId },
       data: {
         status: 'FAILED',
         processingStage: 'FAILED',
-        errorLog: error instanceof Error ? error.message : 'Unknown error'
+        errorLog: errorStack || errorMessage
       }
     });
 
