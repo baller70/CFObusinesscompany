@@ -18,12 +18,6 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
-  
-  if (status === 'loading') return <div className="p-6">Loading...</div>
-  
-  if (!session?.user?.id) {
-    redirect('/auth/signin')
-  }
 
   // Fetch tasks from the API
   const fetchTasks = async (showToast = false) => {
@@ -43,11 +37,19 @@ export default function TasksPage() {
     }
   }
 
+  // All hooks MUST be called before any conditional returns
   useEffect(() => {
     if (session?.user?.id) {
       fetchTasks()
     }
   }, [session?.user?.id])
+  
+  // Now we can do conditional returns AFTER all hooks
+  if (status === 'loading') return <div className="p-6">Loading...</div>
+  
+  if (!session?.user?.id) {
+    redirect('/auth/signin')
+  }
 
   const todoTasks = tasks.filter(task => task.status === 'TODO').length
   const inProgressTasks = tasks.filter(task => task.status === 'IN_PROGRESS').length
