@@ -322,32 +322,24 @@ NOTE:
   }
 
   async categorizeTransactions(transactions: any[], userContext?: { industry?: string | null; businessType?: string; companyName?: string | null }): Promise<any[]> {
-    console.log(`[AI Processor] Categorizing ${transactions.length} transactions with enhanced accuracy system`);
+    console.log(`[AI Processor] 🚀 CATEGORIZING ALL ${transactions.length} TRANSACTIONS AT ONCE (NOT ONE-BY-ONE)`);
     
     // Import expanded categories
     const { getAllCategories, getIndustryAwarePrompt } = await import('@/lib/accuracy-enhancer');
     const allCategories = getAllCategories();
     const industryContext = userContext ? getIndustryAwarePrompt(userContext.industry, userContext.businessType, userContext.companyName) : '';
     
-    // Process in batches to avoid token limits
-    const batchSize = 15; // Reduced batch size for more accurate processing
-    const allCategorized: any[] = [];
-    let failedTransactions: any[] = [];
-    
-    for (let i = 0; i < transactions.length; i += batchSize) {
-      const batch = transactions.slice(i, i + batchSize);
-      const batchNum = Math.floor(i/batchSize) + 1;
-      const totalBatches = Math.ceil(transactions.length/batchSize);
-      console.log(`[AI Processor] Processing batch ${batchNum}/${totalBatches} (${batch.length} transactions)`);
+    // Process ALL transactions at once (no batching)
+    console.log(`[AI Processor] Processing all ${transactions.length} transactions in ONE batch`);
       
       let retryCount = 0;
       const maxRetries = 2;
-      let batchSuccess = false;
+      let success = false;
       
-      while (retryCount <= maxRetries && !batchSuccess) {
+      while (retryCount <= maxRetries && !success) {
         try {
           if (retryCount > 0) {
-            console.log(`[AI Processor] Retry ${retryCount}/${maxRetries} for batch ${batchNum}`);
+            console.log(`[AI Processor] Retry ${retryCount}/${maxRetries} for categorization`);
           }
           
           const response = await fetch('https://apps.abacus.ai/v1/chat/completions', {
@@ -357,12 +349,12 @@ NOTE:
               'Authorization': `Bearer ${this.apiKey}`
             },
             body: JSON.stringify({
-              model: 'gpt-4.1-mini',
+              model: 'gpt-4o',
               messages: [{
                 role: "user",
-                content: `You are an expert financial analyst. Categorize these transactions with MAXIMUM accuracy.
+                content: `You are an expert financial analyst. Categorize ALL these ${transactions.length} transactions with MAXIMUM accuracy.
 
-${JSON.stringify(batch, null, 2)}
+${JSON.stringify(transactions, null, 2)}
 
 ${industryContext}
 
@@ -425,13 +417,13 @@ Be CONSERVATIVE with confidence scores. Use:
 Raw JSON only.`
               }],
               response_format: { type: "json_object" },
-              max_tokens: 8000,
+              max_tokens: 100000,
             }),
           });
 
           if (!response.ok) {
             const errorText = await response.text();
-            console.error(`[AI Processor] Batch ${batchNum} API error (attempt ${retryCount + 1}):`, errorText);
+            console.error(`[AI Processor] Categorization API error (attempt ${retryCount + 1}):`, errorText);
             throw new Error(`API request failed with status ${response.status}`);
           }
 
@@ -456,81 +448,52 @@ Raw JSON only.`
           }
           
           if (result.categorizedTransactions && Array.isArray(result.categorizedTransactions)) {
-            allCategorized.push(...result.categorizedTransactions);
-            console.log(`[AI Processor] ✅ Batch ${batchNum} completed: ${result.categorizedTransactions.length} transactions`);
-            batchSuccess = true;
+            console.log(`[AI Processor] ✅ Categorization completed: ${result.categorizedTransactions.length} transactions`);
+            success = true;
+            
+            // Verify we got all transactions
+            if (result.categorizedTransactions.length !== transactions.length) {
+              console.error(`[AI Processor] ⚠️ Expected ${transactions.length} transactions, got ${result.categorizedTransactions.length}`);
+            }
+            
+            console.log(`[AI Processor] ✅ CATEGORIZATION COMPLETE`);
+            console.log(`[AI Processor] 📊 Successfully categorized: ${result.categorizedTransactions.length} transactions`);
+            console.log(`[AI Processor] 🎯 Expected vs Actual: ${transactions.length} → ${result.categorizedTransactions.length}`);
+            
+            return result.categorizedTransactions;
           } else {
             throw new Error('Invalid response structure');
           }
           
         } catch (error) {
-          console.error(`[AI Processor] ❌ Error processing batch ${batchNum} (attempt ${retryCount + 1}):`, error);
+          console.error(`[AI Processor] ❌ Error categorizing transactions (attempt ${retryCount + 1}):`, error);
           retryCount++;
           
           // If all retries failed, create fallback categorized transactions
           if (retryCount > maxRetries) {
-            console.error(`[AI Processor] 🚨 BATCH ${batchNum} FAILED AFTER ${maxRetries} RETRIES - Creating fallback categorizations`);
-            failedTransactions.push(...batch);
+            console.error(`[AI Processor] 🚨 CATEGORIZATION FAILED AFTER ${maxRetries} RETRIES - Creating fallback categorizations`);
             
-            // Create basic categorization for failed transactions to prevent data loss
-            const fallbackCategorized = batch.map((txn: any) => ({
+            // Create basic categorization for all transactions to prevent data loss
+            const fallbackCategorized = transactions.map((txn: any) => ({
               originalTransaction: txn,
               suggestedCategory: txn.amount > 0 ? 'Business Revenue' : 'Uncategorized Expense',
               confidence: 0.30,
-              reasoning: 'Auto-categorized due to batch processing failure',
+              reasoning: 'Auto-categorized due to processing failure',
               merchant: txn.description || 'Unknown',
               isRecurring: false,
               profileType: 'BUSINESS',
               profileConfidence: 0.50
             }));
             
-            allCategorized.push(...fallbackCategorized);
-            console.log(`[AI Processor] ⚠️ Added ${fallbackCategorized.length} transactions with fallback categorization`);
+            console.log(`[AI Processor] ⚠️ Created ${fallbackCategorized.length} transactions with fallback categorization`);
+            return fallbackCategorized;
           }
         }
       }
-    }
     
-    console.log(`[AI Processor] ✅ CATEGORIZATION COMPLETE`);
-    console.log(`[AI Processor] 📊 Successfully categorized: ${allCategorized.length} transactions`);
-    if (failedTransactions.length > 0) {
-      console.log(`[AI Processor] ⚠️ Fallback categorized: ${failedTransactions.length} transactions`);
-    }
-    console.log(`[AI Processor] 🎯 Expected vs Actual: ${transactions.length} → ${allCategorized.length}`);
-    
-    // CRITICAL: Verify no transactions were lost
-    if (allCategorized.length < transactions.length) {
-      console.error(`[AI Processor] 🚨 CRITICAL: ${transactions.length - allCategorized.length} TRANSACTIONS LOST!`);
-      console.error(`[AI Processor] 🚨 This should NEVER happen. Adding missing transactions with basic categorization...`);
-      
-      // Find missing transactions and add them
-      const processedIds = new Set(allCategorized.map((c: any) => 
-        `${c.originalTransaction.date}|${c.originalTransaction.description}|${c.originalTransaction.amount}`
-      ));
-      
-      const missing = transactions.filter((txn: any) => 
-        !processedIds.has(`${txn.date}|${txn.description}|${txn.amount}`)
-      );
-      
-      console.error(`[AI Processor] 🚨 Found ${missing.length} missing transactions, adding them now...`);
-      
-      missing.forEach((txn: any) => {
-        allCategorized.push({
-          originalTransaction: txn,
-          suggestedCategory: txn.amount > 0 ? 'Business Revenue' : 'Uncategorized Expense',
-          confidence: 0.25,
-          reasoning: 'Emergency fallback - transaction was lost during batch processing',
-          merchant: txn.description || 'Unknown',
-          isRecurring: false,
-          profileType: 'BUSINESS',
-          profileConfidence: 0.50
-        });
-      });
-      
-      console.log(`[AI Processor] ✅ RECOVERY COMPLETE: ${allCategorized.length} total transactions`);
-    }
-    
-    return allCategorized;
+    // This should never be reached (we return in the while loop)
+    console.error(`[AI Processor] 🚨 Categorization failed completely - returning empty array`);
+    return [];
   }
 
   async generateFinancialInsights(transactions: any[], userProfile: any): Promise<any> {
