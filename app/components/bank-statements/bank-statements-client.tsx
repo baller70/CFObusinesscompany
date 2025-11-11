@@ -361,20 +361,89 @@ export default function BankStatementsClient() {
       const lines = manualTransactionText.trim().split('\n');
       const transactions: ManualTransaction[] = [];
       
+      // Section detection - determines if amounts should be positive (income) or negative (expense)
+      let currentSectionType: 'income' | 'expense' = 'income';
+      
+      // Income sections (deposits, additions)
+      const incomeSections = [
+        'deposits',
+        'additions',
+        'ach additions',
+        'atm deposits',
+        'mobile deposit',
+        'wire transfer in',
+        'incoming wire',
+        'credits',
+        'interest'
+      ];
+      
+      // Expense sections (purchases, deductions, fees)
+      const expenseSections = [
+        'purchases',
+        'deductions',
+        'debit card',
+        'pos purchase',
+        'ach debit',
+        'checks',
+        'substitute checks',
+        'service charge',
+        'fees',
+        'atm withdrawal',
+        'wire transfer out',
+        'outgoing wire',
+        'payment'
+      ];
+      
       for (const line of lines) {
-        if (!line.trim()) continue;
+        const trimmedLine = line.trim();
+        if (!trimmedLine) continue;
         
-        // Try to parse transaction from various formats
-        // Format: date, description, amount, [category]
-        const parts = line.split(/[,\t]/);
+        // Check if this line is a section header
+        const lowerLine = trimmedLine.toLowerCase();
+        if (incomeSections.some(section => lowerLine.includes(section))) {
+          currentSectionType = 'income';
+          continue; // Skip header lines
+        }
+        if (expenseSections.some(section => lowerLine.includes(section))) {
+          currentSectionType = 'expense';
+          continue; // Skip header lines
+        }
+        
+        // Skip column header lines
+        if (lowerLine.includes('date posted') || lowerLine.includes('amount') || lowerLine.includes('description')) {
+          continue;
+        }
+        
+        // Try to parse transaction line (tab-separated: Date | Amount | Description | Reference)
+        const parts = trimmedLine.split(/\t+/);
+        
         if (parts.length >= 3) {
           const date = parts[0].trim();
-          const description = parts[1].trim();
-          const amount = parseFloat(parts[2].trim().replace(/[\$,]/g, ''));
-          const category = parts[3]?.trim() || undefined;
+          const amountStr = parts[1].trim().replace(/[\$,]/g, '');
+          const description = parts[2].trim();
+          const referenceNumber = parts[3]?.trim() || '';
           
-          if (date && description && !isNaN(amount)) {
-            transactions.push({ date, description, amount, category });
+          // Parse the amount
+          let amount = parseFloat(amountStr);
+          
+          // Skip if not a valid amount
+          if (isNaN(amount)) continue;
+          
+          // Apply sign based on section type
+          if (currentSectionType === 'expense') {
+            amount = -Math.abs(amount); // Ensure negative
+          } else {
+            amount = Math.abs(amount); // Ensure positive
+          }
+          
+          // Validate date format (should be like "01/23" or "01/23/2024")
+          if (date && date.match(/\d{1,2}\/\d{1,2}/)) {
+            transactions.push({ 
+              date, 
+              description: description + (referenceNumber ? ` (Ref: ${referenceNumber})` : ''),
+              amount,
+              category: currentSectionType === 'income' ? 'Income' : 'Expense'
+            });
           }
         }
       }
@@ -384,20 +453,35 @@ export default function BankStatementsClient() {
         return;
       }
 
-      // Detect month/year from first transaction
-      const firstDate = new Date(transactions[0].date);
-      const monthYear = firstDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      // Calculate totals
+      const totalIncome = transactions.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0);
+      const totalExpenses = transactions.filter(t => t.amount < 0).reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+      // Detect month/year from first transaction or use current date
+      let monthYear = 'Current';
+      if (transactions[0].date) {
+        try {
+          // Assume format is MM/DD or MM/DD/YYYY
+          const dateParts = transactions[0].date.split('/');
+          const month = parseInt(dateParts[0]);
+          const year = dateParts[2] ? parseInt(dateParts[2]) : new Date().getFullYear();
+          const date = new Date(year, month - 1);
+          monthYear = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        } catch (e) {
+          monthYear = 'Current';
+        }
+      }
 
       // Create a new card
       const newCard: ManualTransactionCard = {
         id: Date.now().toString(),
-        monthYear,
+        monthYear: `${monthYear} (${transactions.length} transactions | +$${totalIncome.toFixed(2)} / -$${totalExpenses.toFixed(2)})`,
         transactions,
       };
 
       setManualTransactionCards(prev => [...prev, newCard]);
       setManualTransactionText(''); // Clear input
-      toast.success(`✅ Created card with ${transactions.length} transactions!`);
+      toast.success(`✅ Created card: ${transactions.length} transactions (${transactions.filter(t => t.amount > 0).length} income, ${transactions.filter(t => t.amount < 0).length} expenses)`);
 
     } catch (error) {
       console.error('Error processing manual transactions:', error);
