@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { uploadFile } from '@/lib/s3';
 import { queueManager } from '@/lib/queue-manager';
+import { getCurrentBusinessProfileId } from '@/lib/business-profile-utils';
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,8 +22,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No files provided' }, { status: 400 });
     }
 
-    // Get optional parameters
-    const businessProfileId = formData.get('businessProfileId') as string | null;
+    // Get current business profile ID (respects profile switcher)
+    const businessProfileId = await getCurrentBusinessProfileId();
+    
+    if (!businessProfileId) {
+      return NextResponse.json({ error: 'No active business profile found' }, { status: 400 });
+    }
+    
     const sourceTypes = formData.getAll('sourceTypes') as string[];
 
     const uploadResults = [];

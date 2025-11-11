@@ -24,10 +24,11 @@ export async function POST(request: NextRequest) {
     console.log(`[Process Text] Starting processing for date: ${statementDate}`);
     console.log(`[Process Text] Text length: ${statementText.length} characters`);
 
-    // Get user's active business profile
+    // Get user's current business profile (respects profile switcher)
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      include: {
+      select: {
+        currentBusinessProfileId: true,
         businessProfiles: {
           where: { isActive: true },
           take: 1,
@@ -35,14 +36,33 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (!user || user.businessProfiles.length === 0) {
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 400 }
+      );
+    }
+
+    // Use currentBusinessProfileId if set, otherwise use first active profile
+    const profileId = user.currentBusinessProfileId || user.businessProfiles[0]?.id;
+    
+    if (!profileId) {
       return NextResponse.json(
         { error: 'No active business profile found' },
         { status: 400 }
       );
     }
 
-    const activeProfile = user.businessProfiles[0];
+    const activeProfile = await prisma.businessProfile.findUnique({
+      where: { id: profileId },
+    });
+
+    if (!activeProfile) {
+      return NextResponse.json(
+        { error: 'Business profile not found' },
+        { status: 400 }
+      );
+    }
 
     // Create a bank statement record
     const bankStatement = await prisma.bankStatement.create({
