@@ -101,8 +101,21 @@ export async function POST(request: NextRequest) {
 
     for (const transaction of transactions) {
       try {
+        // ========================================
+        // SPECIAL BUSINESS RULE: $8275 = Facility Rental
+        // ========================================
+        let categoryName = transaction.category;
+        let profileType = transaction.profileType?.toUpperCase();
+        const absoluteAmount = Math.abs(transaction.amount);
+        
+        // Check if this is the $8275 facility rental
+        if (absoluteAmount === 8275 && transaction.amount < 0) {
+          categoryName = 'Facility Rental';
+          profileType = 'BUSINESS'; // Force to BUSINESS
+          console.log(`[Load Transactions] 🏢 FACILITY RENTAL RULE: $8275 → Facility Rental (BUSINESS)`);
+        }
+        
         // Determine which profile to use
-        const profileType = transaction.profileType?.toUpperCase();
         const targetProfile = profileType === 'BUSINESS' ? businessProfile : personalProfile;
         
         if (profileType === 'BUSINESS') {
@@ -113,15 +126,17 @@ export async function POST(request: NextRequest) {
 
         // Find or create category
         let category = categories.find((c: any) => 
-          c.name.toLowerCase() === transaction.category?.toLowerCase()
+          c.name.toLowerCase() === categoryName?.toLowerCase()
         );
 
-        if (!category && transaction.category) {
+        if (!category && categoryName) {
           category = await prisma.category.create({
             data: {
-              name: transaction.category,
+              name: categoryName,
               userId: session.user.id,
               type: 'EXPENSE',
+              color: categoryName === 'Facility Rental' ? '#3B82F6' : undefined,
+              icon: categoryName === 'Facility Rental' ? 'building' : undefined,
             },
           });
           categories.push(category);

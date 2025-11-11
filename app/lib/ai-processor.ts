@@ -53,6 +53,9 @@ CLASSIFICATION RULES:
 - BUSINESS: Payroll, AWS, software subscriptions, client payments, vendor payments, office supplies, business travel, professional services, advertising, business insurance, business utilities
 - PERSONAL: Groceries (Walmart, Target, Whole Foods), restaurants, entertainment, personal shopping, healthcare, personal insurance, household utilities, personal vehicle, personal travel
 
+SPECIAL MERCHANT RULES:
+- Any transaction with amount $8275.00 (or 8275) as an EXPENSE should be categorized as "Facility Rental" and classified as BUSINESS
+
 Return JSON in this exact format:
 {
   "transactionCount": number,

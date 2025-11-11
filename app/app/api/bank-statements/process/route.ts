@@ -153,11 +153,28 @@ async function processStatement(statementId: string) {
         type = 'TRANSFER';
       }
 
-      // Find or create category (use AI suggested category)
+      // ========================================
+      // SPECIAL BUSINESS RULE: $8275 = Facility Rental
+      // ========================================
+      let categoryName = catTxn.suggestedCategory || txn.category || 'Uncategorized';
+      const absoluteAmount = Math.abs(txn.amount);
+      
+      // Check if this is the $8275 facility rental
+      if (absoluteAmount === 8275 && type === 'EXPENSE') {
+        categoryName = 'Facility Rental';
+        // Force to BUSINESS profile
+        if (businessProfile) {
+          targetProfileId = businessProfile.id;
+          businessCount++;
+          console.log(`[Process Route] 🏢 FACILITY RENTAL RULE: $8275 → Facility Rental (BUSINESS)`);
+        }
+      }
+      
+      // Find or create category
       let category = await prisma.category.findFirst({
         where: {
           userId: statement.userId,
-          name: catTxn.suggestedCategory || txn.category || 'Uncategorized'
+          name: categoryName
         }
       });
 
@@ -165,10 +182,10 @@ async function processStatement(statementId: string) {
         category = await prisma.category.create({
           data: {
             userId: statement.userId,
-            name: catTxn.suggestedCategory || txn.category || 'Uncategorized',
+            name: categoryName,
             type: type === 'INCOME' ? 'INCOME' : 'EXPENSE',
-            color: '#94a3b8',
-            icon: 'tag'
+            color: categoryName === 'Facility Rental' ? '#3B82F6' : '#94a3b8',
+            icon: categoryName === 'Facility Rental' ? 'building' : 'tag'
           }
         });
       }
