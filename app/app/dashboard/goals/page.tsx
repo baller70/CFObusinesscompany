@@ -1,84 +1,104 @@
+
 'use client'
 
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Plus, Target, TrendingUp, TrendingDown, Calendar, DollarSign, CheckCircle, AlertCircle, Clock, Trophy } from 'lucide-react'
-import { format, differenceInDays } from 'date-fns'
-import { GoalActionButtons } from '@/components/goals/goals-client'
+import { Plus, Target, Trophy, AlertCircle, Building2, Home } from 'lucide-react'
+import { format, differenceInDays, parseISO } from 'date-fns'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { BackButton } from '@/components/ui/back-button'
 
-import { BackButton } from '@/components/ui/back-button';
+interface Goal {
+  id: string
+  name: string
+  description: string | null
+  targetAmount: number
+  currentAmount: number
+  targetDate: string | null
+  type: string
+  priority: number
+  isCompleted: boolean
+  businessProfile: {
+    id: string
+    name: string
+    type: string
+  }
+}
+
 export default function GoalsPage() {
   const { data: session, status } = useSession() || {}
+  const [goals, setGoals] = useState<Goal[]>([])
+  const [allGoals, setAllGoals] = useState<Goal[]>([])
+  const [loading, setLoading] = useState(true)
   
-  if (status === 'loading') return <div className="p-6">
-        <BackButton href="/dashboard" />Loading...</div>
+  useEffect(() => {
+    if (session?.user) {
+      fetchGoals()
+    }
+  }, [session])
+
+  const fetchGoals = async () => {
+    try {
+      const response = await fetch('/api/goals')
+      if (response.ok) {
+        const data = await response.json()
+        setGoals(data.goals || [])
+        setAllGoals(data.allGoals || [])
+      } else {
+        toast.error('Failed to fetch goals')
+      }
+    } catch (error) {
+      console.error('Error fetching goals:', error)
+      toast.error('Error loading goals')
+    } finally {
+      setLoading(false)
+    }
+  }
+  
+  if (status === 'loading' || loading) {
+    return (
+      <div className="p-6">
+        <BackButton href="/dashboard" />
+        <div className="text-center py-12">
+          <div className="text-lg text-gray-600">Loading goals...</div>
+        </div>
+      </div>
+    )
+  }
   
   if (!session?.user?.id) {
     redirect('/auth/signin')
   }
 
-  // All data will come from the database - no mock data
-  const goals: any[] = []
-
-  const inProgressGoals = 0
-  const completedGoals = 0
-  const overDueGoals = 0
+  // Calculate statistics
+  const inProgressGoals = allGoals.filter(g => !g.isCompleted).length
+  const completedGoals = allGoals.filter(g => g.isCompleted).length
+  const overDueGoals = allGoals.filter(g => {
+    if (!g.targetDate) return false
+    const daysRemaining = differenceInDays(parseISO(g.targetDate), new Date())
+    return daysRemaining < 0 && !g.isCompleted
+  }).length
 
   const getProgressPercentage = (current: number, target: number) => {
+    if (target === 0) return 0
     return Math.min((current / target) * 100, 100)
-  }
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'IN_PROGRESS': return <Clock className="h-4 w-4" />
-      case 'COMPLETED': return <CheckCircle className="h-4 w-4" />
-      case 'PAUSED': return <AlertCircle className="h-4 w-4" />
-      default: return <Target className="h-4 w-4" />
-    }
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'IN_PROGRESS': return 'secondary'
-      case 'COMPLETED': return 'default'
-      case 'PAUSED': return 'destructive'
-      default: return 'outline'
-    }
-  }
-
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'SAVINGS': return <TrendingUp className="h-4 w-4 text-green-600" />
-      case 'REVENUE': return <DollarSign className="h-4 w-4 text-blue-600" />
-      case 'EXPENSE_REDUCTION': return <TrendingDown className="h-4 w-4 text-red-600" />
-      case 'DEBT_REDUCTION': return <TrendingDown className="h-4 w-4 text-orange-600" />
-      case 'CASH_FLOW': return <Target className="h-4 w-4 text-purple-600" />
-      default: return <Target className="h-4 w-4 text-gray-600" />
-    }
-  }
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'HIGH': return 'bg-red-100 text-red-800'
-      case 'MEDIUM': return 'bg-gray-100 text-gray-800'
-      case 'LOW': return 'bg-blue-100 text-blue-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
   }
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
+      <BackButton href="/dashboard" />
+      
+      <div className="flex items-center justify-between mb-8 mt-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">FINANCIAL GOALS</h1>
-          <p className="text-gray-600 mt-1">Set, track, and achieve your financial objectives</p>
+          <h1 className="text-3xl font-bold text-gray-900">Financial Goals</h1>
+          <p className="text-gray-600 mt-1">Track and achieve your financial objectives</p>
         </div>
         <Link href="/dashboard/goals/new">
           <Button>
@@ -131,352 +151,160 @@ export default function GoalsPage() {
             <CardTitle className="text-sm font-medium text-gray-600">Total Goals</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{goals.length}</div>
-            <p className="text-xs text-gray-500 mt-1">All time</p>
+            <div className="text-2xl font-bold text-gray-900">{allGoals.length}</div>
+            <p className="text-xs text-gray-500 mt-1">All profiles</p>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs defaultValue="active" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="active" onClick={() => toast.info('Showing active goals currently in progress')}>Active Goals</TabsTrigger>
-          <TabsTrigger value="completed" onClick={() => toast.success('Showing completed goals - celebrate your achievements!')}>Completed</TabsTrigger>
-          <TabsTrigger value="savings" onClick={() => toast.info('Showing savings goals for building reserves and funds')}>Savings</TabsTrigger>
-          <TabsTrigger value="revenue" onClick={() => toast.info('Showing revenue growth and income targets')}>Revenue</TabsTrigger>
-          <TabsTrigger value="all" onClick={() => toast.info('Overview of all financial goals across categories')}>All Goals</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="active">
-          <div className="space-y-6">
-            {goals.filter(goal => goal.status === 'IN_PROGRESS').map((goal) => {
-              const progressPercentage = getProgressPercentage(goal.currentAmount, goal.targetAmount)
-              const daysRemaining = differenceInDays(goal.targetDate, new Date())
-      // @ts-ignore
-              const completedMilestones = goal.milestones.filter(m => m.completed).length
-
-              return (
-                <Card key={goal.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          {getTypeIcon(goal.type)}
-                          <h3 className="text-xl font-semibold text-gray-900">{goal.title}</h3>
-                          <Badge variant={getStatusColor(goal.status)}>
-                            {getStatusIcon(goal.status)}
-                            <span className="ml-1">{goal.status.replace('_', ' ')}</span>
-                          </Badge>
-                          <Badge className={getPriorityColor(goal.priority)}>
-                            {goal.priority}
-                          </Badge>
-                        </div>
-                        <p className="text-gray-600 text-sm">{goal.description}</p>
-                      </div>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent>
-                    <div className="space-y-6">
-                      {/* Progress Section */}
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-gray-700">Progress</span>
-                          <span className="text-sm font-bold text-gray-900">
-                            {progressPercentage.toFixed(1)}%
-                          </span>
-                        </div>
-                        <Progress value={progressPercentage} className="h-3" />
-                        <div className="flex items-center justify-between mt-2 text-sm text-gray-600">
-                          <span>
-                            {goal.type === 'CASH_FLOW' ? 
-                              `${goal.currentAmount} months` : 
-                              `$${goal.currentAmount.toLocaleString()}`
-                            }
-                          </span>
-                          <span>
-                            {goal.type === 'CASH_FLOW' ? 
-                              `${goal.targetAmount} months` : 
-                              `$${goal.targetAmount.toLocaleString()}`
-                            }
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Key Metrics */}
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div className="text-center p-3 bg-blue-50 rounded-lg">
-                          <div className="text-sm text-gray-600">Target Date</div>
-                          <div className="font-semibold text-gray-900">
-                            {format(goal.targetDate, 'MMM d, yyyy')}
-                          </div>
-                          <div className={`text-xs ${daysRemaining > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {daysRemaining > 0 ? `${daysRemaining} days left` : `${Math.abs(daysRemaining)} days overdue`}
-                          </div>
-                        </div>
-
-                        <div className="text-center p-3 bg-green-50 rounded-lg">
-                          <div className="text-sm text-gray-600">Remaining</div>
-                          <div className="font-semibold text-gray-900">
-                            {goal.type === 'CASH_FLOW' ? 
-                              `${goal.targetAmount - goal.currentAmount} months` : 
-                              `$${(goal.targetAmount - goal.currentAmount).toLocaleString()}`
-                            }
-                          </div>
-                        </div>
-
-                        <div className="text-center p-3 bg-purple-50 rounded-lg">
-                          <div className="text-sm text-gray-600">Category</div>
-                          <div className="font-semibold text-gray-900">{goal.category}</div>
-                        </div>
-
-                        <div className="text-center p-3 bg-orange-50 rounded-lg">
-                          <div className="text-sm text-gray-600">Milestones</div>
-                          <div className="font-semibold text-gray-900">
-                            {completedMilestones}/{goal.milestones.length}
-                          </div>
-                          <div className="text-xs text-gray-600">completed</div>
-                        </div>
-                      </div>
-
-                      {/* Milestones */}
-                      <div>
-                        <h4 className="font-medium text-gray-900 mb-3">Milestones</h4>
-                        <div className="space-y-2">
-      // @ts-ignore
-                          {goal.milestones.map((milestone: any, index: any) => (
-                            <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                              <div className="flex items-center space-x-3">
-                                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                                  milestone.completed ? 'bg-green-500' : 'bg-gray-200'
-                                }`}>
-                                  {milestone.completed && (
-                                    <CheckCircle className="h-4 w-4 text-white" />
-                                  )}
-                                </div>
-                                <div>
-                                  <div className="font-medium text-gray-900">{milestone.name}</div>
-                                  <div className="text-sm text-gray-600">
-                                    {goal.type === 'CASH_FLOW' ? 
-                                      `${milestone.amount} months` : 
-                                      `$${milestone.amount.toLocaleString()}`
-                                    }
-                                  </div>
-                                </div>
-                              </div>
-                              {milestone.completed && milestone.date && (
-                                <div className="text-sm text-green-600">
-                                  Completed {format(milestone.date, 'MMM d, yyyy')}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <GoalActionButtons goalTitle={goal.title} />
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="completed">
+      {/* Goals List */}
+      <div className="space-y-6">
+        {allGoals.length === 0 ? (
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Trophy className="h-5 w-5 text-green-600 mr-2" />
-                Completed Goals
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-12">
-                <Trophy className="h-16 w-16 text-green-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No completed goals yet</h3>
-                <p className="text-gray-600">Keep working on your active goals to see completed ones here!</p>
-              </div>
+            <CardContent className="text-center py-12">
+              <Target className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Goals Yet</h3>
+              <p className="text-gray-600 mb-4">Start tracking your financial objectives by creating your first goal.</p>
+              <Link href="/dashboard/goals/new">
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create First Goal
+                </Button>
+              </Link>
             </CardContent>
           </Card>
-        </TabsContent>
+        ) : (
+          <Tabs defaultValue="all" className="space-y-6">
+            <TabsList>
+              <TabsTrigger value="all">All Goals ({allGoals.length})</TabsTrigger>
+              <TabsTrigger value="business">Business ({allGoals.filter(g => g.businessProfile.type === 'BUSINESS').length})</TabsTrigger>
+              <TabsTrigger value="personal">Personal ({allGoals.filter(g => g.businessProfile.type === 'PERSONAL').length})</TabsTrigger>
+            </TabsList>
 
-        <TabsContent value="savings">
-          <div className="space-y-4">
-            {goals.filter(goal => goal.type === 'SAVINGS').map((goal) => {
-              const progressPercentage = getProgressPercentage(goal.currentAmount, goal.targetAmount)
-
-              return (
-                <Card key={goal.id} className="bg-green-50 border-green-200">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <TrendingUp className="h-5 w-5 text-green-600" />
-                          <h4 className="font-semibold text-gray-900">{goal.title}</h4>
-                          <Badge className="bg-green-100 text-green-800">Savings Goal</Badge>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-3">{goal.description}</p>
-                        <div className="flex items-center space-x-4 text-sm text-gray-600">
-                          <span>Target: ${goal.targetAmount.toLocaleString()}</span>
-                          <span>Current: ${goal.currentAmount.toLocaleString()}</span>
-                          <span>Due: {format(goal.targetDate, 'MMM d, yyyy')}</span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold text-green-600">
-                          {progressPercentage.toFixed(0)}%
-                        </div>
-                        <div className="text-sm text-gray-600">Complete</div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="revenue">
-          <div className="space-y-4">
-            {goals.filter(goal => goal.type === 'REVENUE').map((goal) => {
-              const progressPercentage = getProgressPercentage(goal.currentAmount, goal.targetAmount)
-
-              return (
-                <Card key={goal.id} className="bg-blue-50 border-blue-200">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <DollarSign className="h-5 w-5 text-blue-600" />
-                          <h4 className="font-semibold text-gray-900">{goal.title}</h4>
-                          <Badge className="bg-blue-100 text-blue-800">Revenue Goal</Badge>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-3">{goal.description}</p>
-                        <div className="flex items-center space-x-4 text-sm text-gray-600">
-                          <span>Target: ${goal.targetAmount.toLocaleString()}</span>
-                          <span>Current: ${goal.currentAmount.toLocaleString()}</span>
-                          <span>Due: {format(goal.targetDate, 'MMM d, yyyy')}</span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold text-blue-600">
-                          {progressPercentage.toFixed(0)}%
-                        </div>
-                        <div className="text-sm text-gray-600">Complete</div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="all">
-          <Card>
-            <CardHeader>
-              <CardTitle>All Goals Overview</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {goals.map((goal) => {
-                  const progressPercentage = getProgressPercentage(goal.currentAmount, goal.targetAmount)
-
-                  return (
-                    <div key={goal.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
-                      <div className="flex items-center space-x-4">
-                        {getTypeIcon(goal.type)}
-                        <div>
-                          <h4 className="font-semibold text-gray-900">{goal.title}</h4>
-                          <div className="flex items-center space-x-3 text-sm text-gray-600">
-                            <span>{goal.category}</span>
-                            <Badge variant={getStatusColor(goal.status)} className="text-xs">
-                              {goal.status.replace('_', ' ')}
-                            </Badge>
-                            <span>Due: {format(goal.targetDate, 'MMM d')}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-6">
-                        <div className="text-right">
-                          <div className="font-semibold text-gray-900">
-                            {progressPercentage.toFixed(0)}%
-                          </div>
-                          <div className="text-sm text-gray-600">Complete</div>
-                        </div>
-                        <div className="w-20">
-                          <Progress value={progressPercentage} className="h-2" />
-                        </div>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => {
-                            const progressPercentage = getProgressPercentage(goal.currentAmount, goal.targetAmount)
-                            const newWindow = window.open('', '_blank', 'width=700,height=600')
-                            if (newWindow) {
-                              newWindow.document.write(`
-                                <html>
-                                  <head>
-                                    <title>Goal Details - ${goal.title}</title>
-                                    <style>
-                                      body { font-family: Arial, sans-serif; margin: 20px; }
-                                      .goal-header { background: #2563eb; color: white; padding: 20px; margin-bottom: 20px; }
-                                      .progress-bar { width: 100%; height: 20px; background: #e5e7eb; border-radius: 10px; margin: 10px 0; }
-                                      .progress-fill { height: 100%; background: #10b981; border-radius: 10px; width: ${progressPercentage}%; }
-                                      .milestone { padding: 10px; margin: 5px 0; border-radius: 5px; }
-                                      .milestone-completed { background: #dcfce7; border-left: 4px solid #22c55e; }
-                                      .milestone-pending { background: #f3f4f6; border-left: 4px solid #9ca3af; }
-                                    </style>
-                                  </head>
-                                  <body>
-                                    <div class="goal-header">
-                                      <h1>${goal.title}</h1>
-                                      <p>${goal.description}</p>
-                                      <p><strong>Type:</strong> ${goal.type.replace('_', ' ')}</p>
-                                      <p><strong>Category:</strong> ${goal.category}</p>
-                                      <p><strong>Priority:</strong> ${goal.priority}</p>
-                                    </div>
-                                    
-                                    <h3>Progress Overview</h3>
-                                    <p><strong>Progress:</strong> ${progressPercentage.toFixed(1)}%</p>
-                                    <div class="progress-bar">
-                                      <div class="progress-fill"></div>
-                                    </div>
-                                    <p><strong>Current:</strong> ${goal.type === 'CASH_FLOW' ? goal.currentAmount + ' months' : '$' + goal.currentAmount.toLocaleString()}</p>
-                                    <p><strong>Target:</strong> ${goal.type === 'CASH_FLOW' ? goal.targetAmount + ' months' : '$' + goal.targetAmount.toLocaleString()}</p>
-                                    <p><strong>Remaining:</strong> ${goal.type === 'CASH_FLOW' ? (goal.targetAmount - goal.currentAmount) + ' months' : '$' + (goal.targetAmount - goal.currentAmount).toLocaleString()}</p>
-                                    <p><strong>Target Date:</strong> ${format(goal.targetDate, 'MMM d, yyyy')}</p>
-                                    
-      // @ts-ignore
-                                    <h3>Milestones (${goal.milestones.filter((m: any) => m.completed).length}/${goal.milestones.length} completed)</h3>
-      // @ts-ignore
-                                    ${goal.milestones.map((milestone: any) => `
-                                      <div class="milestone ${milestone.completed ? 'milestone-completed' : 'milestone-pending'}">
-                                        <strong>${milestone.name}:</strong> ${goal.type === 'CASH_FLOW' ? milestone.amount + ' months' : '$' + milestone.amount.toLocaleString()}
-                                        ${milestone.completed && milestone.date ? ` - Completed on ${format(milestone.date, 'MMM d, yyyy')}` : ''}
-                                      </div>
-                                    `).join('')}
-                                  </body>
-                                </html>
-                              `)
-                              newWindow.document.close()
-                            } else {
-                              toast.info(`Opening detailed view for goal: ${goal.title}`)
-                            }
-                          }}
-                        >
-                          View
-                        </Button>
-                      </div>
-                    </div>
-                  )
-                })}
+            <TabsContent value="all">
+              <div className="space-y-4">
+                {allGoals.map((goal) => (
+                  <GoalCard key={goal.id} goal={goal} getProgressPercentage={getProgressPercentage} />
+                ))}
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </TabsContent>
+
+            <TabsContent value="business">
+              <div className="space-y-4">
+                {allGoals.filter(g => g.businessProfile.type === 'BUSINESS').map((goal) => (
+                  <GoalCard key={goal.id} goal={goal} getProgressPercentage={getProgressPercentage} />
+                ))}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="personal">
+              <div className="space-y-4">
+                {allGoals.filter(g => g.businessProfile.type === 'PERSONAL').map((goal) => (
+                  <GoalCard key={goal.id} goal={goal} getProgressPercentage={getProgressPercentage} />
+                ))}
+              </div>
+            </TabsContent>
+          </Tabs>
+        )}
+      </div>
     </div>
+  )
+}
+
+interface GoalCardProps {
+  goal: Goal
+  getProgressPercentage: (current: number, target: number) => number
+}
+
+function GoalCard({ goal, getProgressPercentage }: GoalCardProps) {
+  const progressPercentage = getProgressPercentage(goal.currentAmount, goal.targetAmount)
+  const daysRemaining = goal.targetDate ? differenceInDays(parseISO(goal.targetDate), new Date()) : null
+  const isOverdue = daysRemaining !== null && daysRemaining < 0
+  
+  return (
+    <Card className="hover:shadow-lg transition-shadow">
+      <CardContent className="pt-6">
+        <div className="space-y-4">
+          {/* Header */}
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2 flex-wrap">
+                {goal.businessProfile.type === 'BUSINESS' ? (
+                  <Building2 className="h-5 w-5 text-blue-600" />
+                ) : (
+                  <Home className="h-5 w-5 text-green-600" />
+                )}
+                <h3 className="text-xl font-semibold text-gray-900">{goal.name}</h3>
+                <Badge variant={goal.businessProfile.type === 'BUSINESS' ? 'default' : 'secondary'}>
+                  {goal.businessProfile.name}
+                </Badge>
+                {goal.priority > 0 && (
+                  <Badge variant={goal.priority >= 3 ? 'destructive' : goal.priority >= 2 ? 'outline' : 'secondary'}>
+                    Priority: {goal.priority}
+                  </Badge>
+                )}
+              </div>
+              {goal.description && (
+                <p className="text-gray-600 text-sm mb-3">{goal.description}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Progress */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-700">Progress</span>
+              <span className="text-sm font-bold text-gray-900">
+                {progressPercentage.toFixed(1)}%
+              </span>
+            </div>
+            <Progress value={progressPercentage} className="h-3" />
+            <div className="flex items-center justify-between mt-2 text-sm text-gray-600">
+              <span className="text-green-600 font-medium">
+                ${goal.currentAmount.toLocaleString()}
+              </span>
+              <span className="text-gray-400">
+                of ${goal.targetAmount.toLocaleString()}
+              </span>
+            </div>
+          </div>
+
+          {/* Metrics */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="text-center p-3 bg-blue-50 rounded-lg">
+              <div className="text-sm text-gray-600">Remaining</div>
+              <div className="font-semibold text-gray-900">
+                ${(goal.targetAmount - goal.currentAmount).toLocaleString()}
+              </div>
+            </div>
+
+            {goal.targetDate && (
+              <div className={`text-center p-3 rounded-lg ${isOverdue ? 'bg-red-50' : 'bg-green-50'}`}>
+                <div className="text-sm text-gray-600">Target Date</div>
+                <div className="font-semibold text-gray-900">
+                  {format(parseISO(goal.targetDate), 'MMM d, yyyy')}
+                </div>
+                <div className={`text-xs ${isOverdue ? 'text-red-600' : 'text-green-600'}`}>
+                  {daysRemaining !== null && (
+                    <>
+                      {daysRemaining > 0 
+                        ? `${daysRemaining} days left` 
+                        : `${Math.abs(daysRemaining)} days overdue`}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="text-center p-3 bg-purple-50 rounded-lg">
+              <div className="text-sm text-gray-600">Completion</div>
+              <div className="font-semibold text-gray-900">
+                {progressPercentage >= 100 ? '✓ Complete' : `${(100 - progressPercentage).toFixed(0)}% to go`}
+              </div>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
