@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { Loader2, Paperclip, Send, Sparkles, FileText, Building2, Home, CheckCircle, Copy, Trash2 } from 'lucide-react';
+import { Loader2, Paperclip, Send, Sparkles, FileText, Building2, Home, CheckCircle, Copy, Trash2, X } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -67,6 +69,11 @@ export default function BankStatementsClient() {
   // Saved statements state
   const [savedStatements, setSavedStatements] = useState<any[]>([]);
   const [loadingSavedStatements, setLoadingSavedStatements] = useState(false);
+  
+  // View statement modal state
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [viewingTransactions, setViewingTransactions] = useState<any[]>([]);
+  const [viewingStatementInfo, setViewingStatementInfo] = useState<any>(null);
 
   // Fetch saved statements
   const fetchSavedStatements = async () => {
@@ -801,13 +808,18 @@ Respond with a JSON array where each item has: { "index": number, "profileType":
       const response = await fetch(`/api/transactions?statementId=${statementId}`);
       if (!response.ok) throw new Error('Failed to fetch transactions');
       
-      const transactions = await response.json();
+      const data = await response.json();
+      const transactions = data.transactions || [];
       
-      // Show transactions in a dialog or navigate to transactions page
+      // Find statement info
+      const statementInfo = savedStatements.find(s => s.id === statementId);
+      
+      // Set modal state and open
+      setViewingTransactions(transactions);
+      setViewingStatementInfo(statementInfo);
+      setViewModalOpen(true);
+      
       toast.success(`Found ${transactions.length} transactions`);
-      
-      // You can also open transactions in a new tab or modal
-      window.open(`/dashboard/transactions?statementId=${statementId}`, '_blank');
     } catch (error) {
       console.error('Error viewing statement:', error);
       toast.error('Failed to view statement');
@@ -925,8 +937,8 @@ Respond with a JSON array where each item has: { "index": number, "profileType":
                 Transaction Cards ({manualTransactionCards.length})
               </h3>
               {manualTransactionCards.map((card) => (
-                <Card key={card.id} className="bg-card border-primary/30 p-4">
-                  <div className="space-y-3">
+                <Card key={card.id} className="bg-card border-primary/30 p-4 aspect-square flex flex-col">
+                  <div className="space-y-3 flex-1 flex flex-col">
                     <div className="flex items-center justify-between">
                       <h4 className="text-base font-semibold text-foreground">
                         {card.monthYear}
@@ -1296,35 +1308,38 @@ Respond with a JSON array where each item has: { "index": number, "profileType":
 
         {/* Saved Statements Section */}
         {savedStatements.length > 0 && (
-          <Card className="bg-card-elevated border-primary/20 p-6">
+          <Card className="bg-card-elevated border-primary/20 p-6 mb-12">
             <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
               <FileText className="w-5 h-5 text-primary" />
               Saved Statements ({savedStatements.length})
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {savedStatements.map((statement) => (
-                <Card key={statement.id} className="bg-card border-primary/30 p-4">
-                    <h4 className="text-sm font-semibold text-foreground line-clamp-1">
-                      {statement.fileName || statement.originalName}
-                    </h4>
-                    
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
-                        {statement.transactionCount} transactions
-                      </span>
-                      {statement.statementPeriod && (
-                        <span className="text-muted-foreground">
-                          📅 {statement.statementPeriod}
+                <Card key={statement.id} className="bg-card border-primary/30 p-4 aspect-square flex flex-col">
+                  <div className="flex-1 flex flex-col justify-between">
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-semibold text-foreground line-clamp-1">
+                        {statement.fileName || statement.originalName}
+                      </h4>
+                      
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
+                          {statement.transactionCount} transactions
                         </span>
-                      )}
-                    </div>
-                    
-                    <div className="text-xs text-muted-foreground">
-                      {new Date(statement.createdAt).toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric',
-                        year: 'numeric'
-                      })}
+                        {statement.statementPeriod && (
+                          <span className="text-muted-foreground">
+                            📅 {statement.statementPeriod}
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(statement.createdAt).toLocaleDateString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </div>
                     </div>
 
                     <div className="flex gap-2 pt-2">
@@ -1355,12 +1370,109 @@ Respond with a JSON array where each item has: { "index": number, "profileType":
                         <Trash2 className="w-3 h-3" />
                       </Button>
                     </div>
+                  </div>
                 </Card>
               ))}
             </div>
           </Card>
         )}
       </div>
+
+      {/* View Statement Modal */}
+      <Dialog open={viewModalOpen} onOpenChange={setViewModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              {viewingStatementInfo?.fileName || viewingStatementInfo?.originalName || 'Statement Transactions'}
+            </DialogTitle>
+            <DialogDescription>
+              {viewingStatementInfo?.statementPeriod && (
+                <span className="text-sm">Period: {viewingStatementInfo.statementPeriod}</span>
+              )}
+              {' • '}
+              <span className="text-sm">{viewingTransactions.length} transactions</span>
+            </DialogDescription>
+          </DialogHeader>
+          
+          <ScrollArea className="h-[60vh] pr-4">
+            <div className="space-y-2">
+              {viewingTransactions.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No transactions found
+                </div>
+              ) : (
+                viewingTransactions.map((transaction: any, idx: number) => (
+                  <div
+                    key={transaction.id || idx}
+                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
+                  >
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-center gap-2">
+                        {transaction.businessProfileId && (
+                          transaction.businessProfile?.type === 'BUSINESS' ? (
+                            <Building2 className="w-4 h-4 text-blue-500" />
+                          ) : (
+                            <Home className="w-4 h-4 text-green-500" />
+                          )
+                        )}
+                        <span className="text-sm font-medium text-foreground truncate">
+                          {transaction.description}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <span>
+                          {new Date(transaction.date).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </span>
+                        {transaction.category && (
+                          <>
+                            <span>•</span>
+                            <span className="truncate">{transaction.category}</span>
+                          </>
+                        )}
+                        {transaction.type && (
+                          <>
+                            <span>•</span>
+                            <span className="uppercase">{transaction.type}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="ml-4">
+                      <span className={`text-sm font-semibold whitespace-nowrap ${
+                        transaction.type === 'INCOME' ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {transaction.type === 'INCOME' ? '+' : '-'}${Math.abs(transaction.amount).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+          
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (viewingStatementInfo?.id) {
+                  handleDownloadStatement(viewingStatementInfo.id);
+                }
+              }}
+            >
+              <Copy className="w-4 h-4 mr-2" />
+              Download CSV
+            </Button>
+            <Button onClick={() => setViewModalOpen(false)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
