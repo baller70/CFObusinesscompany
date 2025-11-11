@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (statementId) {
-      where.statementId = statementId;
+      where.bankStatementId = statementId;
     }
 
     const [transactions, total] = await Promise.all([
