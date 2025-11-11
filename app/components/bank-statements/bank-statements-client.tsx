@@ -406,13 +406,24 @@ export default function BankStatementsClient() {
       ];
       
       console.log(`[Manual Parser] ========================================`);
-      console.log(`[Manual Parser] Starting AGGRESSIVE parsing of ${lines.length} lines...`);
+      console.log(`[Manual Parser] RAW INPUT LENGTH: ${manualTransactionText.length} characters`);
+      console.log(`[Manual Parser] TOTAL LINES: ${lines.length}`);
       console.log(`[Manual Parser] RULE: Every line with a DATE is a TRANSACTION`);
+      console.log(`[Manual Parser] ========================================`);
+      
+      // Log first 10 lines to debug
+      console.log(`[Manual Parser] FIRST 10 LINES:`);
+      for (let i = 0; i < Math.min(10, lines.length); i++) {
+        console.log(`  [${i}]: "${lines[i]}"`);
+      }
       console.log(`[Manual Parser] ========================================`);
       
       for (let i = 0; i < lines.length; i++) {
         const trimmedLine = lines[i].trim();
-        if (!trimmedLine) continue;
+        if (!trimmedLine) {
+          console.log(`[Manual Parser] Line ${i}: SKIPPED (empty)`);
+          continue;
+        }
         
         const lowerLine = trimmedLine.toLowerCase();
         
@@ -463,7 +474,11 @@ export default function BankStatementsClient() {
         }
         
         // NO DATE? Not a transaction. Move on.
-        if (!date) continue;
+        if (!date) {
+          console.log(`[Manual Parser] Line ${i}: SKIPPED (no date) - "${trimmedLine.substring(0, 80)}..."`);
+          console.log(`[Manual Parser]   Parts (first 5): [${parts.slice(0, 5).join(' | ')}]`);
+          continue;
+        }
         
         // ============================================
         // WE FOUND A DATE - THIS IS A TRANSACTION!
