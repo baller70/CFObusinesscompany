@@ -103,10 +103,8 @@ export default function BankStatementsClient() {
     }]);
 
     try {
-      // Prepare messages for ChatLLM
-      const chatMessages = messages
-        .filter(m => m.role !== 'system')
-        .map(m => ({ role: m.role, content: m.content }));
+      // Prepare messages for ChatLLM - only send the current message
+      const chatMessages: any[] = [];
       
       // If file is attached, send it as multimodal content
       if (currentFile) {
@@ -131,8 +129,11 @@ export default function BankStatementsClient() {
           ]
         });
       } else {
-        // Text-only message
-        chatMessages.push({ role: 'user', content: currentInput });
+        // Text-only message - ensure content is always a string
+        chatMessages.push({ 
+          role: 'user', 
+          content: currentInput 
+        });
       }
 
       // Call ChatLLM proxy
