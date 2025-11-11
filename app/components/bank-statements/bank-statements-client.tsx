@@ -401,10 +401,13 @@ export default function BankStatementsClient() {
         'outgoing wire',
         'payment',
         'other deductions',
-        'atm / misc'
+        'atm / misc',
+        'atm/misc'
       ];
       
+      console.log(`[Manual Parser] ========================================`);
       console.log(`[Manual Parser] Starting to parse ${lines.length} lines...`);
+      console.log(`[Manual Parser] ========================================`);
       
       for (let i = 0; i < lines.length; i++) {
         const trimmedLine = lines[i].trim();
@@ -416,88 +419,112 @@ export default function BankStatementsClient() {
         if (incomeSections.some(section => lowerLine.includes(section))) {
           currentSectionType = 'income';
           currentSectionName = trimmedLine;
-          console.log(`[Manual Parser] Found INCOME section: ${currentSectionName}`);
+          console.log(`[Manual Parser] ✅ Found INCOME section: ${currentSectionName}`);
           continue;
         }
         if (expenseSections.some(section => lowerLine.includes(section))) {
           currentSectionType = 'expense';
           currentSectionName = trimmedLine;
-          console.log(`[Manual Parser] Found EXPENSE section: ${currentSectionName}`);
+          console.log(`[Manual Parser] ✅ Found EXPENSE section: ${currentSectionName}`);
           continue;
         }
         
-        // Skip column header lines
-        if (lowerLine.includes('date posted') || 
-            lowerLine.includes('check number') ||
-            (lowerLine.includes('amount') && lowerLine.includes('description'))) {
-          console.log(`[Manual Parser] Skipping header line: ${trimmedLine.substring(0, 50)}...`);
+        // Skip ONLY obvious header lines (very strict)
+        if ((lowerLine.includes('date posted') || lowerLine.includes('check number')) && 
+            (lowerLine.includes('amount') || lowerLine.includes('description') || lowerLine.includes('reference'))) {
+          console.log(`[Manual Parser] ⏭️  Skipping header: ${trimmedLine.substring(0, 60)}...`);
           continue;
         }
         
-        // Try to parse transaction line
-        // Split by tabs first, then by multiple spaces if no tabs
-        let parts = trimmedLine.split(/\t+/).filter(p => p.trim());
-        if (parts.length < 2) {
-          parts = trimmedLine.split(/\s{2,}/).filter(p => p.trim());
+        // Skip totals/summary lines
+        if (lowerLine.includes('total') && lowerLine.includes('$')) {
+          console.log(`[Manual Parser] ⏭️  Skipping total line: ${trimmedLine.substring(0, 60)}...`);
+          continue;
         }
         
-        if (parts.length < 2) continue; // Need at least date and amount
-        
-        // Determine format based on section
+        // Try AGGRESSIVE parsing - try multiple strategies
         let date = '';
         let amount = 0;
         let description = '';
         let referenceNumber = '';
-        let checkNumber = '';
         
-        // Check if this is a "Checks" section (Date | Check# | Amount | Reference)
-        if (currentSectionName.toLowerCase().includes('checks') || 
-            currentSectionName.toLowerCase().includes('substitute')) {
-          if (parts.length >= 3) {
-            date = parts[0].trim();
-            checkNumber = parts[1].trim();
-            const amountStr = parts[2].trim().replace(/[\$,]/g, '');
-            amount = parseFloat(amountStr);
-            referenceNumber = parts[3]?.trim() || '';
-            description = `Check #${checkNumber}`;
-          }
-        } else {
-          // Standard format: Date | Amount | Description | Reference
-          // OR: Date | Description | Amount (some statements)
-          date = parts[0].trim();
-          
-          // Try to find the amount - it should have numbers and possibly $ or ,
-          let amountIndex = -1;
-          let descIndex = -1;
-          
-          for (let j = 1; j < parts.length; j++) {
-            const part = parts[j].trim().replace(/[\$,]/g, '');
-            if (!isNaN(parseFloat(part)) && part.match(/^\d+\.?\d*$/)) {
-              amountIndex = j;
-              break;
-            }
-          }
-          
-          if (amountIndex === 1) {
-            // Format: Date | Amount | Description | Reference
-            const amountStr = parts[1].trim().replace(/[\$,]/g, '');
-            amount = parseFloat(amountStr);
-            description = parts[2]?.trim() || '';
-            referenceNumber = parts[3]?.trim() || '';
-          } else if (amountIndex > 1) {
-            // Format: Date | Description | Amount | Reference
-            description = parts.slice(1, amountIndex).join(' ').trim();
-            const amountStr = parts[amountIndex].trim().replace(/[\$,]/g, '');
-            amount = parseFloat(amountStr);
-            referenceNumber = parts[amountIndex + 1]?.trim() || '';
+        // Strategy 1: Tab-separated
+        let parts = trimmedLine.split('\t').filter(p => p.trim());
+        
+        // Strategy 2: Multiple spaces (fallback)
+        if (parts.length < 2) {
+          parts = trimmedLine.split(/\s{2,}/).filter(p => p.trim());
+        }
+        
+        // Strategy 3: Single space for densely packed lines (fallback)
+        if (parts.length < 2) {
+          parts = trimmedLine.split(/\s+/).filter(p => p.trim());
+        }
+        
+        if (parts.length < 2) {
+          console.log(`[Manual Parser] ⚠️  SKIPPED (too few parts): ${trimmedLine.substring(0, 60)}...`);
+          continue;
+        }
+        
+        // Find date (first field that looks like MM/DD or MM/DD/YYYY)
+        let dateIndex = -1;
+        for (let j = 0; j < Math.min(3, parts.length); j++) {
+          if (parts[j].match(/^\d{1,2}\/\d{1,2}(\/\d{2,4})?$/)) {
+            dateIndex = j;
+            date = parts[j];
+            break;
           }
         }
         
-        // Validate amount
-        if (isNaN(amount) || amount === 0) continue;
+        if (dateIndex === -1) {
+          console.log(`[Manual Parser] ⚠️  SKIPPED (no date): ${trimmedLine.substring(0, 60)}...`);
+          continue;
+        }
         
-        // Validate date format (should be like "01/23" or "01/23/2024" or just "01/02")
-        if (!date || !date.match(/\d{1,2}\/\d{1,2}/)) continue;
+        // Find amount (any field that's a number with optional $ and ,)
+        let amountIndex = -1;
+        for (let j = dateIndex + 1; j < parts.length; j++) {
+          const cleanPart = parts[j].replace(/[\$,]/g, '');
+          const parsedAmount = parseFloat(cleanPart);
+          if (!isNaN(parsedAmount) && parsedAmount > 0 && cleanPart.match(/^\d+\.?\d*$/)) {
+            amountIndex = j;
+            amount = parsedAmount;
+            break;
+          }
+        }
+        
+        if (amountIndex === -1 || amount === 0) {
+          console.log(`[Manual Parser] ⚠️  SKIPPED (no valid amount): ${trimmedLine.substring(0, 60)}...`);
+          continue;
+        }
+        
+        // Everything between date and amount is description
+        if (amountIndex > dateIndex + 1) {
+          description = parts.slice(dateIndex + 1, amountIndex).join(' ').trim();
+        } else {
+          // If amount is right after date, description comes after
+          description = parts.slice(amountIndex + 1).join(' ').trim();
+        }
+        
+        // If still no description, check if it's a checks section (Date | Check# | Amount)
+        if (!description && currentSectionName.toLowerCase().includes('check')) {
+          if (amountIndex === dateIndex + 2) {
+            description = `Check #${parts[dateIndex + 1]}`;
+          }
+        }
+        
+        // Default description if still empty
+        if (!description) {
+          description = 'Transaction';
+        }
+        
+        // Reference number is usually the last field (if exists)
+        if (parts.length > amountIndex + 1) {
+          referenceNumber = parts[parts.length - 1].trim();
+          if (referenceNumber && !referenceNumber.includes('$')) {
+            description += ` (Ref: ${referenceNumber})`;
+          }
+        }
         
         // Apply sign based on section type
         if (currentSectionType === 'expense') {
@@ -506,26 +533,22 @@ export default function BankStatementsClient() {
           amount = Math.abs(amount);
         }
         
-        // Build full description
-        let fullDescription = description;
-        if (referenceNumber) {
-          fullDescription += ` (Ref: ${referenceNumber})`;
-        }
-        
         transactions.push({
           date,
-          description: fullDescription,
+          description,
           amount,
           category: currentSectionType === 'income' ? 'Income' : 'Expense'
         });
         
-        console.log(`[Manual Parser] Parsed transaction ${transactions.length}: ${date} | ${fullDescription.substring(0, 30)}... | ${amount}`);
+        console.log(`[Manual Parser] ✅ #${transactions.length}: ${date} | $${amount.toFixed(2)} | ${description.substring(0, 40)}...`);
       }
 
-      console.log(`[Manual Parser] Total transactions extracted: ${transactions.length}`);
+      console.log(`[Manual Parser] ========================================`);
+      console.log(`[Manual Parser] 🎯 FINAL COUNT: ${transactions.length} transactions`);
+      console.log(`[Manual Parser] ========================================`);
 
       if (transactions.length === 0) {
-        toast.error('❌ No valid transactions found. Please check the format.');
+        toast.error('❌ No valid transactions found. Please check the format and try again.');
         return;
       }
 
