@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { BackButton } from '@/components/ui/back-button';
 import { 
   Plus, 
   CreditCard, 
@@ -61,6 +62,8 @@ export default async function ExpensesPage() {
   return (
     <div className="min-h-screen bg-gradient-background p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
+        <BackButton href="/dashboard" label="Back to Dashboard" />
+        
         {/* Header */}
         <div className="mb-10 animate-fade-in">
           <div className="flex items-center justify-between mb-6">
