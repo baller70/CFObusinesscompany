@@ -925,8 +925,8 @@ Respond with a JSON array where each item has: { "index": number, "profileType":
                 Transaction Cards ({manualTransactionCards.length})
               </h3>
               {manualTransactionCards.map((card) => (
-                <Card key={card.id} className="bg-card border-primary/30 p-6 aspect-square flex flex-col">
-                  <div className="space-y-3 flex-1 flex flex-col">
+                <Card key={card.id} className="bg-card border-primary/30 p-4">
+                  <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <h4 className="text-base font-semibold text-foreground">
                         {card.monthYear}
@@ -955,39 +955,29 @@ Respond with a JSON array where each item has: { "index": number, "profileType":
                       </div>
                     </div>
 
-                    {/* Transaction List */}
-                    <div className="flex-1 overflow-y-auto space-y-2 min-h-0">
-                      {card.transactions.slice(0, 8).map((transaction, idx) => (
+                    {/* Transaction List - Compact Preview */}
+                    <div className="max-h-32 overflow-y-auto space-y-1.5">
+                      {card.transactions.slice(0, 5).map((transaction, idx) => (
                         <div
                           key={idx}
-                          className="flex items-start justify-between p-2 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors"
+                          className="flex items-center justify-between p-2 bg-muted/50 rounded hover:bg-muted/70 transition-colors"
                         >
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-xs font-medium text-foreground truncate">
-                                {transaction.description}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <span>{transaction.date}</span>
-                              {transaction.category && (
-                                <>
-                                  <span>•</span>
-                                  <span className="truncate">{transaction.category}</span>
-                                </>
-                              )}
-                            </div>
+                          <div className="flex-1 min-w-0 mr-2">
+                            <span className="text-xs font-medium text-foreground truncate block">
+                              {transaction.description}
+                            </span>
+                            <span className="text-xs text-muted-foreground">{transaction.date}</span>
                           </div>
-                          <span className={`text-sm font-semibold whitespace-nowrap ml-2 ${
+                          <span className={`text-xs font-semibold whitespace-nowrap ${
                             transaction.amount >= 0 ? 'text-green-600' : 'text-red-600'
                           }`}>
                             {transaction.amount >= 0 ? '+' : ''}{transaction.amount.toFixed(2)}
                           </span>
                         </div>
                       ))}
-                      {card.transactions.length > 8 && (
-                        <div className="text-xs text-muted-foreground text-center py-2">
-                          +{card.transactions.length - 8} more transactions
+                      {card.transactions.length > 5 && (
+                        <div className="text-xs text-muted-foreground text-center py-1">
+                          +{card.transactions.length - 5} more
                         </div>
                       )}
                     </div>
@@ -996,7 +986,7 @@ Respond with a JSON array where each item has: { "index": number, "profileType":
                     <Button
                       onClick={() => handleLoadManualTransactions(card.id, card.transactions)}
                       disabled={loadingTransactions === card.id}
-                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground mt-3"
+                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
                     >
                       {loadingTransactions === card.id ? (
                         <>
@@ -1313,64 +1303,58 @@ Respond with a JSON array where each item has: { "index": number, "profileType":
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {savedStatements.map((statement) => (
-                <Card key={statement.id} className="bg-card border-primary/30 p-6 aspect-square flex flex-col">
-                  <div className="flex flex-col justify-between h-full gap-4">
-                    <div className="flex-1 space-y-3">
-                      <h4 className="text-base font-semibold text-foreground line-clamp-2">
-                        {statement.fileName || statement.originalName}
-                      </h4>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-sm">
-                          <span className="bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
-                            {statement.transactionCount} transactions
-                          </span>
-                        </div>
-                        {statement.statementPeriod && (
-                          <div className="text-sm text-muted-foreground">
-                            📅 {statement.statementPeriod}
-                          </div>
-                        )}
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(statement.createdAt).toLocaleDateString('en-US', { 
-                            year: 'numeric', 
-                            month: 'short', 
-                            day: 'numeric' 
-                          })}
-                        </div>
-                      </div>
+                <Card key={statement.id} className="bg-card border-primary/30 p-4">
+                    <h4 className="text-sm font-semibold text-foreground line-clamp-1">
+                      {statement.fileName || statement.originalName}
+                    </h4>
+                    
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
+                        {statement.transactionCount} transactions
+                      </span>
+                      {statement.statementPeriod && (
+                        <span className="text-muted-foreground">
+                          📅 {statement.statementPeriod}
+                        </span>
+                      )}
                     </div>
-                    <div className="flex flex-col gap-2">
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleViewStatement(statement.id)}
-                          className="flex-1 h-9 text-xs"
-                        >
-                          <FileText className="w-3 h-3 mr-1" />
-                          View
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDownloadStatement(statement.id)}
-                          className="flex-1 h-9 text-xs"
-                        >
-                          <Copy className="w-3 h-3 mr-1" />
-                          Download
-                        </Button>
-                      </div>
+                    
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(statement.createdAt).toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}
+                    </div>
+
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleViewStatement(statement.id)}
+                        className="flex-1 h-8 text-xs"
+                      >
+                        <FileText className="w-3 h-3 mr-1" />
+                        View
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDownloadStatement(statement.id)}
+                        className="flex-1 h-8 text-xs"
+                      >
+                        <Copy className="w-3 h-3 mr-1" />
+                        Download
+                      </Button>
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => handleDeleteStatement(statement.id)}
-                        className="w-full h-9 text-xs text-red-500 hover:text-red-600 hover:bg-red-50"
+                        className="h-8 px-2 text-xs text-red-500 hover:text-red-600 hover:bg-red-50"
                       >
-                        <Trash2 className="w-3 h-3 mr-1" />
-                        Delete Statement
+                        <Trash2 className="w-3 h-3" />
                       </Button>
                     </div>
-                  </div>
                 </Card>
               ))}
             </div>
