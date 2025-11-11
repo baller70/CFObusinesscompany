@@ -31,6 +31,7 @@ interface ManualTransaction {
   description: string;
   amount: number;
   category?: string;
+  profileType?: 'BUSINESS' | 'PERSONAL';
 }
 
 interface ManualTransactionCard {
@@ -605,13 +606,101 @@ export default function BankStatementsClient() {
     setLoadingTransactions(cardId);
     
     try {
-      // Convert to the format expected by the API
-      const transactionsWithProfile = transactions.map(t => ({
-        ...t,
-        profileType: 'BUSINESS' as const, // Default to BUSINESS, user can change later
-      }));
+      // Step 1: Get AI to classify each transaction as BUSINESS or PERSONAL
+      toast.info('🤖 AI is classifying transactions as Business or Personal...');
+      
+      const classificationPrompt = `Classify each of these transactions as either "BUSINESS" or "PERSONAL".
 
-      // Save transactions to database
+For BUSINESS transactions, look for:
+- Office supplies, software, equipment
+- Professional services, contractors, vendors
+- Business travel, meals with clients
+- Marketing, advertising expenses
+- Utilities/rent for business locations
+- Payroll, employee expenses
+
+For PERSONAL transactions, look for:
+- Groceries, personal shopping
+- Personal dining, entertainment
+- Personal healthcare, pharmacy
+- Personal utilities, rent for home
+- Personal vehicle expenses (non-business)
+- Personal subscriptions, hobbies
+
+Transactions:
+${transactions.map((t, idx) => `${idx + 1}. ${t.date} | ${t.description} | $${t.amount}`).join('\n')}
+
+Respond with a JSON array where each item has: { "index": number, "profileType": "BUSINESS" or "PERSONAL", "confidence": number (0-1) }`;
+
+      const classificationResponse = await fetch('/api/chatllm', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: 'user',
+              content: classificationPrompt,
+            },
+          ],
+          model: selectedModel,
+        }),
+      });
+
+      if (!classificationResponse.ok) {
+        throw new Error('Failed to classify transactions');
+      }
+
+      const classificationData = await classificationResponse.json();
+      let classifications: Array<{ index: number; profileType: 'BUSINESS' | 'PERSONAL'; confidence: number }> = [];
+
+      try {
+        // Parse the AI response
+        const content = classificationData.choices?.[0]?.message?.content || '';
+        const jsonMatch = content.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          classifications = JSON.parse(jsonMatch[0]);
+        }
+      } catch (parseError) {
+        console.error('Failed to parse classification response:', parseError);
+        toast.error('Failed to parse AI classification. Using fallback logic.');
+      }
+
+      // Step 2: Apply classifications to transactions
+      const transactionsWithProfile = transactions.map((t, idx) => {
+        const classification = classifications.find(c => c.index === idx + 1);
+        let profileType: 'BUSINESS' | 'PERSONAL' = 'BUSINESS'; // Fallback
+
+        if (classification) {
+          profileType = classification.profileType;
+          console.log(`[Classification] ${t.description.substring(0, 40)} → ${profileType} (confidence: ${classification.confidence})`);
+        } else {
+          // Fallback classification based on keywords
+          const desc = t.description.toLowerCase();
+          const isPersonal = 
+            desc.includes('grocery') || desc.includes('walmart') || desc.includes('target') ||
+            desc.includes('restaurant') || desc.includes('dining') || desc.includes('food') ||
+            desc.includes('healthcare') || desc.includes('pharmacy') || desc.includes('cvs') ||
+            desc.includes('personal') || desc.includes('amazon') || desc.includes('paypal') ||
+            desc.includes('netflix') || desc.includes('spotify') || desc.includes('apple.com');
+          
+          profileType = isPersonal ? 'PERSONAL' : 'BUSINESS';
+          console.log(`[Fallback Classification] ${t.description.substring(0, 40)} → ${profileType}`);
+        }
+
+        return {
+          ...t,
+          profileType,
+        };
+      });
+
+      const businessCount = transactionsWithProfile.filter(t => t.profileType === 'BUSINESS').length;
+      const personalCount = transactionsWithProfile.filter(t => t.profileType === 'PERSONAL').length;
+
+      toast.info(`📊 Classified: ${businessCount} Business, ${personalCount} Personal`);
+
+      // Step 3: Save transactions to database
       const response = await fetch('/api/bank-statements/load-transactions', {
         method: 'POST',
         headers: {
@@ -626,7 +715,7 @@ export default function BankStatementsClient() {
 
       const result = await response.json();
       
-      toast.success(`✅ Successfully loaded ${result.count} transactions!`);
+      toast.success(`✅ Successfully loaded ${result.businessCount} Business + ${result.personalCount} Personal transactions!`);
       
       // Remove the card after loading
       setManualTransactionCards(prev => prev.filter(c => c.id !== cardId));
