@@ -50,6 +50,21 @@ async function processStatement(statementId: string) {
       throw new Error('Statement not found');
     }
 
+    // ========================================
+    // GET BUSINESS AND PERSONAL PROFILES FOR INTELLIGENT ROUTING
+    // ========================================
+    const businessProfiles = await prisma.businessProfile.findMany({
+      where: { 
+        userId: statement.userId,
+        isActive: true
+      }
+    });
+    
+    const businessProfile = businessProfiles.find(bp => bp.type === 'BUSINESS');
+    const personalProfile = businessProfiles.find(bp => bp.type === 'PERSONAL');
+    
+    console.log(`[Process Route] Found profiles - Business: ${businessProfile?.name || 'None'}, Personal: ${personalProfile?.name || 'None'}`);
+
     // Update status to processing
     await prisma.bankStatement.update({
       where: { id: statementId },
@@ -230,9 +245,33 @@ async function processStatement(statementId: string) {
     
     console.log(`[Process Route] Creating ${validCategorizedTransactions.length} transactions in database`);
     
+    let businessCount = 0;
+    let personalCount = 0;
+    let unclassifiedCount = 0;
+
     const transactionPromises = validCategorizedTransactions.map(async (catTxn: any) => {
       const originalTxn = catTxn.originalTransaction;
       
+      // ========================================
+      // INTELLIGENT PROFILE ROUTING
+      // ========================================
+      let targetProfileId: string | null = statement.businessProfileId; // Default fallback
+      const aiProfileType = catTxn.profileType?.toUpperCase();
+      
+      if (aiProfileType === 'BUSINESS' && businessProfile) {
+        targetProfileId = businessProfile.id;
+        businessCount++;
+        console.log(`[Process Route] 🏢 Routing to BUSINESS: ${originalTxn.description}`);
+      } else if (aiProfileType === 'PERSONAL' && personalProfile) {
+        targetProfileId = personalProfile.id;
+        personalCount++;
+        console.log(`[Process Route] 🏠 Routing to PERSONAL: ${originalTxn.description}`);
+      } else {
+        // Fallback to statement's profile if AI didn't classify
+        unclassifiedCount++;
+        console.log(`[Process Route] ⚠️ Using default profile (no AI classification): ${originalTxn.description}`);
+      }
+
       // Determine transaction type based on amount
       let type: 'INCOME' | 'EXPENSE' | 'TRANSFER' = 'EXPENSE';
       if (originalTxn.amount > 0) {
@@ -264,6 +303,7 @@ async function processStatement(statementId: string) {
       return prisma.transaction.create({
         data: {
           userId: statement.userId,
+          businessProfileId: targetProfileId, // INTELLIGENT ROUTING
           bankStatementId: statementId,
           date: new Date(originalTxn.date),
           amount: Math.abs(originalTxn.amount),
@@ -282,7 +322,10 @@ async function processStatement(statementId: string) {
     await Promise.all(transactionPromises);
     
     const processedCount = validCategorizedTransactions.length;
-    console.log(`[Process Route] Successfully created ${processedCount} transactions`);
+    console.log(`[Process Route] ✅ Successfully created ${processedCount} transactions`);
+    console.log(`[Process Route] 🏢 Business transactions: ${businessCount}`);
+    console.log(`[Process Route] 🏠 Personal transactions: ${personalCount}`);
+    console.log(`[Process Route] ⚠️ Unclassified transactions: ${unclassifiedCount}`);
 
     // Update processed count
     await prisma.bankStatement.update({
