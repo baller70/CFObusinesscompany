@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { transactions } = body as { transactions: TransactionInput[] };
+    const { transactions, statementPeriod } = body as { transactions: TransactionInput[]; statementPeriod?: string };
 
     if (!transactions || !Array.isArray(transactions)) {
       return NextResponse.json(
@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`[Load Transactions] Processing ${transactions.length} transactions for user ${session.user.email}`);
+    console.log(`[Load Transactions] Statement Period: ${statementPeriod || 'Not provided'}`);
 
     // Get user's business profiles
     const user = await prisma.user.findUnique({
@@ -63,6 +64,28 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Load Transactions] Business Profile: ${businessProfile.name} (${businessProfile.id})`);
     console.log(`[Load Transactions] Personal Profile: ${personalProfile.name} (${personalProfile.id})`);
+
+    // Create a BankStatement record for this manual entry
+    const bankStatement = await prisma.bankStatement.create({
+      data: {
+        userId: session.user.id,
+        businessProfileId: businessProfile.id, // Use business profile as primary
+        fileName: `Manual Entry - ${statementPeriod || new Date().toLocaleDateString()}`,
+        originalName: `Manual Entry - ${statementPeriod || new Date().toLocaleDateString()}`,
+        sourceType: 'MANUAL',
+        statementPeriod: statementPeriod,
+        transactionCount: transactions.length,
+        status: 'COMPLETED',
+        processingStage: 'COMPLETED',
+        parsedData: {
+          source: 'manual_text_entry',
+          extractionMethod: 'manual',
+          timestamp: new Date().toISOString(),
+        },
+      },
+    });
+
+    console.log(`[Load Transactions] ✅ Created BankStatement: ${bankStatement.id}`);
 
     // Get default categories
     const categories = await prisma.category.findMany({
@@ -104,8 +127,29 @@ export async function POST(request: NextRequest) {
           categories.push(category);
         }
 
-        // Parse date
-        const transactionDate = new Date(transaction.date);
+        // Parse date - handle multiple date formats
+        let transactionDate: Date;
+        try {
+          // If date is MM/DD or MM/DD/YY format, parse it
+          const dateParts = transaction.date.split('/');
+          if (dateParts.length === 2) {
+            // MM/DD format - assume current year
+            const currentYear = new Date().getFullYear();
+            transactionDate = new Date(`${currentYear}-${dateParts[0].padStart(2, '0')}-${dateParts[1].padStart(2, '0')}`);
+          } else if (dateParts.length === 3) {
+            // MM/DD/YY or MM/DD/YYYY format
+            let year = parseInt(dateParts[2]);
+            if (year < 100) {
+              year += 2000; // Convert 24 to 2024
+            }
+            transactionDate = new Date(`${year}-${dateParts[0].padStart(2, '0')}-${dateParts[1].padStart(2, '0')}`);
+          } else {
+            transactionDate = new Date(transaction.date);
+          }
+        } catch (dateError) {
+          console.error(`[Load Transactions] Invalid date format: ${transaction.date}, using current date`);
+          transactionDate = new Date();
+        }
 
         // Determine transaction type based on amount
         const transactionType = transaction.amount >= 0 ? 'INCOME' : 'EXPENSE';
@@ -115,6 +159,7 @@ export async function POST(request: NextRequest) {
           data: {
             userId: session.user.id,
             businessProfileId: targetProfile.id,
+            bankStatementId: bankStatement.id, // Link to the bank statement
             date: transactionDate,
             description: transaction.description,
             amount: Math.abs(transaction.amount),
@@ -137,6 +182,7 @@ export async function POST(request: NextRequest) {
         console.log(`[Load Transactions] ✅ Saved: ${transaction.description} → ${targetProfile.name} (${profileType})`);
       } catch (error) {
         console.error(`[Load Transactions] ❌ Failed to save transaction:`, error);
+        console.error(`[Load Transactions] Transaction data:`, JSON.stringify(transaction));
       }
     }
 
@@ -148,6 +194,7 @@ export async function POST(request: NextRequest) {
       count: savedTransactions.length,
       businessCount,
       personalCount,
+      statementId: bankStatement.id,
       transactions: savedTransactions,
     });
 

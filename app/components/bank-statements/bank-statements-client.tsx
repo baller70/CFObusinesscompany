@@ -63,6 +63,26 @@ export default function BankStatementsClient() {
   const [isProcessingManual, setIsProcessingManual] = useState(false);
   const [manualTransactionCards, setManualTransactionCards] = useState<ManualTransactionCard[]>([]);
   const manualCardsRef = useRef<HTMLDivElement>(null);
+  
+  // Saved statements state
+  const [savedStatements, setSavedStatements] = useState<any[]>([]);
+  const [loadingSavedStatements, setLoadingSavedStatements] = useState(false);
+
+  // Fetch saved statements
+  const fetchSavedStatements = async () => {
+    try {
+      setLoadingSavedStatements(true);
+      const response = await fetch('/api/bank-statements/status');
+      if (response.ok) {
+        const data = await response.json();
+        setSavedStatements(data.statements || []);
+      }
+    } catch (error) {
+      console.error('Error fetching saved statements:', error);
+    } finally {
+      setLoadingSavedStatements(false);
+    }
+  };
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -75,6 +95,11 @@ export default function BankStatementsClient() {
       manualCardsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }, [manualTransactionCards.length]);
+
+  // Load saved statements on mount
+  useEffect(() => {
+    fetchSavedStatements();
+  }, []);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -606,6 +631,10 @@ export default function BankStatementsClient() {
     setLoadingTransactions(cardId);
     
     try {
+      // Get the statement period from the card
+      const card = manualTransactionCards.find(c => c.id === cardId);
+      const statementPeriod = card?.monthYear.split('(')[0].trim() || '';
+
       // Step 1: Get AI to classify each transaction as BUSINESS or PERSONAL
       toast.info('🤖 AI is classifying transactions as Business or Personal...');
       
@@ -700,17 +729,21 @@ Respond with a JSON array where each item has: { "index": number, "profileType":
 
       toast.info(`📊 Classified: ${businessCount} Business, ${personalCount} Personal`);
 
-      // Step 3: Save transactions to database
+      // Step 3: Save transactions to database with statement period
       const response = await fetch('/api/bank-statements/load-transactions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ transactions: transactionsWithProfile }),
+        body: JSON.stringify({ 
+          transactions: transactionsWithProfile,
+          statementPeriod: statementPeriod
+        }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save transactions');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save transactions');
       }
 
       const result = await response.json();
@@ -720,11 +753,70 @@ Respond with a JSON array where each item has: { "index": number, "profileType":
       // Remove the card after loading
       setManualTransactionCards(prev => prev.filter(c => c.id !== cardId));
       
+      // Refresh saved statements list
+      await fetchSavedStatements();
+      
     } catch (error) {
       console.error('Error loading manual transactions:', error);
-      toast.error('Failed to load transactions. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load transactions';
+      toast.error(`❌ ${errorMessage}`);
     } finally {
       setLoadingTransactions(null);
+    }
+  };
+
+  const handleViewStatement = async (statementId: string) => {
+    try {
+      // Fetch transactions for this statement
+      const response = await fetch(`/api/transactions?statementId=${statementId}`);
+      if (!response.ok) throw new Error('Failed to fetch transactions');
+      
+      const transactions = await response.json();
+      
+      // Show transactions in a dialog or navigate to transactions page
+      toast.success(`Found ${transactions.length} transactions`);
+      
+      // You can also open transactions in a new tab or modal
+      window.open(`/dashboard/transactions?statementId=${statementId}`, '_blank');
+    } catch (error) {
+      console.error('Error viewing statement:', error);
+      toast.error('Failed to view statement');
+    }
+  };
+
+  const handleDownloadStatement = async (statementId: string) => {
+    try {
+      // Fetch transactions for this statement
+      const response = await fetch(`/api/transactions?statementId=${statementId}`);
+      if (!response.ok) throw new Error('Failed to fetch transactions');
+      
+      const transactions = await response.json();
+      
+      // Convert to CSV format
+      const csvHeader = 'Date,Description,Amount,Type,Category,Profile\n';
+      const csvRows = transactions.map((t: any) => {
+        const date = new Date(t.date).toLocaleDateString();
+        const amount = t.type === 'EXPENSE' ? `-${t.amount}` : t.amount;
+        return `${date},"${t.description}",${amount},${t.type},"${t.category}",${t.businessProfile?.name || ''}`;
+      }).join('\n');
+      
+      const csvContent = csvHeader + csvRows;
+      
+      // Create and download file
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `transactions_${statementId}_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('✅ Downloaded transactions as CSV');
+    } catch (error) {
+      console.error('Error downloading statement:', error);
+      toast.error('Failed to download statement');
     }
   };
 
@@ -1168,6 +1260,60 @@ Respond with a JSON array where each item has: { "index": number, "profileType":
           </div>
         </Card>
         </div>
+
+        {/* Saved Statements Section */}
+        {savedStatements.length > 0 && (
+          <Card className="bg-card-elevated border-primary/20 p-6">
+            <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              Saved Statements ({savedStatements.length})
+            </h2>
+            <div className="space-y-3">
+              {savedStatements.map((statement) => (
+                <Card key={statement.id} className="bg-card border-primary/30 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h4 className="text-base font-semibold text-foreground mb-1">
+                        {statement.fileName || statement.originalName}
+                      </h4>
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                        <span>{statement.transactionCount} transactions</span>
+                        {statement.statementPeriod && (
+                          <>
+                            <span>•</span>
+                            <span>{statement.statementPeriod}</span>
+                          </>
+                        )}
+                        <span>•</span>
+                        <span>{new Date(statement.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleViewStatement(statement.id)}
+                        className="h-8 px-3 text-xs"
+                      >
+                        <FileText className="w-3 h-3 mr-1" />
+                        View
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDownloadStatement(statement.id)}
+                        className="h-8 px-3 text-xs"
+                      >
+                        <Copy className="w-3 h-3 mr-1" />
+                        Download
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </Card>
+        )}
       </div>
     </div>
   );

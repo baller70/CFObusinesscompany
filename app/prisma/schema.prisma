@@ -2490,6 +2490,7 @@ enum StatementFileType {
 enum StatementSourceType {
   BANK
   CREDIT_CARD
+  MANUAL
 }
 
 enum ProcessingStage {
