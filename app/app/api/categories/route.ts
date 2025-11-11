@@ -31,49 +31,48 @@ export async function GET() {
     const activeProfileId = activeProfile.id;
     const profileType = activeProfile.type || 'BUSINESS';
 
-    // Fetch user-created categories with transaction counts
+    // Fetch user-created categories (no include for transactions since there's no FK relationship)
     const userCategories = await prisma.category.findMany({
       where: {
         businessProfileId: activeProfileId
-      },
-      include: {
-        transactions: {
-          where: {
-            businessProfileId: activeProfileId
-          }
-        },
-        _count: {
-          select: { transactions: true }
-        }
       },
       orderBy: {
         name: 'asc'
       }
     });
 
-    // Get default categories based on profile type
-    const defaultCategories = getDefaultCategories(profileType as 'PERSONAL' | 'BUSINESS');
-    
-    // Convert default categories to the expected format
-    const defaultCategoriesFormatted = defaultCategories.map((cat, index) => ({
-      id: `default-${index}`,
-      name: cat.name,
-      type: cat.type,
-      color: cat.color,
-      icon: cat.icon,
-      description: `Default ${cat.type.toLowerCase()} category`,
-      isDefault: true,
-      isActive: true,
-      transactions: [],
-      _count: { transactions: 0 },
-      budgetLimit: null,
-      taxDeductible: false
-    }));
+    // Fetch all transactions for this profile
+    const transactions = await prisma.transaction.findMany({
+      where: {
+        businessProfileId: activeProfileId
+      },
+      select: {
+        id: true,
+        amount: true,
+        category: true,
+        type: true,
+        description: true,
+        date: true
+      }
+    });
 
-    // Combine user categories and default categories
-    const allCategories = [...userCategories, ...defaultCategoriesFormatted];
+    // Group transactions by category name and calculate totals
+    const categoriesWithTransactions = userCategories.map(category => {
+      // Find all transactions that match this category name
+      const categoryTransactions = transactions.filter(
+        tx => tx.category && tx.category.trim() === category.name
+      );
 
-    return NextResponse.json({ categories: allCategories });
+      return {
+        ...category,
+        transactions: categoryTransactions,
+        _count: {
+          transactions: categoryTransactions.length
+        }
+      };
+    });
+
+    return NextResponse.json({ categories: categoriesWithTransactions });
   } catch (error) {
     console.error('Error fetching categories:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
