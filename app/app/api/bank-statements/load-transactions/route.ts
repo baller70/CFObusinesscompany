@@ -204,6 +204,23 @@ export async function POST(request: NextRequest) {
     console.log(`[Load Transactions] 🎯 Complete: ${savedTransactions.length}/${transactions.length} transactions saved`);
     console.log(`[Load Transactions] 🏢 Business: ${businessCount} | 🏠 Personal: ${personalCount}`);
 
+    // ========================================
+    // AUTO-POPULATE ALL FEATURES
+    // ========================================
+    console.log('[Load Transactions] 🚀 AUTO-POPULATING ALL FEATURES...');
+    try {
+      const { autoPopulateAllFeatures } = await import('@/lib/feature-auto-populator');
+      await autoPopulateAllFeatures(
+        session.user.id,
+        businessProfile.id,
+        personalProfile.id
+      );
+      console.log('[Load Transactions] ✅ ALL FEATURES POPULATED!');
+    } catch (populateError) {
+      console.error('[Load Transactions] ⚠️ Feature population error (non-critical):', populateError);
+      // Don't fail the entire process if feature population fails
+    }
+
     return NextResponse.json({
       success: true,
       count: savedTransactions.length,

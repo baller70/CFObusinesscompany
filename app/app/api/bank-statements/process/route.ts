@@ -238,6 +238,26 @@ async function processStatement(statementId: string) {
 
     console.log(`[Process Route] ✅ DONE! Transactions saved and routed correctly`);
 
+    // ========================================
+    // AUTO-POPULATE ALL FEATURES
+    // ========================================
+    console.log('[Process Route] 🚀 AUTO-POPULATING ALL FEATURES...');
+    try {
+      const { autoPopulateAllFeatures } = await import('@/lib/feature-auto-populator');
+      const profileId = businessProfile?.id || statement.businessProfileId;
+      if (profileId) {
+        await autoPopulateAllFeatures(
+          statement.userId,
+          profileId,
+          personalProfile?.id || null
+        );
+        console.log('[Process Route] ✅ ALL FEATURES POPULATED!');
+      }
+    } catch (populateError) {
+      console.error('[Process Route] ⚠️ Feature population error (non-critical):', populateError);
+      // Don't fail the entire process if feature population fails
+    }
+
   } catch (error) {
     console.error('[Process Route] Error:', error);
     
