@@ -24,45 +24,29 @@ export async function POST(request: NextRequest) {
     console.log(`[Process Text] Starting processing for date: ${statementDate}`);
     console.log(`[Process Text] Text length: ${statementText.length} characters`);
 
-    // Get user's current business profile (respects profile switcher)
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: {
-        currentBusinessProfileId: true,
-        businessProfiles: {
-          where: { isActive: true },
-          take: 1,
-        },
-      },
+    // Get all business profiles for intelligent routing
+    const businessProfiles = await prisma.businessProfile.findMany({
+      where: { 
+        userId: session.user.id,
+        isActive: true
+      }
     });
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 400 }
-      );
-    }
-
-    // Use currentBusinessProfileId if set, otherwise use first active profile
-    const profileId = user.currentBusinessProfileId || user.businessProfiles[0]?.id;
     
-    if (!profileId) {
+    if (businessProfiles.length === 0) {
       return NextResponse.json(
-        { error: 'No active business profile found' },
+        { error: 'No active business profiles found' },
         { status: 400 }
       );
     }
 
-    const activeProfile = await prisma.businessProfile.findUnique({
-      where: { id: profileId },
-    });
+    // Get BOTH profiles for routing
+    const businessProfile = businessProfiles.find(bp => bp.type === 'BUSINESS');
+    const personalProfile = businessProfiles.find(bp => bp.type === 'PERSONAL');
+    
+    console.log(`[Process Text] Found profiles - Business: ${businessProfile?.name || 'None'}, Personal: ${personalProfile?.name || 'None'}`);
 
-    if (!activeProfile) {
-      return NextResponse.json(
-        { error: 'Business profile not found' },
-        { status: 400 }
-      );
-    }
+    // Use first available profile for the bank statement record (transactions will route intelligently)
+    const defaultProfileId = businessProfile?.id || personalProfile?.id || businessProfiles[0].id;
 
     // Create a bank statement record
     const bankStatement = await prisma.bankStatement.create({
@@ -74,7 +58,7 @@ export async function POST(request: NextRequest) {
         status: 'PROCESSING',
         processingStage: 'EXTRACTING_DATA',
         userId: session.user.id,
-        businessProfileId: activeProfile.id,
+        businessProfileId: defaultProfileId,
         periodStart: new Date(statementDate),
         periodEnd: new Date(statementDate),
       },
@@ -105,17 +89,39 @@ export async function POST(request: NextRequest) {
 
       console.log(`[Process Text] Total transactions to save: ${validTransactions.length}`);
 
-      // Get all categories for the business profile
+      // Get all categories for the user
       const categories = await prisma.category.findMany({
-        where: { businessProfileId: activeProfile.id },
+        where: { userId: session.user.id },
       });
 
-      // Categorize and save transactions
+      // Categorize and save transactions with INTELLIGENT ROUTING
       let savedCount = 0;
       const errors: string[] = [];
+      let businessCount = 0;
+      let personalCount = 0;
 
       for (const transaction of validTransactions) {
         try {
+          // ========================================
+          // INTELLIGENT PROFILE ROUTING (from statement-processor.ts)
+          // ========================================
+          let targetProfileId: string | null = null;
+          const aiProfileType = transaction.profileType?.toUpperCase();
+          
+          if (aiProfileType === 'BUSINESS' && businessProfile) {
+            targetProfileId = businessProfile.id;
+            businessCount++;
+            console.log(`[Process Text] 🏢 Routing to BUSINESS profile: ${transaction.description}`);
+          } else if (aiProfileType === 'PERSONAL' && personalProfile) {
+            targetProfileId = personalProfile.id;
+            personalCount++;
+            console.log(`[Process Text] 🏠 Routing to PERSONAL profile: ${transaction.description}`);
+          } else {
+            // Fallback to default profile if AI didn't classify
+            targetProfileId = defaultProfileId;
+            console.log(`[Process Text] ⚠️ Using default profile (no AI classification): ${transaction.description}`);
+          }
+
           // Find matching category
           const category = categories.find(
             (c: any) => c.name.toLowerCase() === transaction.category?.toLowerCase()
@@ -152,7 +158,7 @@ export async function POST(request: NextRequest) {
               category: category?.name || transaction.category || 'Uncategorized',
               merchant: transaction.merchant || transaction.description || '',
               userId: session.user.id,
-              businessProfileId: activeProfile.id,
+              businessProfileId: targetProfileId, // INTELLIGENT ROUTING
               bankStatementId: bankStatement.id,
               categoryId: category?.id,
               metadata: transaction.referenceNumber ? {
@@ -169,7 +175,9 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      console.log(`[Process Text] Saved ${savedCount} transactions`);
+      console.log(`[Process Text] ✅ Saved ${savedCount} transactions`);
+      console.log(`[Process Text] 🏢 Business transactions: ${businessCount}`);
+      console.log(`[Process Text] 🏠 Personal transactions: ${personalCount}`);
 
       // Update bank statement status
       await prisma.bankStatement.update({
@@ -185,6 +193,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         transactionCount: savedCount,
+        businessCount,
+        personalCount,
         statementId: bankStatement.id,
         errors: errors.length > 0 ? errors : undefined,
       });
