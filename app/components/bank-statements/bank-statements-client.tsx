@@ -26,6 +26,19 @@ interface ExtractedTransaction {
   profileType: 'BUSINESS' | 'PERSONAL';
 }
 
+interface ManualTransaction {
+  date: string;
+  description: string;
+  amount: number;
+  category?: string;
+}
+
+interface ManualTransactionCard {
+  id: string;
+  monthYear: string;
+  transactions: ManualTransaction[];
+}
+
 export default function BankStatementsClient() {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -42,6 +55,11 @@ export default function BankStatementsClient() {
   const [loadingTransactions, setLoadingTransactions] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Manual transaction entry state
+  const [manualTransactionText, setManualTransactionText] = useState('');
+  const [isProcessingManual, setIsProcessingManual] = useState(false);
+  const [manualTransactionCards, setManualTransactionCards] = useState<ManualTransactionCard[]>([]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -335,6 +353,109 @@ export default function BankStatementsClient() {
     }
   };
 
+  const handleProcessManualTransactions = () => {
+    try {
+      setIsProcessingManual(true);
+
+      // Parse the manual text into transactions
+      const lines = manualTransactionText.trim().split('\n');
+      const transactions: ManualTransaction[] = [];
+      
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        
+        // Try to parse transaction from various formats
+        // Format: date, description, amount, [category]
+        const parts = line.split(/[,\t]/);
+        if (parts.length >= 3) {
+          const date = parts[0].trim();
+          const description = parts[1].trim();
+          const amount = parseFloat(parts[2].trim().replace(/[\$,]/g, ''));
+          const category = parts[3]?.trim() || undefined;
+          
+          if (date && description && !isNaN(amount)) {
+            transactions.push({ date, description, amount, category });
+          }
+        }
+      }
+
+      if (transactions.length === 0) {
+        toast.error('No valid transactions found. Please check the format.');
+        return;
+      }
+
+      // Detect month/year from first transaction
+      const firstDate = new Date(transactions[0].date);
+      const monthYear = firstDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+      // Create a new card
+      const newCard: ManualTransactionCard = {
+        id: Date.now().toString(),
+        monthYear,
+        transactions,
+      };
+
+      setManualTransactionCards(prev => [...prev, newCard]);
+      setManualTransactionText(''); // Clear input
+      toast.success(`✅ Created card with ${transactions.length} transactions!`);
+
+    } catch (error) {
+      console.error('Error processing manual transactions:', error);
+      toast.error('Failed to process transactions. Please check the format.');
+    } finally {
+      setIsProcessingManual(false);
+    }
+  };
+
+  const handleCopyManualTransactions = (transactions: ManualTransaction[]) => {
+    try {
+      const jsonString = JSON.stringify(transactions, null, 2);
+      navigator.clipboard.writeText(jsonString);
+      toast.success(`✅ Copied ${transactions.length} transactions to clipboard!`);
+    } catch (error) {
+      console.error('Error copying transactions:', error);
+      toast.error('Failed to copy transactions. Please try again.');
+    }
+  };
+
+  const handleLoadManualTransactions = async (cardId: string, transactions: ManualTransaction[]) => {
+    setLoadingTransactions(cardId);
+    
+    try {
+      // Convert to the format expected by the API
+      const transactionsWithProfile = transactions.map(t => ({
+        ...t,
+        profileType: 'BUSINESS' as const, // Default to BUSINESS, user can change later
+      }));
+
+      // Save transactions to database
+      const response = await fetch('/api/bank-statements/load-transactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ transactions: transactionsWithProfile }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save transactions');
+      }
+
+      const result = await response.json();
+      
+      toast.success(`✅ Successfully loaded ${result.count} transactions!`);
+      
+      // Remove the card after loading
+      setManualTransactionCards(prev => prev.filter(c => c.id !== cardId));
+      
+    } catch (error) {
+      console.error('Error loading manual transactions:', error);
+      toast.error('Failed to load transactions. Please try again.');
+    } finally {
+      setLoadingTransactions(null);
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -344,17 +465,145 @@ export default function BankStatementsClient() {
 
   return (
     <div className="min-h-screen bg-gradient-background p-6 lg:p-8">
-      <div className="max-w-5xl mx-auto h-[calc(100vh-8rem)] flex flex-col">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-heading text-foreground mb-2 flex items-center gap-2">
-            <Sparkles className="w-7 h-7 text-primary" />
-            ABACUS CHATLLM
-          </h1>
-          <p className="text-body text-muted-foreground">
-            Powered by RouteLLM - Ask anything or upload documents
-          </p>
-        </div>
+      <div className="max-w-5xl mx-auto space-y-6">
+        {/* Manual Transaction Entry Section */}
+        <Card className="bg-card-elevated border-primary/20 p-6">
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-xl font-semibold text-foreground mb-2 flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary" />
+                Manual Transaction Entry
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Paste your transactions below. Each batch should be for one month/year.
+              </p>
+            </div>
+
+            {/* Text Input */}
+            <textarea
+              value={manualTransactionText}
+              onChange={(e) => setManualTransactionText(e.target.value)}
+              placeholder="Paste your transactions here..."
+              className="w-full min-h-[150px] p-4 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+              disabled={isProcessingManual}
+            />
+
+            {/* Process Button */}
+            <Button
+              onClick={handleProcessManualTransactions}
+              disabled={!manualTransactionText.trim() || isProcessingManual}
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              {isProcessingManual ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Create Transaction Card
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* Manual Transaction Cards Display */}
+          {manualTransactionCards.length > 0 && (
+            <div className="mt-6 space-y-4">
+              <h3 className="text-sm font-semibold text-foreground">Transaction Cards</h3>
+              {manualTransactionCards.map((card) => (
+                <Card key={card.id} className="bg-card border-primary/30 p-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-base font-semibold text-foreground">
+                        {card.monthYear}
+                      </h4>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
+                          {card.transactions.length} transactions
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleCopyManualTransactions(card.transactions)}
+                          className="h-7 px-2 text-xs"
+                        >
+                          <Copy className="w-3 h-3 mr-1" />
+                          Copy
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Transaction List */}
+                    <div className="max-h-64 overflow-y-auto space-y-2">
+                      {card.transactions.map((transaction, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-start justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-medium text-foreground">
+                                {transaction.description}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <span>{transaction.date}</span>
+                              {transaction.category && (
+                                <>
+                                  <span>•</span>
+                                  <span>{transaction.category}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <span className={`text-sm font-semibold ${
+                            transaction.amount >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {transaction.amount >= 0 ? '+' : ''}{transaction.amount.toFixed(2)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Load Button */}
+                    <Button
+                      onClick={() => handleLoadManualTransactions(card.id, card.transactions)}
+                      disabled={loadingTransactions === card.id}
+                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+                    >
+                      {loadingTransactions === card.id ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Loading transactions...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Load to Database ({card.transactions.length} transactions)
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        {/* Abacus ChatLLM Section */}
+        <div className="h-[calc(100vh-32rem)] flex flex-col">
+          {/* Header */}
+          <div className="mb-6">
+            <h1 className="text-heading text-foreground mb-2 flex items-center gap-2">
+              <Sparkles className="w-7 h-7 text-primary" />
+              ABACUS CHATLLM
+            </h1>
+            <p className="text-body text-muted-foreground">
+              Powered by RouteLLM - Ask anything or upload documents
+            </p>
+          </div>
 
         {/* Messages Area */}
         <Card className="flex-1 bg-card-elevated border-primary/20 mb-4 overflow-hidden flex flex-col">
@@ -628,6 +877,7 @@ export default function BankStatementsClient() {
             </Button>
           </div>
         </Card>
+        </div>
       </div>
     </div>
   );
