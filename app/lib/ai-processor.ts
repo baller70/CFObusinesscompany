@@ -13,131 +13,55 @@ export class AIBankStatementProcessor {
   }
 
   async extractDataFromPDF(pdfBuffer: Buffer, fileName: string, retryCount: number = 0): Promise<any> {
-    console.log(`[AI Processor] Extracting data from PDF: ${fileName}, size: ${pdfBuffer.length} bytes (attempt ${retryCount + 1}/3)`);
+    console.log(`[AI Processor] 🎯 DIRECT PDF EXTRACTION MODE - Sending PDF directly to LLM`);
+    console.log(`[AI Processor] PDF: ${fileName}, size: ${pdfBuffer.length} bytes (attempt ${retryCount + 1}/3)`);
     
     try {
       // ========================================
-      // STEP 1: Extract text from PDF using pdftotext
-      // This is 10x faster than vision-based extraction
+      // STEP 1: Convert PDF to Base64
       // ========================================
-      console.log('[AI Processor] 📄 Step 1: Extracting text from PDF using pdftotext...');
+      console.log('[AI Processor] 📄 Step 1: Converting PDF to base64...');
       
-      const fs = require('fs').promises;
-      const { execSync } = require('child_process');
-      const path = require('path');
-      const os = require('os');
+      const base64String = pdfBuffer.toString('base64');
+      const base64DataUri = `data:application/pdf;base64,${base64String}`;
       
-      // Create temporary files
-      const tmpDir = os.tmpdir();
-      const pdfPath = path.join(tmpDir, `statement_${Date.now()}.pdf`);
-      const txtPath = path.join(tmpDir, `statement_${Date.now()}.txt`);
+      console.log(`[AI Processor] ✅ Base64 conversion complete: ${base64String.length} characters`);
       
-      try {
-        // Write PDF to temp file
-        await fs.writeFile(pdfPath, pdfBuffer);
-        
-        // Extract text using pdftotext with layout preservation
-        execSync(`pdftotext -layout "${pdfPath}" "${txtPath}"`);
-        
-        // Read extracted text
-        const extractedText = await fs.readFile(txtPath, 'utf8');
-        
-        console.log(`[AI Processor] ✅ Text extraction complete: ${extractedText.length} characters`);
-        console.log(`[AI Processor] Preview: ${extractedText.substring(0, 300)}...`);
-        
-        // Clean up temp files
-        await fs.unlink(pdfPath).catch(() => {});
-        await fs.unlink(txtPath).catch(() => {});
-        
-        if (!extractedText || extractedText.length < 100) {
-          throw new Error('PDF text extraction failed - text is empty or too short');
-        }
-        
-        // ========================================
-        // STEP 2: Send extracted text to AI for processing
-        // This is much faster than sending base64 PDF
-        // ========================================
-        console.log('[AI Processor] 🤖 Step 2: Sending extracted text to AI for processing...');
-        
-        // Create abort controller for timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minutes timeout (faster than vision)
-        
-        const response = await fetch('https://apps.abacus.ai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.apiKey}`
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o',
-            max_tokens: 20000,
-            temperature: 0.1,
-            messages: [{
-              role: "user", 
-              content: `🎯 SUPREME AI EXTRACTION MODE - 100% ACCURACY REQUIRED
+      // ========================================
+      // STEP 2: Send PDF directly to LLM
+      // ========================================
+      console.log('[AI Processor] 🤖 Step 2: Sending PDF directly to LLM...');
+      
+      // Create abort controller for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes timeout
+      
+      const response = await fetch('https://apps.abacus.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          max_tokens: 20000,
+          temperature: 0.1,
+          messages: [{
+            role: "user", 
+            content: [
+              {
+                type: "file",
+                file: {
+                  filename: fileName,
+                  file_data: base64DataUri
+                }
+              },
+              {
+                type: "text",
+                text: `Extract all transactions from this bank statement and let me know how many transactions are in the PDF.
 
-I've extracted the text from a PNC Bank statement PDF. Your job is to parse this text and return structured JSON data.
-
-📄 EXTRACTED TEXT FROM STATEMENT:
-\`\`\`
-${extractedText}
-\`\`\`
-
-You are the PRIMARY and ONLY extraction method for this PNC Bank statement. You must achieve PERFECT accuracy.
-
-🚨 CRITICAL ACCURACY REQUIREMENT: Extract EVERY SINGLE transaction from this bank statement text. You MUST achieve 100% extraction accuracy.
-
-📋 PNC STATEMENT STRUCTURE - EXACT CATEGORIES TO EXTRACT:
-
-The statement contains these EXACT section headers (look for these):
-1. **Deposits** - Mobile deposits with reference numbers
-2. **ATM Deposits and Additions** - POS returns and deposits
-3. **ACH Additions** - Corporate ACH transfers and payouts (Stripe, Etsy, etc.)
-4. **Debit Card Purchases** - Card 7526 purchases (CONTINUES ACROSS MULTIPLE PAGES)
-5. **POS Purchases** - Point-of-sale transactions (CONTINUES ACROSS MULTIPLE PAGES)
-6. **ATM/Misc. Debit Card Transactions** - Recurring payments and bills
-7. **ACH Deductions** - ACH debits, bills, utilities (CONTINUES ACROSS MULTIPLE PAGES)
-8. **Service Charges and Fees** - Bank fees
-9. **Other Deductions** - Wire transfers and other deductions
-
-⚠️ CRITICAL: Sections like "Debit Card Purchases", "POS Purchases", and "ACH Deductions" 
-often span MULTIPLE PAGES with continuation headers like "Debit Card Purchases - continued"
-
-📋 EXTRACTION PROCESS (FOLLOW EXACTLY):
-1. **Read through ALL the text** line by line
-2. **For EACH section header**, extract EVERY transaction line until the next section starts
-3. **Watch for continuation pages** - sections don't end until a NEW section header appears
-4. **Count as you go** - track transactions per category
-5. **Verify your count** matches the statement period summary
-
-⚠️ CRITICAL RULES - NO EXCEPTIONS:
-- DO NOT truncate the output - return ALL transactions even if there are 100+
-- DO NOT summarize - every transaction must be listed individually
-- DO NOT skip any section or continuation page
-- DO NOT stop early - extract until the last transaction
-- Each transaction takes one array item - no grouping or combining
-- PRESERVE the exact category names from the statement headers
-
-🔍 TRANSACTION FORMAT EXAMPLES (from actual PNC statement):
-
-**Deposits:**
-Date: 01/23 | Amount: 6,700.00 | Description: Mobile Deposit | Reference: 086934199
-
-**ACH Additions:**
-Date: 01/16 | Amount: 3,987.71 | Description: Corporate ACH Transfer Stripe St-E5E4U5N7R5F2 | Reference: 00024016004205590
-
-**Debit Card Purchases:**
-Date: 01/02 | Amount: 54.82 | Description: 7526 Debit Card Purchase Tst* Johnny Napkins - Union NJ | Reference: 75364970061447526365
-
-**POS Purchases:**
-Date: 01/02 | Amount: 430.23 | Description: POS Purchase Costco Whse #0 Union NJ | Reference: POS99032013 5357999
-
-**ACH Deductions:**
-Date: 01/02 | Amount: 213.05 | Description: ACH Debit Payment Chrysler Capital XXXXXX4737 | Reference: 00023363005356722
-
-**Service Charges:**
-Date: 01/02 | Amount: 64.00 | Description: Service Charge Period Ending 12/29/2023 | Reference: (none)
+🚨 CRITICAL: Extract EVERY SINGLE transaction. You MUST achieve 100% extraction accuracy.
 
 Return JSON in this EXACT format:
 {
@@ -149,32 +73,33 @@ Return JSON in this EXACT format:
   "transactions": [
     {
       "date": "YYYY-MM-DD",
-      "description": "full transaction description from statement",
-      "amount": number (positive for credits/deposits/income, negative for debits/expenses),
+      "description": "full transaction description",
+      "amount": number (positive for credits/income, negative for debits/expenses),
       "type": "debit|credit",
-      "category": "transaction category from statement (e.g., 'Deposits', 'ACH Debit', 'POS Purchase', 'Debit Card Purchase')",
-      "balance": number (if running balance shown, otherwise omit)
+      "category": "transaction category (e.g., 'Deposits', 'ACH', 'Debit Card', 'POS Purchase')",
+      "balance": number (if shown in statement, otherwise omit)
     }
   ],
   "summary": {
     "startingBalance": number,
     "endingBalance": number,
-    "transactionCount": number (MUST equal transactions.length - this is your accuracy check!)
+    "transactionCount": number (MUST equal transactions.length)
   }
 }
 
-✅ VERIFICATION BEFORE RESPONDING:
-1. Count your transactions array length
-2. Verify it matches summary.transactionCount
-3. Verify you processed all text and all categories
-4. If count seems low, GO BACK and extract them all
+CRITICAL RULES:
+- Extract ALL transactions from the PDF
+- DO NOT truncate or summarize
+- Return complete JSON only (no markdown, no explanations)
+- Verify your transaction count matches the statement
 
-Respond with complete JSON only - no markdown formatting, no explanations, just raw JSON starting with {`
-            }],
-            response_format: { type: "json_object" }
-          }),
-          signal: controller.signal
-        });
+Respond with raw JSON starting with {`
+              }
+            ]
+          }],
+          response_format: { type: "json_object" }
+        })
+      });
 
         clearTimeout(timeoutId);
         console.log(`[AI Processor] ✅ AI extraction API response status: ${response.status}`);
@@ -360,10 +285,6 @@ Respond with complete JSON only - no markdown formatting, no explanations, just 
         
         return extractedData;
         
-      } catch (tempFileError) {
-        console.error('[AI Processor] ❌ Text extraction or AI processing error:', tempFileError);
-        throw new Error(`Failed to extract data from PDF: ${tempFileError instanceof Error ? tempFileError.message : 'Unknown error'}`);
-      }
     } catch (error) {
       console.error('[AI Processor] PDF extraction error:', error);
       
