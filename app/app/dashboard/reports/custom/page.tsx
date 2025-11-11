@@ -18,6 +18,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 
+import { BackButton } from '@/components/ui/back-button';
 export default function CustomReportsPage() {
   const [customReports, setCustomReports] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -48,6 +49,7 @@ export default function CustomReportsPage() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-3">
+        <BackButton href="/dashboard/reports" />
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Reports</CardTitle>

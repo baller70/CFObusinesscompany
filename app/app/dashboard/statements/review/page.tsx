@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle, ArrowLeft } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
+import { BackButton } from '@/components/ui/back-button';
 interface ParsedTransaction {
   date: string;
   amount: number;
@@ -169,6 +170,7 @@ function ReviewPageContent() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <BackButton href="/dashboard/statements" />
             <div>
               <Label className="text-muted-foreground">File Name</Label>
               <p className="font-medium mt-1">{statement.fileName}</p>

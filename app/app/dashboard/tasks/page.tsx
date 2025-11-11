@@ -13,6 +13,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { useState, useEffect } from 'react'
 
+import { BackButton } from '@/components/ui/back-button';
 export default function TasksPage() {
   const { data: session, status } = useSession() || {}
   const [tasks, setTasks] = useState<any[]>([])
@@ -45,7 +46,8 @@ export default function TasksPage() {
   }, [session?.user?.id])
   
   // Now we can do conditional returns AFTER all hooks
-  if (status === 'loading') return <div className="p-6">Loading...</div>
+  if (status === 'loading') return <div className="p-6">
+        <BackButton href="/dashboard" />Loading...</div>
   
   if (!session?.user?.id) {
     redirect('/auth/signin')

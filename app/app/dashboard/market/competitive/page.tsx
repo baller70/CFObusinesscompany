@@ -21,6 +21,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 
+import { BackButton } from '@/components/ui/back-button';
 export default function CompetitiveAnalysisPage() {
   const [competitors, setCompetitors] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -48,6 +49,7 @@ export default function CompetitiveAnalysisPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+        <BackButton href="/dashboard" />
           <Button variant="outline" onClick={handleRefresh} className="gap-2">
             <RefreshCw className="h-4 w-4" />
             Refresh

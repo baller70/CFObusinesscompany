@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Plus, TrendingUp, Coins } from 'lucide-react'
 
+import { BackButton } from '@/components/ui/back-button';
 export default function RetirementPage() {
   const [accounts, setAccounts] = useState([])
   const [totalBalance, setTotalBalance] = useState(0)
@@ -43,6 +44,7 @@ export default function RetirementPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <BackButton href="/dashboard/personal" />
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Balance</CardTitle>

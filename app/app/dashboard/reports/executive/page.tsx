@@ -19,6 +19,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 
+import { BackButton } from '@/components/ui/back-button';
 export default function ExecutiveDashboardPage() {
   const [selectedPeriod, setSelectedPeriod] = useState('current-month')
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -47,6 +48,7 @@ export default function ExecutiveDashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+        <BackButton href="/dashboard/reports" />
           <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
             <SelectTrigger className="w-[180px]">
               <SelectValue />

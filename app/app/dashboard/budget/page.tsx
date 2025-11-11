@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/progress'
 import { PieChart, TrendingUp, TrendingDown, DollarSign, Calendar, AlertTriangle } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
+import { BackButton } from '@/components/ui/back-button';
 interface Budget {
   id: string
   category: string
@@ -130,6 +131,7 @@ function BudgetPageClient() {
             
             {/* Period Selector */}
             <div className="flex items-center gap-3">
+        <BackButton href="/dashboard" />
               <Calendar className="h-5 w-5 text-gray-500" />
               <Select value={selectedMonth.toString()} onValueChange={(v) => setSelectedMonth(parseInt(v))}>
                 <SelectTrigger className="w-[140px]">

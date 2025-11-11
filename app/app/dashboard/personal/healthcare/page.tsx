@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { BackButton } from '@/components/ui/back-button'
 import { Heart, Plus, DollarSign } from 'lucide-react'
 
 export default function HealthcarePage() {
@@ -29,6 +30,7 @@ export default function HealthcarePage() {
 
   return (
     <div className="space-y-6">
+      <BackButton href="/dashboard/personal" />
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Healthcare Expenses</h1>

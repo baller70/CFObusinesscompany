@@ -18,6 +18,7 @@ import { Upload, FileText, CheckCircle, XCircle, Clock, Eye } from 'lucide-react
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 
+import { BackButton } from '@/components/ui/back-button';
 interface BusinessProfile {
   id: string;
   name: string;
@@ -216,6 +217,7 @@ export default function StatementsPage() {
           <div className="space-y-2">
             <Label htmlFor="statement-upload">PDF Statement File</Label>
             <div className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer">
+        <BackButton href="/dashboard" />
               <Input
                 id="statement-upload"
                 type="file"

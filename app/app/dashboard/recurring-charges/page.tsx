@@ -11,6 +11,7 @@ import { Plus, Repeat, DollarSign, Calendar, TrendingUp, AlertCircle, RefreshCw 
 import { format } from 'date-fns'
 import { toast } from 'sonner'
 
+import { BackButton } from '@/components/ui/back-button';
 export default function RecurringChargesPage() {
   const { data: session, status } = useSession() || {}
   const [recurringCharges, setRecurringCharges] = useState<any[]>([])
@@ -83,7 +84,8 @@ export default function RecurringChargesPage() {
     }
   }
 
-  if (status === 'loading') return <div className="p-6">Loading...</div>
+  if (status === 'loading') return <div className="p-6">
+        <BackButton href="/dashboard" />Loading...</div>
   
   if (!session?.user?.id) {
     redirect('/auth/signin')

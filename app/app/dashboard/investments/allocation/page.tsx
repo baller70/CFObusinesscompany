@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Target, Plus, PieChart, TrendingUp, AlertTriangle, DollarSign } from 'lucide-react'
 
+import { BackButton } from '@/components/ui/back-button';
 interface Allocation {
   category: string
   currentValue: number
@@ -61,6 +62,7 @@ export default function AssetAllocationPage() {
   if (loading) {
     return (
       <div className="p-6 space-y-6 animate-pulse">
+        <BackButton href="/dashboard" />
         <div className="h-8 bg-gray-200 rounded w-1/3"></div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           {[...Array(4)].map((_, i) => (

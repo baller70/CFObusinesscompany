@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Plus, Package, Wrench, DollarSign, TrendingUp, BarChart3 } from 'lucide-react'
 import Link from 'next/link'
 
+import { BackButton } from '@/components/ui/back-button';
 async function getProductsServicesData(userId: string) {
   const [products, services, productStats, serviceStats] = await Promise.all([
     prisma.product.findMany({
@@ -89,6 +90,7 @@ export default async function ProductsServicesPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
+        <BackButton href="/dashboard" />
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Products & Services</h1>

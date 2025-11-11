@@ -12,6 +12,7 @@ import { Plus, FileText, Search, Filter, Calendar, CheckCircle, Clock } from 'lu
 import { format } from 'date-fns'
 import Link from 'next/link'
 
+import { BackButton } from '@/components/ui/back-button';
 async function getJournalEntriesData(userId: string) {
   const [journalEntries, journalStats] = await Promise.all([
     prisma.journalEntry.findMany({
@@ -46,6 +47,7 @@ export default async function JournalEntriesPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
+        <BackButton href="/dashboard" />
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Journal Entries</h1>

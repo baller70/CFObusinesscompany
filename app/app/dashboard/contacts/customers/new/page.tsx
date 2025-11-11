@@ -12,6 +12,7 @@ import { ArrowLeft, Save } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'react-hot-toast'
 
+import { BackButton } from '@/components/ui/back-button';
 export default function NewCustomerPage() {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -62,6 +63,7 @@ export default function NewCustomerPage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
+        <BackButton href="/dashboard/contacts/customers" />
       <div className="flex items-center justify-between mb-8">
         <div>
           <div className="flex items-center space-x-4 mb-2">

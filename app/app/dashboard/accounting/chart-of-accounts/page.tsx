@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { ChartOfAccountsClient } from '@/components/accounting/chart-of-accounts-client'
+import { BackButton } from '@/components/ui/back-button'
 
 export default async function ChartOfAccountsPage() {
   const session = await getServerSession(authOptions)
@@ -22,5 +23,10 @@ export default async function ChartOfAccountsPage() {
     EXPENSE: []
   }
 
-  return <ChartOfAccountsClient mockAccounts={accounts} />
+  return (
+    <>
+      <BackButton href="/dashboard" />
+      <ChartOfAccountsClient mockAccounts={accounts} />
+    </>
+  )
 }

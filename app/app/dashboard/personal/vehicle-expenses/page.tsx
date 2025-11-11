@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
+import { BackButton } from '@/components/ui/back-button';
 export default function VehicleExpensesPage() {
   const [expenses, setExpenses] = useState([])
   const [totalExpenses, setTotalExpenses] = useState(0)
@@ -113,6 +114,7 @@ export default function VehicleExpensesPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <BackButton href="/dashboard/personal" />
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Vehicle Expenses</CardTitle>

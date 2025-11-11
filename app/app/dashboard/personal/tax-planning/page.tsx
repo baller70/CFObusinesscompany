@@ -9,6 +9,7 @@ import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 
+import { BackButton } from '@/components/ui/back-button';
 export default function TaxPlanningPage() {
   const [loading, setLoading] = useState(true)
   const [taxData, setTaxData] = useState<any>(null)
@@ -68,6 +69,7 @@ export default function TaxPlanningPage() {
       {taxData && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <BackButton href="/dashboard/personal" />
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Gross Income</CardTitle>

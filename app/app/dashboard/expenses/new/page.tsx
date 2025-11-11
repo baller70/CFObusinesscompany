@@ -14,6 +14,7 @@ import { ArrowLeft, Upload, X, FileText } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 
+import { BackButton } from '@/components/ui/back-button';
 export default function NewExpensePage() {
   const { data: session, status } = useSession() || {}
   const router = useRouter()
@@ -34,7 +35,8 @@ export default function NewExpensePage() {
 
   // Handle authentication redirect properly
   if (status === 'loading') {
-    return <div className="p-6">Loading...</div>
+    return <div className="p-6">
+        <BackButton href="/dashboard/expenses" />Loading...</div>
   }
 
   if (status === 'unauthenticated') {

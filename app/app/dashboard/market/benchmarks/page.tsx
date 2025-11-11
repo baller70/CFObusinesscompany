@@ -20,6 +20,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 
+import { BackButton } from '@/components/ui/back-button';
 export default function IndustryBenchmarksPage() {
   const [selectedIndustry, setSelectedIndustry] = useState('technology')
   const [selectedMetric, setSelectedMetric] = useState('all')
@@ -44,6 +45,7 @@ export default function IndustryBenchmarksPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+        <BackButton href="/dashboard" />
           <Select value={selectedIndustry} onValueChange={setSelectedIndustry}>
             <SelectTrigger className="w-[180px]">
               <SelectValue />

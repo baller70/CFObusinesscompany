@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { FileSpreadsheet, Download, Calendar, Loader2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
+import { BackButton } from '@/components/ui/back-button';
 export default function ReportsPage() {
   const [reports, setReports] = useState<any[]>([])
   const [loading, setLoading] = useState<string | null>(null)
@@ -130,6 +131,7 @@ export default function ReportsPage() {
         <Card className="bg-blue-50 border-blue-200">
           <CardContent className="pt-6">
             <div className="flex items-center gap-2">
+        <BackButton href="/dashboard/personal" />
               <div className="h-2 w-2 rounded-full bg-blue-600"></div>
               <p className="text-sm font-medium text-blue-900">
                 Reports will be generated from: <span className="font-bold">{currentProfile.name}</span>

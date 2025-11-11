@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 
+import { BackButton } from '@/components/ui/back-button';
 export default function CharitableGivingPage() {
   const [donations, setDonations] = useState([])
   const [totalGiving, setTotalGiving] = useState(0)
@@ -114,6 +115,7 @@ export default function CharitableGivingPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <BackButton href="/dashboard/personal" />
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Giving ({new Date().getFullYear()})</CardTitle>

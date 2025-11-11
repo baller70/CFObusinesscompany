@@ -26,6 +26,7 @@ import { format, subMonths } from 'date-fns'
 import { toast } from 'sonner'
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination'
 
+import { BackButton } from '@/components/ui/back-button';
 export default function ReportsPage() {
   const [selectedPeriod, setSelectedPeriod] = useState('current-month')
   const [selectedCategory, setSelectedCategory] = useState('all')
@@ -92,6 +93,7 @@ export default function ReportsPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
+        <BackButton href="/dashboard" />
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Financial Reports</h1>

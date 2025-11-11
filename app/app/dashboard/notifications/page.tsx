@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { authOptions } from "../../../lib/auth";
 import { DashboardLayout } from "../../../components/dashboard/dashboard-layout";
 
+import { BackButton } from '@/components/ui/back-button';
 export default async function NotificationsPage() {
   const session = await getServerSession(authOptions);
 
@@ -20,6 +21,7 @@ export default async function NotificationsPage() {
         </div>
         
         <div className="bg-white rounded-lg shadow p-8 text-center">
+        <BackButton href="/dashboard" />
           <h2 className="text-xl font-semibold mb-4">Coming Soon</h2>
           <p className="text-gray-600">
             Notification management features are being developed and will be available soon.

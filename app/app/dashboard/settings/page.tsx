@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { User, Building, CreditCard, Bell, Shield, Download, Upload, Trash2, Key, Globe, Moon, Sun, Database, Calendar, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
+import { BackButton } from '@/components/ui/back-button';
 interface ProfileData {
   firstName: string
   lastName: string
@@ -335,7 +336,8 @@ export default function SettingsPage() {
     }
   }
   
-  if (status === 'loading') return <div className="p-6">Loading...</div>
+  if (status === 'loading') return <div className="p-6">
+        <BackButton href="/dashboard" />Loading...</div>
   
   if (!session?.user?.id) {
     redirect('/auth/signin')

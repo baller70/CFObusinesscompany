@@ -14,6 +14,7 @@ import { InvoiceActions } from '@/components/invoices/invoice-actions'
 import { ExportFilterButtons, EstimateActions, DraftInvoiceActions, OverdueInvoiceActions } from '@/components/invoices/invoice-page-client'
 import Link from 'next/link'
 
+import { BackButton } from '@/components/ui/back-button';
 export default function InvoicesPage() {
   const { data: session } = useSession() || {}
   const router = useRouter()
@@ -61,6 +62,7 @@ export default function InvoicesPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
+        <BackButton href="/dashboard" />
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Invoices & Estimates</h1>

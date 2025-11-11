@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Users, Plus, Edit, Trash2, UserCircle } from 'lucide-react'
 import { HouseholdMemberDialog } from '@/components/household-member-dialog'
 import { toast } from 'react-hot-toast'
+import { BackButton } from '@/components/ui/back-button';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -132,6 +133,7 @@ export default function HouseholdPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <BackButton href="/dashboard/personal" />
               {members.map((member: any) => {
                 const age = member.birthDate ? getAgeFromBirthDate(member.birthDate) : null
                 return (

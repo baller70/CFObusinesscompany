@@ -12,6 +12,7 @@ import { Plus, Building2, Phone, Mail, MapPin, CreditCard, FileText, TrendingUp 
 import Link from 'next/link'
 import { toast } from 'sonner'
 
+import { BackButton } from '@/components/ui/back-button';
 async function getVendorsData(userId: string) {
   const [vendors, vendorStats, recentTransactions] = await Promise.all([
     prisma.vendor.findMany({
@@ -75,6 +76,7 @@ export default async function VendorsPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
+        <BackButton href="/dashboard" />
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Vendors</h1>

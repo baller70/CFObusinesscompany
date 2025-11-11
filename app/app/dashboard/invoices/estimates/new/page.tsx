@@ -13,6 +13,7 @@ import { CalendarIcon, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 
+import { BackButton } from '@/components/ui/back-button';
 interface EstimateItem {
   id: string
   description: string
@@ -112,6 +113,7 @@ export default function NewEstimatePage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <BackButton href="/dashboard/invoices" />
               <div>
                 <Label htmlFor="customerName">Customer Name</Label>
                 <Input

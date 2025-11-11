@@ -11,6 +11,7 @@ import { Plus, Clock, AlertCircle, CheckCircle, Calendar } from 'lucide-react'
 import { format } from 'date-fns'
 import Link from 'next/link'
 
+import { BackButton } from '@/components/ui/back-button';
 async function getBillsData(userId: string) {
   // Get user with active profile
   const user = await prisma.user.findUnique({
@@ -96,6 +97,7 @@ export default async function BillsToPayPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
+        <BackButton href="/dashboard/expenses" />
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Bills to Pay</h1>

@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Activity, Plus, TrendingUp, TrendingDown, DollarSign, Calendar, ArrowUpRight, ArrowDownRight } from 'lucide-react'
 
+import { BackButton } from '@/components/ui/back-button';
 export default function CashFlowManagementPage() {
   const { data: session } = useSession() || {}
   const [loading, setLoading] = useState(false)
@@ -16,6 +17,7 @@ export default function CashFlowManagementPage() {
 
   return (
     <div className="p-6 space-y-6">
+        <BackButton href="/dashboard" />
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Cash Flow Management</h1>

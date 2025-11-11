@@ -15,6 +15,7 @@ import { Calendar, Plus, Save, Loader2, ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 
+import { BackButton } from '@/components/ui/back-button';
 interface InvoiceItem {
   description: string;
   quantity: number;
@@ -119,6 +120,7 @@ export default function NewInvoicePage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
+        <BackButton href="/dashboard/invoices" />
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Create Invoice</h1>

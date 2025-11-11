@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Home, Plus, Package, Edit, Trash2, Tag } from 'lucide-react'
 import { HomeInventoryDialog } from '@/components/home-inventory-dialog'
 import { toast } from 'react-hot-toast'
+import { BackButton } from '@/components/ui/back-button';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -111,6 +112,7 @@ export default function HomeInventoryPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <BackButton href="/dashboard/personal" />
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Inventory Value</CardTitle>

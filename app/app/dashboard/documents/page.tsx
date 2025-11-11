@@ -35,6 +35,7 @@ import { DocumentVersionDialog } from '@/components/document-version-dialog'
 import { DocumentShareDialog } from '@/components/document-share-dialog'
 import { DocumentRetentionDialog } from '@/components/document-retention-dialog'
 
+import { BackButton } from '@/components/ui/back-button';
 export default function DocumentsPage() {
   const { data: session, status } = useSession() || {}
   const [documents, setDocuments] = useState<any[]>([])
@@ -160,6 +161,7 @@ export default function DocumentsPage() {
       )}
       
       <div className="p-6 max-w-7xl mx-auto">
+        <BackButton href="/dashboard" />
         <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Documents</h1>

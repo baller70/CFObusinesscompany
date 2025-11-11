@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
+import { BackButton } from '@/components/ui/back-button';
 interface Recommendation {
   category: string
   title: string
@@ -186,6 +187,7 @@ export default function TaxBreaksPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <BackButton href="/dashboard/personal" />
               <div>
                 <p className="text-sm text-muted-foreground">Annual Income</p>
                 <p className="text-lg font-bold">${financialData.income.toLocaleString()}</p>

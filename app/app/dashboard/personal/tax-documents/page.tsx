@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { Badge } from '@/components/ui/badge'
 
+import { BackButton } from '@/components/ui/back-button';
 export default function TaxDocumentsPage() {
   const [documents, setDocuments] = useState([])
   const [stats, setStats] = useState({ totalDocuments: 0, currentYear: new Date().getFullYear(), byType: {} })
@@ -150,6 +151,7 @@ export default function TaxDocumentsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <BackButton href="/dashboard/personal" />
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Documents</CardTitle>

@@ -14,6 +14,7 @@ import { ArrowLeft, Plus, Loader2, Tag } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 
+import { BackButton } from '@/components/ui/back-button';
 interface CategoryFormData {
   name: string;
   type: 'INCOME' | 'EXPENSE';
@@ -73,6 +74,7 @@ export default function NewCategoryPage() {
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
+        <BackButton href="/dashboard/categories" />
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Create New Category</h1>

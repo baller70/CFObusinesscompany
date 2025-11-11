@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { BackButton } from '@/components/ui/back-button';
 import { 
   Landmark, 
   Plus,
@@ -124,6 +125,7 @@ export default function TreasuryPositionsPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-background p-6 lg:p-8 max-w-7xl mx-auto">
+        <BackButton href="/dashboard" />
         <div className="animate-pulse space-y-6">
           <div className="h-8 bg-gray-200 rounded w-1/3"></div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">

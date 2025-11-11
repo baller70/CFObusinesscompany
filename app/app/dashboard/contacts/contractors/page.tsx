@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Plus, Users, Phone, Mail, MapPin, DollarSign, FileText } from 'lucide-react'
 import Link from 'next/link'
 
+import { BackButton } from '@/components/ui/back-button';
 async function getContractorsData(userId: string) {
   const [contractors, contractorStats] = await Promise.all([
     prisma.contractor.findMany({
@@ -62,6 +63,7 @@ export default async function ContractorsPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
+        <BackButton href="/dashboard" />
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">People & Contractors</h1>

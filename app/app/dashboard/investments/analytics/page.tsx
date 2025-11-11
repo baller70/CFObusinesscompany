@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { TrendingUp, TrendingDown, BarChart3, DollarSign, Activity } from 'lucide-react'
 
+import { BackButton } from '@/components/ui/back-button';
 interface Investment {
   id: string
   name: string
@@ -57,6 +58,7 @@ export default function PerformanceAnalyticsPage() {
   if (loading) {
     return (
       <div className="p-6 space-y-6 animate-pulse">
+        <BackButton href="/dashboard" />
         <div className="h-8 bg-gray-200 rounded w-1/3"></div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           {[...Array(4)].map((_, i) => (

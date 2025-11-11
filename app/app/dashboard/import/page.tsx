@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Upload, Download, FileText, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
+import { BackButton } from '@/components/ui/back-button';
 interface ImportStep {
   id: number;
   title: string;
@@ -94,6 +95,7 @@ export default function ImportPage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
+        <BackButton href="/dashboard" />
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Import Data</h1>
         <p className="text-gray-600 mt-1">Import transactions, customers, or other data from CSV or Excel files</p>

@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Activity, TrendingUp, TrendingDown } from 'lucide-react'
 
+import { BackButton } from '@/components/ui/back-button';
 export default function CashFlowPage() {
   const [forecast, setForecast] = useState([])
   const [summary, setSummary] = useState({
@@ -56,6 +57,7 @@ export default function CashFlowPage() {
         <Card className="bg-blue-50 border-blue-200">
           <CardContent className="pt-6">
             <div className="flex items-center gap-2">
+        <BackButton href="/dashboard/personal" />
               <div className="h-2 w-2 rounded-full bg-blue-600"></div>
               <p className="text-sm font-medium text-blue-900">
                 Showing cash flow for: <span className="font-bold">{currentProfile.name}</span>

@@ -28,6 +28,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
+import { BackButton } from '@/components/ui/back-button';
 export default function DebtsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedStrategy, setSelectedStrategy] = useState('avalanche')
@@ -173,6 +174,7 @@ export default function DebtsPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
+        <BackButton href="/dashboard" />
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Debt Management</h1>

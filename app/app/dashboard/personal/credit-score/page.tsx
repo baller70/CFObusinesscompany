@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
+import { BackButton } from '@/components/ui/back-button';
 export default function CreditScorePage() {
   const [scores, setScores] = useState<any[]>([])
   const [scoresByPerson, setScoresByPerson] = useState<any[]>([])
@@ -168,6 +169,7 @@ export default function CreditScorePage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
+        <BackButton href="/dashboard/personal" />
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Credit Score Monitoring</h1>

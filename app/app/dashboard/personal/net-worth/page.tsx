@@ -9,6 +9,8 @@ import Link from 'next/link'
 import { AddAssetDialog } from '@/components/personal/add-asset-dialog'
 import { AddLiabilityDialog } from '@/components/personal/add-liability-dialog'
 
+import { BackButton } from '@/components/ui/back-button'
+
 export default function NetWorthPage() {
   const [data, setData] = useState({
     totalAssets: 0,
@@ -41,6 +43,7 @@ export default function NetWorthPage() {
   return (
     <>
       <div className="space-y-6">
+        <BackButton href="/dashboard/personal" />
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold">Net Worth Tracker</h1>

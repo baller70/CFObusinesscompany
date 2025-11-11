@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { BackButton } from '@/components/ui/back-button'
 import { Shield, Plus, AlertCircle } from 'lucide-react'
 
 export default function InsurancePage() {
@@ -27,6 +28,7 @@ export default function InsurancePage() {
 
   return (
     <div className="space-y-6">
+      <BackButton href="/dashboard/personal" />
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Insurance Policies</h1>

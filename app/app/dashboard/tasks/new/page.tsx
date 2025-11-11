@@ -14,6 +14,7 @@ import { ArrowLeft, Plus, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 
+import { BackButton } from '@/components/ui/back-button';
 interface TaskFormData {
   title: string;
   project: string;
@@ -142,6 +143,7 @@ export default function NewTaskPage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
+        <BackButton href="/dashboard/tasks" />
       <div className="flex items-center space-x-4 mb-8">
         <Link href="/dashboard/tasks">
           <Button variant="outline" size="sm">

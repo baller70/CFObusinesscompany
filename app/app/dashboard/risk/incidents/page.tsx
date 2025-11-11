@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { BackButton } from '@/components/ui/back-button';
 import { 
   AlertCircle, 
   Plus, 
@@ -27,6 +28,7 @@ export default function RiskIncidentsPage() {
 
   return (
     <div className="p-6 space-y-6">
+        <BackButton href="/dashboard" />
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Risk Incidents</h1>

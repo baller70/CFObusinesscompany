@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Plus, Printer, CreditCard, CheckCircle, Clock, FileText } from 'lucide-react'
 import Link from 'next/link'
 
+import { BackButton } from '@/components/ui/back-button';
 export default async function PrintChecksPage() {
   const session = await getServerSession(authOptions)
   
@@ -27,6 +28,7 @@ export default async function PrintChecksPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
+        <BackButton href="/dashboard/expenses" />
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Print Checks</h1>

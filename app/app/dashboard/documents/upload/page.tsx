@@ -14,6 +14,7 @@ import { Upload, ArrowLeft, Loader2, FileText, Image, FileVideo, Music } from 'l
 import { toast } from 'sonner'
 import Link from 'next/link'
 
+import { BackButton } from '@/components/ui/back-button';
 interface DocumentFormData {
   name: string;
   description: string;
@@ -125,6 +126,7 @@ export default function DocumentUploadPage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
+        <BackButton href="/dashboard/documents" />
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Upload Documents</h1>

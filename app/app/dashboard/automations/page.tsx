@@ -26,6 +26,7 @@ import {
 import { format } from 'date-fns'
 import Link from 'next/link'
 
+import { BackButton } from '@/components/ui/back-button';
 export default function AutomationsPage() {
   const { data: session, status } = useSession() || {}
   
@@ -108,6 +109,7 @@ export default function AutomationsPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
+        <BackButton href="/dashboard" />
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Automations</h1>

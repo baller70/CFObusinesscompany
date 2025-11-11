@@ -16,6 +16,7 @@ import { TransactionExportFilterButtons, TransactionActions, ExpenseReceiptButto
 import Link from 'next/link'
 import { toast } from 'sonner'
 
+import { BackButton } from '@/components/ui/back-button';
 export default function TransactionsPage() {
   const { data: session, status } = useSession() || {}
   const [transactions, setTransactions] = useState<any[]>([])
@@ -101,7 +102,8 @@ export default function TransactionsPage() {
     setRefreshKey(k => k + 1)
   }
   
-  if (status === 'loading') return <div className="p-6">Loading...</div>
+  if (status === 'loading') return <div className="p-6">
+        <BackButton href="/dashboard" />Loading...</div>
   
   if (!session?.user?.id) {
     redirect('/auth/signin')

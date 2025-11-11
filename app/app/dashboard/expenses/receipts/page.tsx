@@ -14,6 +14,7 @@ import { format } from 'date-fns'
 import { ReceiptDialog } from '@/components/receipt-dialog'
 import { ReceiptViewDialog } from '@/components/receipt-view-dialog'
 import { toast } from 'react-hot-toast'
+import { BackButton } from '@/components/ui/back-button';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -255,6 +256,7 @@ export default function ReceiptsPage() {
           </p>
         </div>
         <div className="flex gap-2">
+        <BackButton href="/dashboard/expenses" />
           {bulkSelectMode ? (
             <>
               <Button 

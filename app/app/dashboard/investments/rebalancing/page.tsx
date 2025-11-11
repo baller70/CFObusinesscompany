@@ -8,12 +8,14 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Workflow, Plus, AlertTriangle, CheckCircle2, TrendingUp, Scale } from 'lucide-react'
 
+import { BackButton } from '@/components/ui/back-button';
 export default function RebalancingPage() {
   const { data: session } = useSession() || {}
   const [loading, setLoading] = useState(false)
 
   return (
     <div className="p-6 space-y-6">
+        <BackButton href="/dashboard" />
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Portfolio Rebalancing</h1>

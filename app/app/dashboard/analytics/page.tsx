@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { DashboardLayout } from "../../../components/dashboard/dashboard-layout";
 
+import { BackButton } from '@/components/ui/back-button';
 export default async function AnalyticsPage() {
   const session = await getServerSession(authOptions);
 
@@ -20,6 +21,7 @@ export default async function AnalyticsPage() {
       <div className="space-y-8">
         {/* Spending Trends */}
         <div className="bg-white rounded-lg shadow-sm border p-6">
+        <BackButton href="/dashboard" />
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Spending Trends</h3>
           <div className="text-center py-12">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-lg mb-4">

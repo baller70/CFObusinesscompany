@@ -20,6 +20,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 
+import { BackButton } from '@/components/ui/back-button';
 export default function MarketDataPage() {
   const [selectedMarket, setSelectedMarket] = useState('us-stocks')
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -49,6 +50,7 @@ export default function MarketDataPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+        <BackButton href="/dashboard" />
           <Select value={selectedMarket} onValueChange={setSelectedMarket}>
             <SelectTrigger className="w-[180px]">
               <SelectValue />

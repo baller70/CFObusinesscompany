@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from '@/hooks/use-toast'
 import { Skeleton } from '@/components/ui/skeleton'
+import { BackButton } from '@/components/ui/back-button';
 import {
   AreaChart,
   Area,
@@ -246,6 +247,7 @@ export default function BurnRatePage() {
   if (loading) {
     return (
       <div className="container mx-auto p-6 space-y-6">
+        <BackButton href="/dashboard" />
         <Skeleton className="h-12 w-64" />
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (

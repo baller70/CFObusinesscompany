@@ -14,6 +14,7 @@ import DashboardContent from '@/components/dashboard/dashboard-content'
 import { TrendingUp, FileText, Calendar, Users } from 'lucide-react'
 import { getCurrentBusinessProfileId } from '@/lib/business-profile-utils'
 
+import { BackButton } from '@/components/ui/back-button';
 async function getDashboardData(userId: string) {
   const currentDate = new Date()
   
@@ -216,6 +217,7 @@ export default async function DashboardPage() {
     <DashboardWithCFO>
       <div className="min-h-screen bg-gradient-background">
         <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+        <BackButton href="/" />
           {/* Header */}
           <div className="mb-10 animate-fade-in">
             <h1 className="text-heading text-foreground mb-3">

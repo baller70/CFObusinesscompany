@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Car, Plus, Edit, Trash2, AlertTriangle, DollarSign } from 'lucide-react'
 import { VehicleDialog } from '@/components/vehicle-dialog'
 import { toast } from 'react-hot-toast'
+import { BackButton } from '@/components/ui/back-button';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -111,6 +112,7 @@ export default function VehiclesPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <BackButton href="/dashboard/personal" />
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Vehicles</CardTitle>

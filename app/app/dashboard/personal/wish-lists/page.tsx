@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { format } from 'date-fns'
 
+import { BackButton } from '@/components/ui/back-button';
 export default function WishListsPage() {
   const [wishLists, setWishLists] = useState<any[]>([])
   const [selectedList, setSelectedList] = useState<any>(null)
@@ -165,6 +166,7 @@ export default function WishListsPage() {
             )}
           </div>
           <div className="flex gap-2">
+        <BackButton href="/dashboard/personal" />
             <Button variant="outline" onClick={() => handleEditList(list)}>
               <Edit className="h-4 w-4 mr-2" />
               Edit List
