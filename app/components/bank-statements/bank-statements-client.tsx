@@ -58,6 +58,7 @@ export default function BankStatementsClient() {
   
   // Manual transaction entry state
   const [manualTransactionText, setManualTransactionText] = useState('');
+  const [statementDate, setStatementDate] = useState('');
   const [isProcessingManual, setIsProcessingManual] = useState(false);
   const [manualTransactionCards, setManualTransactionCards] = useState<ManualTransactionCard[]>([]);
 
@@ -357,12 +358,19 @@ export default function BankStatementsClient() {
     try {
       setIsProcessingManual(true);
 
+      if (!statementDate.trim()) {
+        toast.error('Please enter the statement date (e.g., January 2024)');
+        setIsProcessingManual(false);
+        return;
+      }
+
       // Parse the manual text into transactions
       const lines = manualTransactionText.trim().split('\n');
       const transactions: ManualTransaction[] = [];
       
       // Section detection - determines if amounts should be positive (income) or negative (expense)
       let currentSectionType: 'income' | 'expense' = 'income';
+      let currentSectionName = '';
       
       // Income sections (deposits, additions)
       const incomeSections = [
@@ -391,65 +399,133 @@ export default function BankStatementsClient() {
         'atm withdrawal',
         'wire transfer out',
         'outgoing wire',
-        'payment'
+        'payment',
+        'other deductions',
+        'atm / misc'
       ];
       
-      for (const line of lines) {
-        const trimmedLine = line.trim();
+      console.log(`[Manual Parser] Starting to parse ${lines.length} lines...`);
+      
+      for (let i = 0; i < lines.length; i++) {
+        const trimmedLine = lines[i].trim();
         if (!trimmedLine) continue;
         
-        // Check if this line is a section header
         const lowerLine = trimmedLine.toLowerCase();
+        
+        // Check if this line is a section header
         if (incomeSections.some(section => lowerLine.includes(section))) {
           currentSectionType = 'income';
-          continue; // Skip header lines
+          currentSectionName = trimmedLine;
+          console.log(`[Manual Parser] Found INCOME section: ${currentSectionName}`);
+          continue;
         }
         if (expenseSections.some(section => lowerLine.includes(section))) {
           currentSectionType = 'expense';
-          continue; // Skip header lines
-        }
-        
-        // Skip column header lines
-        if (lowerLine.includes('date posted') || lowerLine.includes('amount') || lowerLine.includes('description')) {
+          currentSectionName = trimmedLine;
+          console.log(`[Manual Parser] Found EXPENSE section: ${currentSectionName}`);
           continue;
         }
         
-        // Try to parse transaction line (tab-separated: Date | Amount | Description | Reference)
-        const parts = trimmedLine.split(/\t+/);
+        // Skip column header lines
+        if (lowerLine.includes('date posted') || 
+            lowerLine.includes('check number') ||
+            (lowerLine.includes('amount') && lowerLine.includes('description'))) {
+          console.log(`[Manual Parser] Skipping header line: ${trimmedLine.substring(0, 50)}...`);
+          continue;
+        }
         
-        if (parts.length >= 3) {
-          const date = parts[0].trim();
-          const amountStr = parts[1].trim().replace(/[\$,]/g, '');
-          const description = parts[2].trim();
-          const referenceNumber = parts[3]?.trim() || '';
+        // Try to parse transaction line
+        // Split by tabs first, then by multiple spaces if no tabs
+        let parts = trimmedLine.split(/\t+/).filter(p => p.trim());
+        if (parts.length < 2) {
+          parts = trimmedLine.split(/\s{2,}/).filter(p => p.trim());
+        }
+        
+        if (parts.length < 2) continue; // Need at least date and amount
+        
+        // Determine format based on section
+        let date = '';
+        let amount = 0;
+        let description = '';
+        let referenceNumber = '';
+        let checkNumber = '';
+        
+        // Check if this is a "Checks" section (Date | Check# | Amount | Reference)
+        if (currentSectionName.toLowerCase().includes('checks') || 
+            currentSectionName.toLowerCase().includes('substitute')) {
+          if (parts.length >= 3) {
+            date = parts[0].trim();
+            checkNumber = parts[1].trim();
+            const amountStr = parts[2].trim().replace(/[\$,]/g, '');
+            amount = parseFloat(amountStr);
+            referenceNumber = parts[3]?.trim() || '';
+            description = `Check #${checkNumber}`;
+          }
+        } else {
+          // Standard format: Date | Amount | Description | Reference
+          // OR: Date | Description | Amount (some statements)
+          date = parts[0].trim();
           
-          // Parse the amount
-          let amount = parseFloat(amountStr);
+          // Try to find the amount - it should have numbers and possibly $ or ,
+          let amountIndex = -1;
+          let descIndex = -1;
           
-          // Skip if not a valid amount
-          if (isNaN(amount)) continue;
-          
-          // Apply sign based on section type
-          if (currentSectionType === 'expense') {
-            amount = -Math.abs(amount); // Ensure negative
-          } else {
-            amount = Math.abs(amount); // Ensure positive
+          for (let j = 1; j < parts.length; j++) {
+            const part = parts[j].trim().replace(/[\$,]/g, '');
+            if (!isNaN(parseFloat(part)) && part.match(/^\d+\.?\d*$/)) {
+              amountIndex = j;
+              break;
+            }
           }
           
-          // Validate date format (should be like "01/23" or "01/23/2024")
-          if (date && date.match(/\d{1,2}\/\d{1,2}/)) {
-            transactions.push({ 
-              date, 
-              description: description + (referenceNumber ? ` (Ref: ${referenceNumber})` : ''),
-              amount,
-              category: currentSectionType === 'income' ? 'Income' : 'Expense'
-            });
+          if (amountIndex === 1) {
+            // Format: Date | Amount | Description | Reference
+            const amountStr = parts[1].trim().replace(/[\$,]/g, '');
+            amount = parseFloat(amountStr);
+            description = parts[2]?.trim() || '';
+            referenceNumber = parts[3]?.trim() || '';
+          } else if (amountIndex > 1) {
+            // Format: Date | Description | Amount | Reference
+            description = parts.slice(1, amountIndex).join(' ').trim();
+            const amountStr = parts[amountIndex].trim().replace(/[\$,]/g, '');
+            amount = parseFloat(amountStr);
+            referenceNumber = parts[amountIndex + 1]?.trim() || '';
           }
         }
+        
+        // Validate amount
+        if (isNaN(amount) || amount === 0) continue;
+        
+        // Validate date format (should be like "01/23" or "01/23/2024" or just "01/02")
+        if (!date || !date.match(/\d{1,2}\/\d{1,2}/)) continue;
+        
+        // Apply sign based on section type
+        if (currentSectionType === 'expense') {
+          amount = -Math.abs(amount);
+        } else {
+          amount = Math.abs(amount);
+        }
+        
+        // Build full description
+        let fullDescription = description;
+        if (referenceNumber) {
+          fullDescription += ` (Ref: ${referenceNumber})`;
+        }
+        
+        transactions.push({
+          date,
+          description: fullDescription,
+          amount,
+          category: currentSectionType === 'income' ? 'Income' : 'Expense'
+        });
+        
+        console.log(`[Manual Parser] Parsed transaction ${transactions.length}: ${date} | ${fullDescription.substring(0, 30)}... | ${amount}`);
       }
 
+      console.log(`[Manual Parser] Total transactions extracted: ${transactions.length}`);
+
       if (transactions.length === 0) {
-        toast.error('No valid transactions found. Please check the format.');
+        toast.error('❌ No valid transactions found. Please check the format.');
         return;
       }
 
@@ -457,20 +533,8 @@ export default function BankStatementsClient() {
       const totalIncome = transactions.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0);
       const totalExpenses = transactions.filter(t => t.amount < 0).reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
-      // Detect month/year from first transaction or use current date
-      let monthYear = 'Current';
-      if (transactions[0].date) {
-        try {
-          // Assume format is MM/DD or MM/DD/YYYY
-          const dateParts = transactions[0].date.split('/');
-          const month = parseInt(dateParts[0]);
-          const year = dateParts[2] ? parseInt(dateParts[2]) : new Date().getFullYear();
-          const date = new Date(year, month - 1);
-          monthYear = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-        } catch (e) {
-          monthYear = 'Current';
-        }
-      }
+      // Use the statement date provided by user
+      const monthYear = statementDate.trim();
 
       // Create a new card
       const newCard: ManualTransactionCard = {
@@ -481,6 +545,7 @@ export default function BankStatementsClient() {
 
       setManualTransactionCards(prev => [...prev, newCard]);
       setManualTransactionText(''); // Clear input
+      setStatementDate(''); // Clear date
       toast.success(`✅ Created card: ${transactions.length} transactions (${transactions.filter(t => t.amount > 0).length} income, ${transactions.filter(t => t.amount < 0).length} expenses)`);
 
     } catch (error) {
@@ -563,12 +628,27 @@ export default function BankStatementsClient() {
               </p>
             </div>
 
+            {/* Statement Date Input */}
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Statement Date (e.g., January 2024)
+              </label>
+              <input
+                type="text"
+                value={statementDate}
+                onChange={(e) => setStatementDate(e.target.value)}
+                placeholder="January 2024"
+                className="w-full p-3 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                disabled={isProcessingManual}
+              />
+            </div>
+
             {/* Text Input */}
             <textarea
               value={manualTransactionText}
               onChange={(e) => setManualTransactionText(e.target.value)}
-              placeholder="Paste your transactions here..."
-              className="w-full min-h-[150px] p-4 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+              placeholder="Paste your bank statement transactions here (including all sections like Deposits, Debit Card Purchases, ACH Deductions, etc.)..."
+              className="w-full min-h-[200px] p-4 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-y font-mono text-sm"
               disabled={isProcessingManual}
             />
 
