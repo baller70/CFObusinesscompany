@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Loader2, Paperclip, Send, Sparkles, FileText } from 'lucide-react';
+import { Loader2, Paperclip, Send, Sparkles, FileText, Building2, Home, CheckCircle } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -15,6 +15,15 @@ interface Message {
   timestamp: Date;
   fileName?: string;
   model?: string;
+  extractedTransactions?: ExtractedTransaction[];
+}
+
+interface ExtractedTransaction {
+  date: string;
+  description: string;
+  amount: number;
+  category?: string;
+  profileType: 'BUSINESS' | 'PERSONAL';
 }
 
 export default function BankStatementsClient() {
@@ -30,6 +39,7 @@ export default function BankStatementsClient() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedModel, setSelectedModel] = useState('RouteLLM');
+  const [loadingTransactions, setLoadingTransactions] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -193,6 +203,17 @@ export default function BankStatementsClient() {
         throw new Error('No response received from ChatLLM');
       }
 
+      // Parse transactions from the response
+      const extractedTransactions = parseTransactions(assistantContent);
+      if (extractedTransactions.length > 0) {
+        // Update the message with extracted transactions
+        setMessages(prev => prev.map(m => 
+          m.id === assistantMessageId 
+            ? { ...m, extractedTransactions }
+            : m
+        ));
+      }
+
     } catch (error) {
       console.error('Chat error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to send message';
@@ -219,6 +240,83 @@ export default function BankStatementsClient() {
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
+  };
+
+  const parseTransactions = (content: string): ExtractedTransaction[] => {
+    try {
+      // Try to find JSON array in the content
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (Array.isArray(parsed)) {
+          return parsed.map((t: any) => ({
+            date: t.date || t.Date || '',
+            description: t.description || t.Description || '',
+            amount: parseFloat(t.amount || t.Amount || 0),
+            category: t.category || t.Category || '',
+            profileType: (t.profileType || t.profile || t.type || 'BUSINESS').toUpperCase() as 'BUSINESS' | 'PERSONAL'
+          }));
+        }
+      }
+
+      // Fallback: Try to parse line by line if JSON parsing fails
+      const lines = content.split('\n');
+      const transactions: ExtractedTransaction[] = [];
+      
+      for (const line of lines) {
+        // Look for transaction patterns
+        const match = line.match(/(\d{1,2}\/\d{1,2}\/\d{4})\s+(.+?)\s+([\$\-\+]?[\d,]+\.?\d*)\s+(BUSINESS|PERSONAL)/i);
+        if (match) {
+          transactions.push({
+            date: match[1],
+            description: match[2].trim(),
+            amount: parseFloat(match[3].replace(/[\$,]/g, '')),
+            profileType: match[4].toUpperCase() as 'BUSINESS' | 'PERSONAL'
+          });
+        }
+      }
+
+      return transactions;
+    } catch (error) {
+      console.error('Error parsing transactions:', error);
+      return [];
+    }
+  };
+
+  const handleLoadTransactions = async (messageId: string, transactions: ExtractedTransaction[]) => {
+    setLoadingTransactions(messageId);
+    
+    try {
+      // Save transactions to database
+      const response = await fetch('/api/bank-statements/load-transactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ transactions }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save transactions');
+      }
+
+      const result = await response.json();
+      
+      toast.success(`✅ Successfully loaded ${result.count} transactions!`);
+      
+      // Update message to show loaded state
+      setMessages(prev => prev.map(m => 
+        m.id === messageId 
+          ? { ...m, extractedTransactions: undefined }
+          : m
+      ));
+      
+    } catch (error) {
+      console.error('Error loading transactions:', error);
+      toast.error('Failed to load transactions. Please try again.');
+    } finally {
+      setLoadingTransactions(null);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -274,6 +372,83 @@ export default function BankStatementsClient() {
                           : message.content.find(c => c.type === 'text')?.text || 'Processing...'}
                       </p>
                     </div>
+                    
+                    {/* Transaction Card */}
+                    {message.extractedTransactions && message.extractedTransactions.length > 0 && (
+                      <Card className="mt-4 bg-card border-primary/30">
+                        <div className="p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                              <Sparkles className="w-4 h-4 text-primary" />
+                              Extracted Transactions
+                            </h3>
+                            <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
+                              {message.extractedTransactions.length} transactions
+                            </span>
+                          </div>
+                          
+                          {/* Transaction List */}
+                          <div className="max-h-64 overflow-y-auto space-y-2 mb-4">
+                            {message.extractedTransactions.map((transaction, idx) => (
+                              <div 
+                                key={idx}
+                                className="flex items-start justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors"
+                              >
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    {transaction.profileType === 'BUSINESS' ? (
+                                      <Building2 className="w-3 h-3 text-blue-500" />
+                                    ) : (
+                                      <Home className="w-3 h-3 text-green-500" />
+                                    )}
+                                    <span className="text-xs font-medium text-foreground">
+                                      {transaction.description}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                    <span>{transaction.date}</span>
+                                    {transaction.category && (
+                                      <>
+                                        <span>•</span>
+                                        <span>{transaction.category}</span>
+                                      </>
+                                    )}
+                                    <span>•</span>
+                                    <span className={transaction.profileType === 'BUSINESS' ? 'text-blue-500' : 'text-green-500'}>
+                                      {transaction.profileType}
+                                    </span>
+                                  </div>
+                                </div>
+                                <span className={`text-sm font-semibold ${
+                                  transaction.amount >= 0 ? 'text-green-600' : 'text-red-600'
+                                }`}>
+                                  {transaction.amount >= 0 ? '+' : ''}{transaction.amount.toFixed(2)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                          
+                          {/* Load Results Button */}
+                          <Button 
+                            onClick={() => handleLoadTransactions(message.id, message.extractedTransactions!)}
+                            disabled={loadingTransactions === message.id}
+                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+                          >
+                            {loadingTransactions === message.id ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Loading transactions...
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                Load Results ({message.extractedTransactions.length} transactions)
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </Card>
+                    )}
                     
                     {message.model && message.role === 'user' && (
                       <p className="text-xs opacity-60 mt-2">Model: {message.model}</p>
