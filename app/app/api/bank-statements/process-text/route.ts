@@ -89,52 +89,82 @@ export async function POST(request: NextRequest) {
 
       console.log(`[Process Text] Total transactions to save: ${validTransactions.length}`);
 
+      // ========================================
+      // CRITICAL: CATEGORIZE TRANSACTIONS WITH AI
+      // This adds profileType (BUSINESS/PERSONAL) classification
+      // ========================================
+      console.log('[Process Text] 🤖 Starting AI categorization with profile classification...');
+      const categorizedTransactions = await aiProcessor.categorizeTransactions(validTransactions, {
+        industry: null,
+        businessType: 'BUSINESS',
+        companyName: null
+      });
+      console.log(`[Process Text] ✅ Categorization complete: ${categorizedTransactions.length} transactions`);
+
       // Get all categories for the user
       const categories = await prisma.category.findMany({
         where: { userId: session.user.id },
       });
 
-      // Categorize and save transactions with INTELLIGENT ROUTING
+      // Save categorized transactions with INTELLIGENT ROUTING
       let savedCount = 0;
       const errors: string[] = [];
       let businessCount = 0;
       let personalCount = 0;
+      let unclassifiedCount = 0;
 
-      for (const transaction of validTransactions) {
+      for (const catTxn of categorizedTransactions) {
         try {
+          const transaction = catTxn.originalTransaction;
+          
           // ========================================
-          // INTELLIGENT PROFILE ROUTING (from statement-processor.ts)
+          // INTELLIGENT PROFILE ROUTING 
+          // Uses AI's profileType classification
           // ========================================
           let targetProfileId: string | null = null;
-          const aiProfileType = transaction.profileType?.toUpperCase();
+          const aiProfileType = catTxn.profileType?.toUpperCase();
           
           if (aiProfileType === 'BUSINESS' && businessProfile) {
             targetProfileId = businessProfile.id;
             businessCount++;
-            console.log(`[Process Text] 🏢 Routing to BUSINESS profile: ${transaction.description}`);
+            console.log(`[Process Text] 🏢 BUSINESS: ${transaction.description} (confidence: ${catTxn.profileConfidence})`);
           } else if (aiProfileType === 'PERSONAL' && personalProfile) {
             targetProfileId = personalProfile.id;
             personalCount++;
-            console.log(`[Process Text] 🏠 Routing to PERSONAL profile: ${transaction.description}`);
+            console.log(`[Process Text] 🏠 PERSONAL: ${transaction.description} (confidence: ${catTxn.profileConfidence})`);
           } else {
             // Fallback to default profile if AI didn't classify
             targetProfileId = defaultProfileId;
-            console.log(`[Process Text] ⚠️ Using default profile (no AI classification): ${transaction.description}`);
+            unclassifiedCount++;
+            console.log(`[Process Text] ⚠️ UNCLASSIFIED: ${transaction.description} (no AI classification)`);
           }
 
-          // Find matching category
-          const category = categories.find(
-            (c: any) => c.name.toLowerCase() === transaction.category?.toLowerCase()
+          // Find or create category
+          let category = categories.find(
+            (c: any) => c.name.toLowerCase() === catTxn.suggestedCategory?.toLowerCase()
           );
+
+          if (!category) {
+            // Create category if it doesn't exist
+            const type = transaction.amount > 0 ? 'INCOME' : 'EXPENSE';
+            category = await prisma.category.create({
+              data: {
+                userId: session.user.id,
+                name: catTxn.suggestedCategory || 'Uncategorized',
+                type: type as 'INCOME' | 'EXPENSE',
+                color: '#6B7280',
+                icon: 'CircleDollarSign'
+              }
+            });
+            categories.push(category);
+          }
 
           // Determine transaction type from AI or amount
           let type = 'EXPENSE';
-          if (transaction.type?.toUpperCase() === 'INCOME') {
+          if (transaction.type?.toUpperCase() === 'INCOME' || transaction.amount > 0) {
             type = 'INCOME';
           } else if (transaction.type?.toUpperCase() === 'TRANSFER') {
             type = 'TRANSFER';
-          } else if (transaction.amount > 0) {
-            type = 'INCOME';
           }
 
           // Ensure we have a valid date
@@ -142,7 +172,6 @@ export async function POST(request: NextRequest) {
           try {
             transactionDate = new Date(transaction.date);
             if (isNaN(transactionDate.getTime())) {
-              // If date is invalid, use statement date
               transactionDate = new Date(statementDate);
             }
           } catch {
@@ -155,12 +184,15 @@ export async function POST(request: NextRequest) {
               description: transaction.description || 'No description',
               amount: Math.abs(transaction.amount || 0),
               type: type as 'INCOME' | 'EXPENSE' | 'TRANSFER',
-              category: category?.name || transaction.category || 'Uncategorized',
-              merchant: transaction.merchant || transaction.description || '',
+              category: category.name,
+              merchant: catTxn.merchant || transaction.description || '',
               userId: session.user.id,
               businessProfileId: targetProfileId, // INTELLIGENT ROUTING
               bankStatementId: bankStatement.id,
-              categoryId: category?.id,
+              categoryId: category.id,
+              aiCategorized: true, // Mark as AI categorized
+              confidence: catTxn.confidence,
+              isRecurring: catTxn.isRecurring || false,
               metadata: transaction.referenceNumber ? {
                 referenceNumber: transaction.referenceNumber,
                 notes: transaction.notes || undefined
@@ -170,14 +202,15 @@ export async function POST(request: NextRequest) {
 
           savedCount++;
         } catch (error) {
-          console.error('[Process Text] Error saving transaction:', transaction.description, error);
-          errors.push(`Failed to save: ${transaction.description}`);
+          console.error('[Process Text] Error saving transaction:', catTxn.originalTransaction.description, error);
+          errors.push(`Failed to save: ${catTxn.originalTransaction.description}`);
         }
       }
 
       console.log(`[Process Text] ✅ Saved ${savedCount} transactions`);
       console.log(`[Process Text] 🏢 Business transactions: ${businessCount}`);
       console.log(`[Process Text] 🏠 Personal transactions: ${personalCount}`);
+      console.log(`[Process Text] ⚠️ Unclassified transactions: ${unclassifiedCount}`);
 
       // Update bank statement status
       await prisma.bankStatement.update({
