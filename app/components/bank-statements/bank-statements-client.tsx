@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Loader2, Paperclip, Send, Sparkles, FileText, Building2, Home, CheckCircle, Copy } from 'lucide-react';
+import { Loader2, Paperclip, Send, Sparkles, FileText, Building2, Home, CheckCircle, Copy, Trash2 } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -81,6 +81,35 @@ export default function BankStatementsClient() {
       console.error('Error fetching saved statements:', error);
     } finally {
       setLoadingSavedStatements(false);
+    }
+  };
+
+  // Delete transaction card
+  const handleDeleteCard = (cardId: string) => {
+    setManualTransactionCards(prev => prev.filter(card => card.id !== cardId));
+    toast.success('Transaction card deleted');
+  };
+
+  // Delete saved statement
+  const handleDeleteStatement = async (statementId: string) => {
+    if (!confirm('Are you sure you want to delete this statement? This will remove all associated transactions.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/bank-statements/delete?id=${statementId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete statement');
+      }
+
+      toast.success('Statement deleted successfully');
+      await fetchSavedStatements(); // Refresh the list
+    } catch (error) {
+      console.error('Error deleting statement:', error);
+      toast.error('Failed to delete statement');
     }
   };
 
@@ -674,6 +703,7 @@ Respond with a JSON array where each item has: { "index": number, "profileType":
             },
           ],
           model: selectedModel,
+          stream: false, // Get full response for classification
         }),
       });
 
@@ -895,8 +925,8 @@ Respond with a JSON array where each item has: { "index": number, "profileType":
                 Transaction Cards ({manualTransactionCards.length})
               </h3>
               {manualTransactionCards.map((card) => (
-                <Card key={card.id} className="bg-card border-primary/30 p-4">
-                  <div className="space-y-3">
+                <Card key={card.id} className="bg-card border-primary/30 p-6 aspect-square flex flex-col">
+                  <div className="space-y-3 flex-1 flex flex-col">
                     <div className="flex items-center justify-between">
                       <h4 className="text-base font-semibold text-foreground">
                         {card.monthYear}
@@ -914,46 +944,59 @@ Respond with a JSON array where each item has: { "index": number, "profileType":
                           <Copy className="w-3 h-3 mr-1" />
                           Copy
                         </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDeleteCard(card.id)}
+                          className="h-7 px-2 text-xs text-red-500 hover:text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
                       </div>
                     </div>
 
                     {/* Transaction List */}
-                    <div className="max-h-64 overflow-y-auto space-y-2">
-                      {card.transactions.map((transaction, idx) => (
+                    <div className="flex-1 overflow-y-auto space-y-2 min-h-0">
+                      {card.transactions.slice(0, 8).map((transaction, idx) => (
                         <div
                           key={idx}
-                          className="flex items-start justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors"
+                          className="flex items-start justify-between p-2 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors"
                         >
-                          <div className="flex-1">
+                          <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-xs font-medium text-foreground">
+                              <span className="text-xs font-medium text-foreground truncate">
                                 {transaction.description}
                               </span>
                             </div>
-                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
                               <span>{transaction.date}</span>
                               {transaction.category && (
                                 <>
                                   <span>•</span>
-                                  <span>{transaction.category}</span>
+                                  <span className="truncate">{transaction.category}</span>
                                 </>
                               )}
                             </div>
                           </div>
-                          <span className={`text-sm font-semibold ${
+                          <span className={`text-sm font-semibold whitespace-nowrap ml-2 ${
                             transaction.amount >= 0 ? 'text-green-600' : 'text-red-600'
                           }`}>
                             {transaction.amount >= 0 ? '+' : ''}{transaction.amount.toFixed(2)}
                           </span>
                         </div>
                       ))}
+                      {card.transactions.length > 8 && (
+                        <div className="text-xs text-muted-foreground text-center py-2">
+                          +{card.transactions.length - 8} more transactions
+                        </div>
+                      )}
                     </div>
 
                     {/* Load Button */}
                     <Button
                       onClick={() => handleLoadManualTransactions(card.id, card.transactions)}
                       disabled={loadingTransactions === card.id}
-                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground mt-3"
                     >
                       {loadingTransactions === card.id ? (
                         <>
@@ -1268,44 +1311,63 @@ Respond with a JSON array where each item has: { "index": number, "profileType":
               <FileText className="w-5 h-5 text-primary" />
               Saved Statements ({savedStatements.length})
             </h2>
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {savedStatements.map((statement) => (
-                <Card key={statement.id} className="bg-card border-primary/30 p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <h4 className="text-base font-semibold text-foreground mb-1">
+                <Card key={statement.id} className="bg-card border-primary/30 p-6 aspect-square flex flex-col">
+                  <div className="flex flex-col justify-between h-full gap-4">
+                    <div className="flex-1 space-y-3">
+                      <h4 className="text-base font-semibold text-foreground line-clamp-2">
                         {statement.fileName || statement.originalName}
                       </h4>
-                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                        <span>{statement.transactionCount} transactions</span>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
+                            {statement.transactionCount} transactions
+                          </span>
+                        </div>
                         {statement.statementPeriod && (
-                          <>
-                            <span>•</span>
-                            <span>{statement.statementPeriod}</span>
-                          </>
+                          <div className="text-sm text-muted-foreground">
+                            📅 {statement.statementPeriod}
+                          </div>
                         )}
-                        <span>•</span>
-                        <span>{new Date(statement.createdAt).toLocaleDateString()}</span>
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(statement.createdAt).toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric' 
+                          })}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleViewStatement(statement.id)}
+                          className="flex-1 h-9 text-xs"
+                        >
+                          <FileText className="w-3 h-3 mr-1" />
+                          View
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDownloadStatement(statement.id)}
+                          className="flex-1 h-9 text-xs"
+                        >
+                          <Copy className="w-3 h-3 mr-1" />
+                          Download
+                        </Button>
+                      </div>
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleViewStatement(statement.id)}
-                        className="h-8 px-3 text-xs"
+                        onClick={() => handleDeleteStatement(statement.id)}
+                        className="w-full h-9 text-xs text-red-500 hover:text-red-600 hover:bg-red-50"
                       >
-                        <FileText className="w-3 h-3 mr-1" />
-                        View
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDownloadStatement(statement.id)}
-                        className="h-8 px-3 text-xs"
-                      >
-                        <Copy className="w-3 h-3 mr-1" />
-                        Download
+                        <Trash2 className="w-3 h-3 mr-1" />
+                        Delete Statement
                       </Button>
                     </div>
                   </div>
