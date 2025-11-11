@@ -11,7 +11,7 @@ import { Loader2, Paperclip, Send, Sparkles, FileText } from 'lucide-react';
 interface Message {
   id: string;
   role: 'user' | 'assistant' | 'system';
-  content: string;
+  content: string | Array<{type: string; text?: string; file?: {filename: string; file_data: string}}>;
   timestamp: Date;
   fileName?: string;
   model?: string;
@@ -93,24 +93,37 @@ export default function BankStatementsClient() {
     }]);
 
     try {
-      let messageContent = currentInput;
-
-      // If file is attached, convert to base64 and add to message
-      if (currentFile) {
-        const base64 = await fileToBase64(currentFile);
-        messageContent = currentInput || `Please extract all transactions from this bank statement PDF and classify each as BUSINESS or PERSONAL.`;
-        
-        // For now, we'll just send the text. Full PDF support requires multimodal API
-        // In a real implementation, you'd send the file content to the API
-        messageContent += `\n\n[Attached: ${currentFile.name}]`;
-      }
-
       // Prepare messages for ChatLLM
       const chatMessages = messages
         .filter(m => m.role !== 'system')
         .map(m => ({ role: m.role, content: m.content }));
       
-      chatMessages.push({ role: 'user', content: messageContent });
+      // If file is attached, send it as multimodal content
+      if (currentFile) {
+        const base64 = await fileToBase64(currentFile);
+        const userPrompt = currentInput || `Please extract all transactions from this bank statement PDF and classify each as BUSINESS or PERSONAL. For each transaction, include: date, description, amount, and category.`;
+        
+        // Send PDF as multimodal message with file content
+        chatMessages.push({
+          role: 'user',
+          content: [
+            {
+              type: 'file',
+              file: {
+                filename: currentFile.name,
+                file_data: `data:application/pdf;base64,${base64}`
+              }
+            },
+            {
+              type: 'text',
+              text: userPrompt
+            }
+          ]
+        });
+      } else {
+        // Text-only message
+        chatMessages.push({ role: 'user', content: currentInput });
+      }
 
       // Call ChatLLM proxy
       const response = await fetch('/api/chatllm', {
@@ -255,7 +268,11 @@ export default function BankStatementsClient() {
                     )}
                     
                     <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                      <p className="text-sm whitespace-pre-wrap">
+                        {typeof message.content === 'string' 
+                          ? message.content 
+                          : message.content.find(c => c.type === 'text')?.text || 'Processing...'}
+                      </p>
                     </div>
                     
                     {message.model && message.role === 'user' && (
