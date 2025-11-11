@@ -12,9 +12,10 @@ export class AIBankStatementProcessor {
     console.log('[AI Processor] Initialized with API key');
   }
 
-  async extractDataFromPDF(pdfBuffer: Buffer, fileName: string, retryCount: number = 0): Promise<any> {
+  async extractDataFromPDF(pdfBuffer: Buffer, fileName: string, model: string = 'gpt-4o', retryCount: number = 0): Promise<any> {
     console.log(`[AI Processor] 🚀 SIMPLE MODE - Sending PDF directly to LLM (like Abacus Chat Element)`);
     console.log(`[AI Processor] PDF: ${fileName}, size: ${pdfBuffer.length} bytes`);
+    console.log(`[AI Processor] 🤖 Using model: ${model}`);
     
     try {
       // Convert PDF to Base64 for LLM
@@ -31,7 +32,7 @@ export class AIBankStatementProcessor {
           'Authorization': `Bearer ${this.apiKey}`
         },
         body: JSON.stringify({
-          model: 'gpt-4o',
+          model: model, // Use selected model
           max_tokens: 100000,
           temperature: 0.1,
           messages: [{

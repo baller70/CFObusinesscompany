@@ -5,6 +5,7 @@ import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Loader2, Paperclip, Send, CheckCircle2, AlertCircle, FileText, TrendingUp, TrendingDown } from 'lucide-react';
 
@@ -18,7 +19,11 @@ interface Message {
   businessCount?: number;
   personalCount?: number;
   status?: 'processing' | 'success' | 'error';
+  model?: string;
 }
+
+// Default prompt for transaction extraction
+const DEFAULT_PROMPT = `Extract all transactions from this bank statement PDF. For each transaction, classify it as either BUSINESS or PERSONAL based on the merchant/description.`;
 
 export default function BankStatementsClient() {
   const [messages, setMessages] = useState<Message[]>([
@@ -29,9 +34,10 @@ export default function BankStatementsClient() {
       timestamp: new Date(),
     }
   ]);
-  const [prompt, setPrompt] = useState('');
+  const [prompt, setPrompt] = useState(DEFAULT_PROMPT); // Pre-load default prompt
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedModel, setSelectedModel] = useState('gpt-4o'); // Default model
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -65,9 +71,10 @@ export default function BankStatementsClient() {
     const userMessage: Message = {
       id: Date.now().toString(),
       type: 'user',
-      content: prompt || 'Extract transactions from this PDF',
+      content: prompt || DEFAULT_PROMPT,
       timestamp: new Date(),
       fileName: selectedFile.name,
+      model: selectedModel,
     };
     setMessages(prev => [...prev, userMessage]);
 
@@ -75,19 +82,20 @@ export default function BankStatementsClient() {
     const processingMessage: Message = {
       id: (Date.now() + 1).toString(),
       type: 'system',
-      content: 'Processing your bank statement...',
+      content: `Processing with ${selectedModel}...`,
       timestamp: new Date(),
       status: 'processing',
     };
     setMessages(prev => [...prev, processingMessage]);
 
     setIsProcessing(true);
-    setPrompt('');
+    setPrompt(DEFAULT_PROMPT); // Reset to default prompt
 
     try {
-      // Upload PDF
+      // Upload PDF - NOTE: API expects 'files' (plural)
       const formData = new FormData();
-      formData.append('file', selectedFile);
+      formData.append('files', selectedFile); // Changed from 'file' to 'files'
+      formData.append('model', selectedModel); // Pass selected model
 
       const uploadResponse = await fetch('/api/bank-statements/upload', {
         method: 'POST',
@@ -280,10 +288,17 @@ export default function BankStatementsClient() {
                     <div>
                       <p className="text-sm">{message.content}</p>
                       {message.fileName && (
-                        <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                          <FileText className="w-3 h-3" />
-                          {message.fileName}
-                        </p>
+                        <div className="mt-2 space-y-1">
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <FileText className="w-3 h-3" />
+                            {message.fileName}
+                          </p>
+                          {message.model && (
+                            <p className="text-xs text-muted-foreground">
+                              Model: {message.model}
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}
@@ -299,6 +314,27 @@ export default function BankStatementsClient() {
 
         {/* Input Area */}
         <Card className="bg-card-elevated border-primary/20 p-4">
+          {/* Model Selector */}
+          <div className="mb-3 flex items-center gap-2">
+            <label className="text-sm font-medium text-muted-foreground">Model:</label>
+            <Select value={selectedModel} onValueChange={setSelectedModel} disabled={isProcessing}>
+              <SelectTrigger className="w-[200px] h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="gpt-4o">GPT-4o (Default)</SelectItem>
+                <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
+                <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
+                <SelectItem value="claude-3.5-sonnet">Claude 3.5 Sonnet</SelectItem>
+                <SelectItem value="claude-3-opus">Claude 3 Opus</SelectItem>
+                <SelectItem value="gemini-2.0-flash-exp">Gemini 2.0 Flash</SelectItem>
+                <SelectItem value="gemini-1.5-pro">Gemini 1.5 Pro</SelectItem>
+                <SelectItem value="llama-3.3-70b">Llama 3.3 70B</SelectItem>
+                <SelectItem value="mistral-large">Mistral Large</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="flex items-end gap-3">
             {/* File Attachment Button */}
             <div className="flex-shrink-0">
@@ -327,7 +363,7 @@ export default function BankStatementsClient() {
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder={selectedFile ? `Processing ${selectedFile.name}...` : "Type a message... (e.g., 'Extract transactions from this PDF')"}
+                placeholder={selectedFile ? `Processing ${selectedFile.name}...` : "Edit the prompt below or attach a PDF to begin"}
                 disabled={isProcessing}
                 className="pr-4 h-10"
               />

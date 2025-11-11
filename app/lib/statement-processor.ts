@@ -97,9 +97,11 @@ export async function processStatementWithValidation(statementId: string) {
 
     if (statement.fileType === 'PDF') {
       // Process PDF (text-based extraction via pdftotext)
-      console.log(`[Processing] Extracting data from PDF using text-based method`);
+      // Extract selected model from parsedData, default to gpt-4o
+      const selectedModel = (statement.parsedData as any)?.selectedModel || 'gpt-4o';
+      console.log(`[Processing] Extracting data from PDF using text-based method with model: ${selectedModel}`);
       const pdfBuffer = Buffer.from(arrayBuffer);
-      extractedData = await aiProcessor.extractDataFromPDF(pdfBuffer, statement.fileName || 'statement.pdf');
+      extractedData = await aiProcessor.extractDataFromPDF(pdfBuffer, statement.fileName || 'statement.pdf', selectedModel);
     } else {
       // Process CSV
       console.log(`[Processing] Processing CSV data`);

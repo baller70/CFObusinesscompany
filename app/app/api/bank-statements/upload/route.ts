@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
     }
     
     const sourceTypes = formData.getAll('sourceTypes') as string[];
+    const selectedModel = formData.get('model') as string || 'gpt-4o'; // Get selected LLM model
 
     const uploadResults = [];
 
@@ -81,7 +82,10 @@ export async function POST(request: NextRequest) {
             fileSize: file.size,
             sourceType: sourceType as any,
             status: 'PENDING',
-            processingStage: 'UPLOADED'
+            processingStage: 'UPLOADED',
+            parsedData: {
+              selectedModel: selectedModel // Store selected LLM model in parsedData
+            }
           }
         });
 
@@ -111,6 +115,8 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({ 
       success: true,
+      userId: session.user.id, // Return userId for status polling
+      id: uploadResults[0]?.id, // Return first statement ID for single file uploads
       uploads: uploadResults,
       message: `${uploadResults.filter(r => !r.error).length} files uploaded and queued for processing`,
       queueStatus: {
