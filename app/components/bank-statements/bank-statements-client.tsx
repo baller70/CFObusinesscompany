@@ -427,14 +427,19 @@ export default function BankStatementsClient() {
         
         const lowerLine = trimmedLine.toLowerCase();
         
+        // CRITICAL FIX: Section headers should NOT have dates!
+        // If a line has a date, it's a transaction, NOT a section header
+        const hasDate = /\b\d{1,2}\/\d{1,2}(\/\d{2,4})?\b/.test(trimmedLine);
+        
         // Check if this line is a section header (this determines income vs expense)
-        if (incomeSections.some(section => lowerLine.includes(section))) {
+        // ONLY if it doesn't have a date pattern
+        if (!hasDate && incomeSections.some(section => lowerLine.includes(section))) {
           currentSectionType = 'income';
           currentSectionName = trimmedLine;
           console.log(`[Manual Parser] 📥 INCOME SECTION: ${currentSectionName}`);
           continue;
         }
-        if (expenseSections.some(section => lowerLine.includes(section))) {
+        if (!hasDate && expenseSections.some(section => lowerLine.includes(section))) {
           currentSectionType = 'expense';
           currentSectionName = trimmedLine;
           console.log(`[Manual Parser] 📤 EXPENSE SECTION: ${currentSectionName}`);
