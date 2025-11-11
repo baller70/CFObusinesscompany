@@ -46,22 +46,32 @@ export class AIBankStatementProcessor {
               },
               {
                 type: "text",
-                text: `Extract all transactions from this bank statement and let me know how many transactions are in the PDF.
+                text: `Extract ALL transactions from this bank statement. For EACH transaction, you MUST classify it as either BUSINESS or PERSONAL.
 
-Return JSON in this format:
+CLASSIFICATION RULES:
+- BUSINESS: Payroll, AWS, software subscriptions, client payments, vendor payments, office supplies, business travel, professional services, advertising, business insurance, business utilities
+- PERSONAL: Groceries (Walmart, Target, Whole Foods), restaurants, entertainment, personal shopping, healthcare, personal insurance, household utilities, personal vehicle, personal travel
+
+Return JSON in this exact format:
 {
   "transactionCount": number,
   "transactions": [
     {
       "date": "YYYY-MM-DD",
-      "description": "transaction description",
+      "description": "full transaction description",
       "amount": number (positive for income, negative for expenses),
       "type": "debit|credit",
       "category": "category name",
-      "profileType": "BUSINESS|PERSONAL" (classify each transaction)
+      "profileType": "BUSINESS" or "PERSONAL" (you MUST choose one based on the rules above)
     }
   ]
 }
+
+IMPORTANT: 
+- Extract ALL transactions, no matter how many
+- EVERY transaction MUST have a profileType of either "BUSINESS" or "PERSONAL"
+- Use the description to intelligently determine if it's business or personal
+- When in doubt, classify as PERSONAL
 
 Respond with raw JSON only.`
               }

@@ -109,37 +109,55 @@ async function processStatement(statementId: string) {
     // Log what we got
     console.log(`[Process Route] 📊 Total Transactions: ${extractedData.transactions?.length || 0}`);
 
-    // Save directly to database with intelligent routing
     const transactions = extractedData.transactions || [];
     
-    console.log(`[Process Route] 💾 Saving ${transactions.length} transactions to database`);
+    // ========================================
+    // CRITICAL: CATEGORIZE TRANSACTIONS WITH AI
+    // This is the ROUTING STEP - classifies as BUSINESS/PERSONAL
+    // ========================================
+    console.log('[Process Route] 🤖 Starting AI categorization (THIS IS THE ROUTING STEP)...');
+    const categorizedTransactions = await aiProcessor.categorizeTransactions(transactions, {
+      industry: null,
+      businessType: 'BUSINESS',
+      companyName: null
+    });
+    console.log(`[Process Route] ✅ Categorization complete: ${categorizedTransactions.length} transactions`);
+    
+    console.log(`[Process Route] 💾 Saving ${categorizedTransactions.length} transactions to database`);
     
     let businessCount = 0;
     let personalCount = 0;
 
-    const transactionPromises = transactions.map(async (txn: any) => {
-      // Route based on LLM's profileType classification
+    const transactionPromises = categorizedTransactions.map(async (catTxn: any) => {
+      const txn = catTxn.originalTransaction;
+      
+      // Route based on AI categorization's profileType (THIS IS THE ROUTING)
       let targetProfileId = statement.businessProfileId; // Default
-      const aiProfileType = txn.profileType?.toUpperCase();
+      const aiProfileType = catTxn.profileType?.toUpperCase();
       
       if (aiProfileType === 'BUSINESS' && businessProfile) {
         targetProfileId = businessProfile.id;
         businessCount++;
-        console.log(`[Process Route] 🏢 BUSINESS: ${txn.description}`);
+        console.log(`[Process Route] 🏢 BUSINESS: ${txn.description} (confidence: ${catTxn.profileConfidence})`);
       } else if (aiProfileType === 'PERSONAL' && personalProfile) {
         targetProfileId = personalProfile.id;
         personalCount++;
-        console.log(`[Process Route] 🏠 PERSONAL: ${txn.description}`);
+        console.log(`[Process Route] 🏠 PERSONAL: ${txn.description} (confidence: ${catTxn.profileConfidence})`);
+      } else {
+        console.log(`[Process Route] ⚠️ UNCLASSIFIED: ${txn.description} - using default profile`);
       }
 
       // Determine transaction type
       let type: 'INCOME' | 'EXPENSE' | 'TRANSFER' = txn.amount > 0 ? 'INCOME' : 'EXPENSE';
+      if (txn.type?.toUpperCase() === 'TRANSFER') {
+        type = 'TRANSFER';
+      }
 
-      // Find or create category
+      // Find or create category (use AI suggested category)
       let category = await prisma.category.findFirst({
         where: {
           userId: statement.userId,
-          name: txn.category || 'Uncategorized'
+          name: catTxn.suggestedCategory || txn.category || 'Uncategorized'
         }
       });
 
@@ -147,7 +165,7 @@ async function processStatement(statementId: string) {
         category = await prisma.category.create({
           data: {
             userId: statement.userId,
-            name: txn.category || 'Uncategorized',
+            name: catTxn.suggestedCategory || txn.category || 'Uncategorized',
             type: type === 'INCOME' ? 'INCOME' : 'EXPENSE',
             color: '#94a3b8',
             icon: 'tag'
@@ -155,19 +173,32 @@ async function processStatement(statementId: string) {
         });
       }
 
+      // Ensure valid date
+      let transactionDate;
+      try {
+        transactionDate = new Date(txn.date);
+        if (isNaN(transactionDate.getTime())) {
+          transactionDate = new Date();
+        }
+      } catch {
+        transactionDate = new Date();
+      }
+
       return prisma.transaction.create({
         data: {
           userId: statement.userId,
           businessProfileId: targetProfileId,
           bankStatementId: statementId,
-          date: new Date(txn.date),
+          date: transactionDate,
           amount: Math.abs(txn.amount),
           description: txn.description || 'Unknown',
           category: category.name,
           categoryId: category.id,
+          merchant: catTxn.merchant || txn.description || '',
           type: type,
           aiCategorized: true,
-          confidence: 0.9
+          confidence: catTxn.confidence || 0.9,
+          isRecurring: catTxn.isRecurring || false
         }
       });
     });
