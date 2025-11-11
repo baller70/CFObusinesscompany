@@ -15,7 +15,9 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { messages, model = "gpt-4o", stream = true } = body;
+    const { messages, model = "gpt-5", stream = true } = body;
+
+    console.log(`[ChatLLM] Processing request with model: ${model}, stream: ${stream}`);
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: "Messages array is required" }, { status: 400 });
@@ -24,8 +26,11 @@ export async function POST(request: NextRequest) {
     // Forward to Abacus ChatLLM (RouteLLM API)
     const abacusApiKey = process.env.ABACUSAI_API_KEY;
     if (!abacusApiKey) {
+      console.error("[ChatLLM] API key not configured");
       return NextResponse.json({ error: "API key not configured" }, { status: 500 });
     }
+
+    console.log(`[ChatLLM] Sending request to Abacus API with ${messages.length} messages`);
 
     const response = await fetch("https://api.abacus.ai/v1/chat/completions", {
       method: "POST",
@@ -38,18 +43,29 @@ export async function POST(request: NextRequest) {
         messages,
         stream,
         temperature: 0.7,
-        max_tokens: 4000,
+        max_tokens: 16000,
       }),
     });
 
     if (!response.ok) {
       const errorData = await response.text();
-      console.error("ChatLLM API error:", errorData);
+      console.error(`[ChatLLM] API error (${response.status}):`, errorData);
+      
+      let errorMessage = "Failed to get response from ChatLLM";
+      try {
+        const errorJson = JSON.parse(errorData);
+        errorMessage = errorJson.error?.message || errorJson.error || errorMessage;
+      } catch {
+        // Use default error message if parsing fails
+      }
+      
       return NextResponse.json(
-        { error: "Failed to get response from ChatLLM" },
+        { error: errorMessage },
         { status: response.status }
       );
     }
+
+    console.log(`[ChatLLM] Successfully received response from API`);
 
     if (stream) {
       // Stream the response back to the client
@@ -67,9 +83,10 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error("ChatLLM proxy error:", error);
+    console.error("[ChatLLM] Proxy error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Internal server error";
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: errorMessage },
       { status: 500 }
     );
   }

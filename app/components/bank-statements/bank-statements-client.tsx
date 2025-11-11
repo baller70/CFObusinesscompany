@@ -29,7 +29,7 @@ export default function BankStatementsClient() {
   const [inputText, setInputText] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('gpt-4o');
+  const [selectedModel, setSelectedModel] = useState('gpt-5');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -126,7 +126,14 @@ export default function BankStatementsClient() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get response from ChatLLM');
+        let errorMessage = 'Failed to get response from ChatLLM';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          // Use default error message
+        }
+        throw new Error(errorMessage);
       }
 
       // Stream the response
@@ -175,12 +182,13 @@ export default function BankStatementsClient() {
 
     } catch (error) {
       console.error('Chat error:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to send message');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to send message';
+      toast.error(errorMessage);
       
-      // Update assistant message with error
+      // Update assistant message with detailed error
       setMessages(prev => prev.map(m => 
         m.id === assistantMessageId 
-          ? { ...m, content: '❌ Sorry, I encountered an error. Please try again.' }
+          ? { ...m, content: `❌ Error: ${errorMessage}\n\nPlease try again or select a different model.` }
           : m
       ));
     } finally {
@@ -271,19 +279,63 @@ export default function BankStatementsClient() {
           <div className="mb-3 flex items-center gap-2">
             <label className="text-sm font-medium text-muted-foreground">Model:</label>
             <Select value={selectedModel} onValueChange={setSelectedModel} disabled={isProcessing}>
-              <SelectTrigger className="w-[200px] h-9">
+              <SelectTrigger className="w-[250px] h-9">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-[400px]">
+                {/* OpenAI Models */}
+                <SelectItem value="gpt-5">GPT-5</SelectItem>
+                <SelectItem value="gpt-5-pro">GPT-5 Pro</SelectItem>
+                <SelectItem value="gpt-5-thinking">GPT-5 Thinking</SelectItem>
+                <SelectItem value="gpt-5-mini">GPT-5 Mini</SelectItem>
+                <SelectItem value="gpt-4.1">GPT-4.1</SelectItem>
+                <SelectItem value="gpt-4.1-mini">GPT-4.1 Mini</SelectItem>
+                <SelectItem value="gpt-4.5">GPT-4.5</SelectItem>
                 <SelectItem value="gpt-4o">GPT-4o</SelectItem>
                 <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
-                <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
+                <SelectItem value="o3">o3</SelectItem>
+                <SelectItem value="o3-mini">o3-mini</SelectItem>
+                <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+                
+                {/* Anthropic Models */}
+                <SelectItem value="claude-opus-4.1">Claude Opus 4.1</SelectItem>
+                <SelectItem value="claude-sonnet-4">Claude Sonnet 4</SelectItem>
+                <SelectItem value="claude-3.7-sonnet">Claude 3.7 Sonnet</SelectItem>
                 <SelectItem value="claude-3.5-sonnet">Claude 3.5 Sonnet</SelectItem>
+                <SelectItem value="claude-3.5-haiku">Claude 3.5 Haiku</SelectItem>
                 <SelectItem value="claude-3-opus">Claude 3 Opus</SelectItem>
-                <SelectItem value="gemini-2.0-flash-exp">Gemini 2.0 Flash</SelectItem>
+                <SelectItem value="claude-3-sonnet">Claude 3 Sonnet</SelectItem>
+                <SelectItem value="claude-3-haiku">Claude 3 Haiku</SelectItem>
+                
+                {/* Google Gemini Models */}
+                <SelectItem value="gemini-2.5-pro">Gemini 2.5 Pro</SelectItem>
+                <SelectItem value="gemini-2.5">Gemini 2.5</SelectItem>
+                <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash</SelectItem>
+                <SelectItem value="gemini-2-flash">Gemini 2 Flash</SelectItem>
+                <SelectItem value="gemini-2-flash-thinking">Gemini 2 Flash Thinking</SelectItem>
                 <SelectItem value="gemini-1.5-pro">Gemini 1.5 Pro</SelectItem>
+                <SelectItem value="gemini-1.5-flash">Gemini 1.5 Flash</SelectItem>
+                
+                {/* xAI Grok Models */}
+                <SelectItem value="grok-4">Grok-4</SelectItem>
+                <SelectItem value="grok-3">Grok-3</SelectItem>
+                
+                {/* Meta Llama Models */}
+                <SelectItem value="llama-4">Llama 4</SelectItem>
                 <SelectItem value="llama-3.3-70b">Llama 3.3 70B</SelectItem>
-                <SelectItem value="mistral-large">Mistral Large</SelectItem>
+                <SelectItem value="llama-3.1-405b">Llama 3.1 405B</SelectItem>
+                <SelectItem value="llama-3.1-70b">Llama 3.1 70B</SelectItem>
+                <SelectItem value="llama-3.1-8b">Llama 3.1 8B</SelectItem>
+                
+                {/* Deepseek Models */}
+                <SelectItem value="deepseek-v3">Deepseek V3</SelectItem>
+                <SelectItem value="deepseek-r1">Deepseek r1</SelectItem>
+                <SelectItem value="deepseek">Deepseek</SelectItem>
+                
+                {/* Alibaba Qwen Models */}
+                <SelectItem value="qwen-3">Qwen 3</SelectItem>
+                <SelectItem value="qwen-2.5-72b">Qwen 2.5 72B</SelectItem>
+                <SelectItem value="qwen-2.5-32b">Qwen 2.5 32B</SelectItem>
               </SelectContent>
             </Select>
           </div>
