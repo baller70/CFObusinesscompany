@@ -87,204 +87,59 @@ async function processStatement(statementId: string) {
     let extractionMethods: string[] = ['ai_processor'];
 
     if (statement.fileType === 'PDF') {
+      console.log('[Process Route] 🚀 SIMPLE PDF EXTRACTION - Like Abacus Chat Element');
+      
       const arrayBuffer = await fileResponse.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       
-      // ========================================
-      // 🎯 AI-ONLY EXTRACTION MODE
-      // Using GPT-4o with maximum accuracy settings
-      // ========================================
-      
-      console.log('[Process Route] 🚀 Starting AI-ONLY EXTRACTION MODE');
-      console.log('[Process Route] 🤖 Using GPT-4o (strongest model) with supreme accuracy settings');
-      console.log('[Process Route] 📄 Bypassing PDF parser and OCR - AI handles everything');
-      
-      // Update status to show extraction is starting
-      await prisma.bankStatement.update({
-        where: { id: statementId },
-        data: {
-          processingStage: 'EXTRACTING_DATA',
-          recordCount: 0
-        }
-      });
-      
-      // ========================================
-      // AI-POWERED EXTRACTION (ONLY METHOD)
-      // ========================================
-      console.log('[Process Route] 🔍 Starting AI extraction (text-based)...');
-      
-      // Pass buffer directly to AI processor (it will use pdftotext internally)
+      // Send PDF directly to LLM
       const aiResult = await aiProcessor.extractDataFromPDF(buffer, statement.fileName);
       
-      console.log(`[Process Route] ✅ AI EXTRACTION COMPLETE: ${aiResult.transactions?.length || 0} transactions`);
+      console.log(`[Process Route] ✅ Extracted ${aiResult.transactions?.length || 0} transactions`);
+      console.log(`[Process Route] LLM reported count: ${aiResult.transactionCount}`);
       
-      if (!aiResult.transactions || aiResult.transactions.length === 0) {
-        throw new Error('AI extraction failed. No transactions were extracted from the PDF.');
-      }
-      
-      // Log category breakdown
-      const categoryCounts: Record<string, number> = {};
-      aiResult.transactions.forEach((t: any) => {
-        const cat = t.category || 'Uncategorized';
-        categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
-      });
-      console.log('[Process Route] 📋 Transaction categories:');
-      Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]).forEach(([cat, count]) => {
-        console.log(`[Process Route]   ${cat}: ${count}`);
-      });
-      
-      // Update record count
-      await prisma.bankStatement.update({
-        where: { id: statementId },
-        data: {
-          recordCount: aiResult.transactions.length
-        }
-      });
-      
-      // Validation: Check if transaction count seems suspiciously low
-      const fileSizeKB = (statement.fileSize || 0) / 1024;
-      const expectedMinTransactions = Math.floor(fileSizeKB / 3); // Rough estimate: 1 transaction per 3KB
-      
-      if (aiResult.transactions.length < expectedMinTransactions && fileSizeKB > 50) {
-        console.warn(`[Process Route] ⚠️ WARNING: Low transaction count (${aiResult.transactions.length}) for file size (${fileSizeKB.toFixed(1)}KB)`);
-        console.warn(`[Process Route] ⚠️ Expected at least ${expectedMinTransactions} transactions`);
-        console.warn(`[Process Route] ⚠️ This may indicate incomplete extraction`);
-      }
-      
-      // Prepare final extracted data (no deduplication needed with single method)
-      extractedData = {
-        bankInfo: aiResult.bankInfo || {
-          bankName: 'PNC Bank',
-          accountNumber: 'Unknown',
-          statementPeriod: 'Unknown',
-          accountType: 'business'
-        },
-        transactions: aiResult.transactions.map((t: any) => ({
-          date: t.date,
-          description: t.description,
-          amount: t.amount,
-          type: t.type,
-          category: t.category || 'Uncategorized',
-          balance: t.balance
-        })),
-        summary: aiResult.summary || {
-          startingBalance: 0,
-          endingBalance: 0,
-          transactionCount: aiResult.transactions.length
-        },
-        extractionMethods: extractionMethods
-      };
+      extractedData = aiResult;
       
     } else {
       // Process CSV
       const csvContent = await fileResponse.text();
       extractedData = await aiProcessor.processCSVData(csvContent);
-      extractionMethods = ['csv_parser'];
     }
     
-    // Log extraction summary
-    console.log(`[Process Route] 🎉 EXTRACTION COMPLETE`);
-    console.log(`[Process Route] 📊 Methods used: ${extractionMethods.join(' + ')}`);
+    // Log what we got
     console.log(`[Process Route] 📊 Total Transactions: ${extractedData.transactions?.length || 0}`);
 
-    // Update with extracted data (note: extraction method logged in console)
-    await prisma.bankStatement.update({
-      where: { id: statementId },
-      data: {
-        processingStage: 'CATEGORIZING_TRANSACTIONS',
-        extractedData: extractedData,
-        bankName: extractedData.bankInfo?.bankName,
-        accountType: extractedData.bankInfo?.accountType,
-        accountNumber: extractedData.bankInfo?.accountNumber,
-        statementPeriod: extractedData.bankInfo?.statementPeriod,
-        recordCount: extractedData.transactions?.length || 0
-      }
-    });
-
-    // Categorize transactions - filter out any invalid entries
-    const validTransactions = (extractedData.transactions || []).filter((t: any) => 
-      t && t.date && t.description && typeof t.amount === 'number'
-    );
+    // Save directly to database with intelligent routing
+    const transactions = extractedData.transactions || [];
     
-    console.log(`[Process Route] Valid transactions to categorize: ${validTransactions.length} out of ${extractedData.transactions?.length || 0}`);
-    
-    if (validTransactions.length === 0) {
-      throw new Error('No valid transactions found in the extracted data. The PDF may be corrupted or in an unsupported format.');
-    }
-    
-    const categorizedTransactions = await aiProcessor.categorizeTransactions(validTransactions);
-
-    // Update processing stage
-    await prisma.bankStatement.update({
-      where: { id: statementId },
-      data: {
-        processingStage: 'ANALYZING_PATTERNS'
-      }
-    });
-
-    // Generate insights
-    const insights = await aiProcessor.generateFinancialInsights(categorizedTransactions, {
-      firstName: statement.user.firstName,
-      businessType: statement.user.businessType,
-      companyName: statement.user.companyName
-    });
-
-    // Update processing stage
-    await prisma.bankStatement.update({
-      where: { id: statementId },
-      data: {
-        processingStage: 'DISTRIBUTING_DATA',
-        aiAnalysis: insights
-      }
-    });
-
-    // Create transactions in database - filter out any with missing originalTransaction
-    const validCategorizedTransactions = categorizedTransactions.filter((catTxn: any) => 
-      catTxn && catTxn.originalTransaction && catTxn.originalTransaction.date && catTxn.originalTransaction.description
-    );
-    
-    console.log(`[Process Route] Creating ${validCategorizedTransactions.length} transactions in database`);
+    console.log(`[Process Route] 💾 Saving ${transactions.length} transactions to database`);
     
     let businessCount = 0;
     let personalCount = 0;
-    let unclassifiedCount = 0;
 
-    const transactionPromises = validCategorizedTransactions.map(async (catTxn: any) => {
-      const originalTxn = catTxn.originalTransaction;
-      
-      // ========================================
-      // INTELLIGENT PROFILE ROUTING
-      // ========================================
-      let targetProfileId: string | null = statement.businessProfileId; // Default fallback
-      const aiProfileType = catTxn.profileType?.toUpperCase();
+    const transactionPromises = transactions.map(async (txn: any) => {
+      // Route based on LLM's profileType classification
+      let targetProfileId = statement.businessProfileId; // Default
+      const aiProfileType = txn.profileType?.toUpperCase();
       
       if (aiProfileType === 'BUSINESS' && businessProfile) {
         targetProfileId = businessProfile.id;
         businessCount++;
-        console.log(`[Process Route] 🏢 Routing to BUSINESS: ${originalTxn.description}`);
+        console.log(`[Process Route] 🏢 BUSINESS: ${txn.description}`);
       } else if (aiProfileType === 'PERSONAL' && personalProfile) {
         targetProfileId = personalProfile.id;
         personalCount++;
-        console.log(`[Process Route] 🏠 Routing to PERSONAL: ${originalTxn.description}`);
-      } else {
-        // Fallback to statement's profile if AI didn't classify
-        unclassifiedCount++;
-        console.log(`[Process Route] ⚠️ Using default profile (no AI classification): ${originalTxn.description}`);
+        console.log(`[Process Route] 🏠 PERSONAL: ${txn.description}`);
       }
 
-      // Determine transaction type based on amount
-      let type: 'INCOME' | 'EXPENSE' | 'TRANSFER' = 'EXPENSE';
-      if (originalTxn.amount > 0) {
-        type = 'INCOME';
-      } else if (originalTxn.description?.toLowerCase().includes('transfer')) {
-        type = 'TRANSFER';
-      }
+      // Determine transaction type
+      let type: 'INCOME' | 'EXPENSE' | 'TRANSFER' = txn.amount > 0 ? 'INCOME' : 'EXPENSE';
 
       // Find or create category
       let category = await prisma.category.findFirst({
         where: {
           userId: statement.userId,
-          name: catTxn.suggestedCategory
+          name: txn.category || 'Uncategorized'
         }
       });
 
@@ -292,10 +147,10 @@ async function processStatement(statementId: string) {
         category = await prisma.category.create({
           data: {
             userId: statement.userId,
-            name: catTxn.suggestedCategory,
+            name: txn.category || 'Uncategorized',
             type: type === 'INCOME' ? 'INCOME' : 'EXPENSE',
-            color: getCategoryColor(catTxn.suggestedCategory),
-            icon: getCategoryIcon(catTxn.suggestedCategory)
+            color: '#94a3b8',
+            icon: 'tag'
           }
         });
       }
@@ -303,73 +158,46 @@ async function processStatement(statementId: string) {
       return prisma.transaction.create({
         data: {
           userId: statement.userId,
-          businessProfileId: targetProfileId, // INTELLIGENT ROUTING
+          businessProfileId: targetProfileId,
           bankStatementId: statementId,
-          date: new Date(originalTxn.date),
-          amount: Math.abs(originalTxn.amount),
-          description: originalTxn.description || 'Unknown transaction',
-          merchant: catTxn.merchant,
+          date: new Date(txn.date),
+          amount: Math.abs(txn.amount),
+          description: txn.description || 'Unknown',
           category: category.name,
           categoryId: category.id,
           type: type,
           aiCategorized: true,
-          confidence: catTxn.confidence,
-          isRecurring: catTxn.isRecurring || false
+          confidence: 0.9
         }
       });
     });
 
     await Promise.all(transactionPromises);
     
-    const processedCount = validCategorizedTransactions.length;
-    console.log(`[Process Route] ✅ Successfully created ${processedCount} transactions`);
-    console.log(`[Process Route] 🏢 Business transactions: ${businessCount}`);
-    console.log(`[Process Route] 🏠 Personal transactions: ${personalCount}`);
-    console.log(`[Process Route] ⚠️ Unclassified transactions: ${unclassifiedCount}`);
+    console.log(`[Process Route] ✅ Created ${transactions.length} transactions`);
+    console.log(`[Process Route] 🏢 Business: ${businessCount}`);
+    console.log(`[Process Route] 🏠 Personal: ${personalCount}`);
 
-    // Update processed count
+    // Update statement status
     await prisma.bankStatement.update({
       where: { id: statementId },
       data: {
-        processedCount: processedCount,
-        transactionCount: processedCount,
-        processingStage: 'COMPLETED',
+        transactionCount: transactions.length,
         status: 'COMPLETED',
         processedAt: new Date()
       }
     });
 
-    // Update user's financial metrics
-    await updateFinancialMetrics(statement.userId);
-
-    // Create success notification
-    await prisma.notification.create({
-      data: {
-        userId: statement.userId,
-        type: 'CSV_PROCESSED',
-        title: 'Bank Statement Processed',
-        message: `Successfully processed ${processedCount} transactions from ${statement.fileName}`,
-        isActive: true
-      }
-    });
+    console.log(`[Process Route] ✅ DONE! Transactions saved and routed correctly`);
 
   } catch (error) {
-    console.error('[Process Route] Statement processing error:', error);
-    
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred during processing';
-    const errorStack = error instanceof Error ? error.stack : undefined;
-    
-    console.error('[Process Route] Error details:', {
-      message: errorMessage,
-      stack: errorStack
-    });
+    console.error('[Process Route] Error:', error);
     
     await prisma.bankStatement.update({
       where: { id: statementId },
       data: {
         status: 'FAILED',
-        processingStage: 'FAILED',
-        errorLog: errorStack || errorMessage
+        errorLog: error instanceof Error ? error.message : 'Unknown error'
       }
     });
 

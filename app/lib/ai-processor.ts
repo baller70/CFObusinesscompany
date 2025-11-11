@@ -13,39 +13,26 @@ export class AIBankStatementProcessor {
   }
 
   async extractDataFromPDF(pdfBuffer: Buffer, fileName: string, retryCount: number = 0): Promise<any> {
-    console.log(`[AI Processor] 🎯 DIRECT PDF EXTRACTION MODE - Sending PDF directly to LLM`);
-    console.log(`[AI Processor] PDF: ${fileName}, size: ${pdfBuffer.length} bytes (attempt ${retryCount + 1}/3)`);
+    console.log(`[AI Processor] 🚀 SIMPLE MODE - Sending PDF directly to LLM (like Abacus Chat Element)`);
+    console.log(`[AI Processor] PDF: ${fileName}, size: ${pdfBuffer.length} bytes`);
     
     try {
-      // ========================================
-      // STEP 1: Convert PDF to Base64
-      // ========================================
-      console.log('[AI Processor] 📄 Step 1: Converting PDF to base64...');
-      
+      // Convert PDF to Base64 for LLM
       const base64String = pdfBuffer.toString('base64');
       const base64DataUri = `data:application/pdf;base64,${base64String}`;
       
-      console.log(`[AI Processor] ✅ Base64 conversion complete: ${base64String.length} characters`);
+      console.log(`[AI Processor] 📤 Sending to LLM...`);
       
-      // ========================================
-      // STEP 2: Send PDF directly to LLM
-      // ========================================
-      console.log('[AI Processor] 🤖 Step 2: Sending PDF directly to LLM...');
-      
-      // Create abort controller for timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes timeout
-      
+      // Send PDF directly to LLM with simple prompt
       const response = await fetch('https://apps.abacus.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${this.apiKey}`
         },
-        signal: controller.signal,
         body: JSON.stringify({
           model: 'gpt-4o',
-          max_tokens: 20000,
+          max_tokens: 100000,
           temperature: 0.1,
           messages: [{
             role: "user", 
@@ -61,39 +48,22 @@ export class AIBankStatementProcessor {
                 type: "text",
                 text: `Extract all transactions from this bank statement and let me know how many transactions are in the PDF.
 
-🚨 CRITICAL: Extract EVERY SINGLE transaction. You MUST achieve 100% extraction accuracy.
-
-Return JSON in this EXACT format:
+Return JSON in this format:
 {
-  "bankInfo": {
-    "bankName": "bank name from statement",
-    "accountNumber": "last 4 digits only",
-    "statementPeriod": "YYYY-MM-DD to YYYY-MM-DD"
-  },
+  "transactionCount": number,
   "transactions": [
     {
       "date": "YYYY-MM-DD",
-      "description": "full transaction description",
-      "amount": number (positive for credits/income, negative for debits/expenses),
+      "description": "transaction description",
+      "amount": number (positive for income, negative for expenses),
       "type": "debit|credit",
-      "category": "transaction category (e.g., 'Deposits', 'ACH', 'Debit Card', 'POS Purchase')",
-      "balance": number (if shown in statement, otherwise omit)
+      "category": "category name",
+      "profileType": "BUSINESS|PERSONAL" (classify each transaction)
     }
-  ],
-  "summary": {
-    "startingBalance": number,
-    "endingBalance": number,
-    "transactionCount": number (MUST equal transactions.length)
-  }
+  ]
 }
 
-CRITICAL RULES:
-- Extract ALL transactions from the PDF
-- DO NOT truncate or summarize
-- Return complete JSON only (no markdown, no explanations)
-- Verify your transaction count matches the statement
-
-Respond with raw JSON starting with {`
+Respond with raw JSON only.`
               }
             ]
           }],
@@ -101,207 +71,26 @@ Respond with raw JSON starting with {`
         })
       });
 
-        clearTimeout(timeoutId);
-        console.log(`[AI Processor] ✅ AI extraction API response status: ${response.status}`);
+      console.log(`[AI Processor] ✅ Response received: ${response.status}`);
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('[AI Processor] API error response:', errorText.substring(0, 500));
-          
-          // Check for timeout or gateway errors
-          if (response.status === 524 || response.status === 504 || response.status === 408) {
-            console.log(`[AI Processor] Gateway timeout error (${response.status}), attempt ${retryCount + 1}/3`);
-            
-            if (retryCount < 2) {
-              const waitTime = (retryCount + 1) * 3; // 3s, 6s
-              console.log(`[AI Processor] Retrying in ${waitTime} seconds...`);
-              await new Promise(resolve => setTimeout(resolve, waitTime * 1000));
-              return this.extractDataFromPDF(pdfBuffer, fileName, retryCount + 1);
-            }
-            
-            // All retries exhausted
-            throw new Error(`PDF processing timeout after ${retryCount + 1} attempts. The file may be too large or complex.`);
-          }
-          
-          throw new Error(`API request failed with status ${response.status}: ${errorText.substring(0, 200)}`);
-        }
+      if (!response.ok) {
+        throw new Error(`LLM API error: ${response.status}`);
+      }
 
-        // Parse AI response
-        const data = await response.json();
-        
-        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-          console.error('[AI Processor] Invalid API response structure:', JSON.stringify(data));
-          throw new Error('Invalid API response structure');
-        }
-
-        const content = data.choices[0].message.content;
-        console.log(`[AI Processor] Raw AI response content length: ${content?.length || 0} characters`);
-        console.log(`[AI Processor] Raw AI response preview:`, content?.substring(0, 200));
-        
-        if (!content || content.trim().length === 0) {
-          console.error('[AI Processor] Empty response content from AI');
-          throw new Error('AI returned empty response');
-        }
-
-        let extractedData;
-        try {
-          // Try to parse as JSON
-          extractedData = JSON.parse(content);
-        } catch (parseError) {
-          console.error('[AI Processor] JSON parse error:', parseError);
-          console.error('[AI Processor] Content that failed to parse:', content);
-          
-          // Try to extract JSON from markdown code blocks if present
-          const jsonMatch = content.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
-          if (jsonMatch) {
-            console.log('[AI Processor] Found JSON in code block, extracting...');
-            try {
-              extractedData = JSON.parse(jsonMatch[1]);
-            } catch (innerError) {
-              throw new Error(`Failed to parse JSON from code block: ${innerError instanceof Error ? innerError.message : 'Unknown error'}`);
-            }
-          } else {
-            throw new Error(`Invalid JSON response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
-          }
-        }
-        
-        const extractedCount = extractedData.transactions?.length || 0;
-        const summaryCount = extractedData.summary?.transactionCount || 0;
-        
-        console.log(`[AI Processor] Successfully extracted data from PDF: ${extractedCount} transactions`);
-        console.log(`[AI Processor] Summary transaction count: ${summaryCount}`);
-        console.log(`[AI Processor] Bank: ${extractedData.bankInfo?.bankName || 'Unknown'}`);
-        
-        // Validate transaction amounts - check for zero/missing amounts
-        let zeroAmountCount = 0;
-        let missingDateCount = 0;
-        let invalidTransactionCount = 0;
-        
-        extractedData.transactions?.forEach((txn: any, idx: number) => {
-          // Check if transaction object is valid
-          if (!txn || typeof txn !== 'object') {
-            console.warn(`[AI Processor] ⚠️ Transaction #${idx + 1} is null or not an object`);
-            invalidTransactionCount++;
-            return;
-          }
-          
-          if (!txn.amount || txn.amount === 0) {
-            console.warn(`[AI Processor] ⚠️ Transaction #${idx + 1} has zero or missing amount: ${txn.description || 'No description'}`);
-            zeroAmountCount++;
-          }
-          if (!txn.date) {
-            console.warn(`[AI Processor] ⚠️ Transaction #${idx + 1} has missing date: ${txn.description || 'No description'}`);
-            missingDateCount++;
-          }
-          if (!txn.description) {
-            console.warn(`[AI Processor] ⚠️ Transaction #${idx + 1} has missing description`);
-          }
-        });
-        
-        // Filter out invalid transactions
-        if (extractedData.transactions) {
-          const originalCount = extractedData.transactions.length;
-          extractedData.transactions = extractedData.transactions.filter((txn: any) => 
-            txn && 
-            typeof txn === 'object' && 
-            txn.date && 
-            txn.description && 
-            typeof txn.amount === 'number' && 
-            txn.amount !== 0
-          );
-          const filteredCount = extractedData.transactions.length;
-          
-          if (originalCount !== filteredCount) {
-            console.warn(`[AI Processor] ⚠️ Filtered out ${originalCount - filteredCount} invalid transactions`);
-            console.log(`[AI Processor] Valid transactions after filtering: ${filteredCount}`);
-          }
-        }
-        
-        if (zeroAmountCount > 0) {
-          console.warn(`[AI Processor] ⚠️ Found ${zeroAmountCount} transactions with zero or missing amounts`);
-        }
-        
-        if (missingDateCount > 0) {
-          console.warn(`[AI Processor] ⚠️ Found ${missingDateCount} transactions with missing dates`);
-        }
-        
-        if (invalidTransactionCount > 0) {
-          console.warn(`[AI Processor] ⚠️ Found ${invalidTransactionCount} invalid transaction objects`);
-        }
-        
-        // Update extracted count after filtering
-        const finalExtractedCount = extractedData.transactions?.length || 0;
-        
-        // Critical validation: Check for transaction count mismatch
-        if (summaryCount > 0 && finalExtractedCount !== summaryCount) {
-          const missing = summaryCount - finalExtractedCount;
-          const percentMissing = Math.abs((missing / summaryCount) * 100);
-          
-          console.error(`[AI Processor] 🚨 CRITICAL: Transaction count mismatch!`);
-          console.error(`[AI Processor] 🚨 Expected: ${summaryCount} transactions`);
-          console.error(`[AI Processor] 🚨 Extracted: ${finalExtractedCount} transactions`);
-          console.error(`[AI Processor] 🚨 Missing: ${Math.abs(missing)} transactions (${percentMissing.toFixed(1)}%)`);
-          
-          // Add critical warning to extracted data
-          if (!extractedData.warnings) {
-            extractedData.warnings = [];
-          }
-          extractedData.warnings.push({
-            type: 'INCOMPLETE_EXTRACTION',
-            message: `CRITICAL: Expected ${summaryCount} transactions but only extracted ${finalExtractedCount}. ${Math.abs(missing)} transactions (${percentMissing.toFixed(1)}%) are missing. This may indicate the AI hit a token limit or failed to process all pages.`,
-            severity: 'CRITICAL',
-            expectedCount: summaryCount,
-            extractedCount: finalExtractedCount,
-            missingCount: Math.abs(missing)
-          });
-        }
-        
-        // Validate we got reasonable data
-        if (finalExtractedCount === 0) {
-          console.error(`[AI Processor] 🚨 CRITICAL: No transactions extracted from PDF!`);
-          throw new Error('No transactions were extracted from the PDF. The file may be corrupted, encrypted, or in an unsupported format.');
-        }
-        
-        // For PNC statements, we expect high transaction counts (typically 100-120+)
-        if (extractedData.bankInfo?.bankName?.toLowerCase().includes('pnc')) {
-          if (finalExtractedCount < 100) {
-            console.error(`[AI Processor] 🚨 CRITICAL: Low transaction count for PNC statement: ${finalExtractedCount}. PNC business statements typically have 100-120+ transactions across 5 pages.`);
-            console.error(`[AI Processor] 🚨 The AI may have stopped early or hit a processing limit. This will result in incomplete data.`);
-            
-            if (!extractedData.warnings) {
-              extractedData.warnings = [];
-            }
-            extractedData.warnings.push({
-              type: 'PNC_INCOMPLETE_EXTRACTION',
-              message: `CRITICAL: Only ${finalExtractedCount} transactions extracted from PNC statement. Expected 100-120+ transactions. Data is incomplete.`,
-              severity: 'CRITICAL',
-              extractedCount: finalExtractedCount,
-              expectedMinimum: 100
-            });
-          } else {
-            console.log(`[AI Processor] ✅ Good extraction for PNC statement: ${finalExtractedCount} transactions`);
-          }
-        }
-        
-        return extractedData;
+      // Parse response
+      const data = await response.json();
+      const content = data.choices[0].message.content;
+      const extractedData = JSON.parse(content);
+      
+      const count = extractedData.transactions?.length || 0;
+      console.log(`[AI Processor] ✅ Extracted ${count} transactions from PDF`);
+      console.log(`[AI Processor] Transaction count reported by LLM: ${extractedData.transactionCount || count}`);
+      
+      return extractedData;
         
     } catch (error) {
-      console.error('[AI Processor] PDF extraction error:', error);
-      
-      // Handle abort/timeout errors with retry
-      if (error instanceof Error && error.name === 'AbortError') {
-        if (retryCount < 2) {
-          console.log(`[AI Processor] Request timed out, retrying in ${(retryCount + 1) * 3} seconds...`);
-          await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 3000));
-          return this.extractDataFromPDF(pdfBuffer, fileName, retryCount + 1);
-        }
-        throw new Error('PDF processing timed out after 3 attempts. The PDF may be too large or complex.');
-      }
-      
-      if (error instanceof Error) {
-        throw new Error(`Failed to extract data from PDF: ${error.message}`);
-      }
-      throw new Error('Failed to extract data from PDF: Unknown error');
+      console.error('[AI Processor] Error:', error);
+      throw error;
     }
   }
 
