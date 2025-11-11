@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Loader2, Paperclip, Send, Sparkles, FileText, Building2, Home, CheckCircle } from 'lucide-react';
+import { Loader2, Paperclip, Send, Sparkles, FileText, Building2, Home, CheckCircle, Copy } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -283,6 +283,21 @@ export default function BankStatementsClient() {
     }
   };
 
+  const handleCopyTransactions = (transactions: ExtractedTransaction[]) => {
+    try {
+      // Format transactions as clean JSON
+      const jsonString = JSON.stringify(transactions, null, 2);
+      
+      // Copy to clipboard
+      navigator.clipboard.writeText(jsonString);
+      
+      toast.success(`✅ Copied ${transactions.length} transactions to clipboard!`);
+    } catch (error) {
+      console.error('Error copying transactions:', error);
+      toast.error('Failed to copy transactions. Please try again.');
+    }
+  };
+
   const handleLoadTransactions = async (messageId: string, transactions: ExtractedTransaction[]) => {
     setLoadingTransactions(messageId);
     
@@ -382,9 +397,20 @@ export default function BankStatementsClient() {
                               <Sparkles className="w-4 h-4 text-primary" />
                               Extracted Transactions
                             </h3>
-                            <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
-                              {message.extractedTransactions.length} transactions
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
+                                {message.extractedTransactions.length} transactions
+                              </span>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleCopyTransactions(message.extractedTransactions!)}
+                                className="h-7 px-2 text-xs"
+                              >
+                                <Copy className="w-3 h-3 mr-1" />
+                                Copy
+                              </Button>
+                            </div>
                           </div>
                           
                           {/* Transaction List */}
