@@ -22,14 +22,14 @@ export default function BankStatementsClient() {
     {
       id: '1',
       role: 'system',
-      content: 'Welcome to Abacus ChatLLM! Ask me anything or upload a PDF to extract transactions.',
+      content: 'Welcome to Abacus ChatLLM! Upload a PDF bank statement and I\'ll extract all transactions and classify them as BUSINESS or PERSONAL.',
       timestamp: new Date(),
     }
   ]);
-  const [inputText, setInputText] = useState('');
+  const [inputText, setInputText] = useState('Please extract all transactions from this bank statement PDF and classify each as BUSINESS or PERSONAL. For each transaction, include: date, description, amount, and category.');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('gpt-5');
+  const [selectedModel, setSelectedModel] = useState('RouteLLM');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -283,6 +283,9 @@ export default function BankStatementsClient() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="max-h-[400px]">
+                {/* RouteLLM - Auto-selects best model */}
+                <SelectItem value="RouteLLM">RouteLLM (Auto-select best model)</SelectItem>
+                
                 {/* OpenAI Models */}
                 <SelectItem value="gpt-5">GPT-5</SelectItem>
                 <SelectItem value="gpt-5-pro">GPT-5 Pro</SelectItem>

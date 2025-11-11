@@ -15,9 +15,9 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { messages, model = "gpt-5", stream = true } = body;
+    const { messages, model = "RouteLLM", stream = true } = body;
 
-    console.log(`[ChatLLM] Processing request with model: ${model}, stream: ${stream}`);
+    console.log(`[ChatLLM] Processing request with model: ${model}, stream: ${stream}, messages: ${messages?.length || 0}`);
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: "Messages array is required" }, { status: 400 });
@@ -32,19 +32,26 @@ export async function POST(request: NextRequest) {
 
     console.log(`[ChatLLM] Sending request to Abacus API with ${messages.length} messages`);
 
-    const response = await fetch("https://api.abacus.ai/v1/chat/completions", {
+    // If RouteLLM is selected, omit the model parameter to let Abacus route automatically
+    const requestBody: any = {
+      messages,
+      stream,
+      temperature: 0.7,
+      max_tokens: 16000,
+    };
+
+    // Only add model if it's not RouteLLM
+    if (model && model !== "RouteLLM") {
+      requestBody.model = model;
+    }
+
+    const response = await fetch("https://apps.abacus.ai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${abacusApiKey}`,
       },
-      body: JSON.stringify({
-        model,
-        messages,
-        stream,
-        temperature: 0.7,
-        max_tokens: 16000,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
