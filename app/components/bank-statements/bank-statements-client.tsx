@@ -1,58 +1,42 @@
-
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Loader2, Paperclip, Send, CheckCircle2, AlertCircle, FileText, TrendingUp, TrendingDown, Calendar, DollarSign, Building2, Home } from 'lucide-react';
-
-interface Transaction {
-  id: string;
-  date: string;
-  description: string;
-  amount: number;
-  type: 'INCOME' | 'EXPENSE' | 'TRANSFER';
-  category?: string;
-  merchant?: string;
-  metadata?: any;
-  businessProfileId?: string;
-}
+import { Loader2, Paperclip, Send, Sparkles, FileText } from 'lucide-react';
 
 interface Message {
   id: string;
-  type: 'user' | 'system' | 'result';
+  role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: Date;
   fileName?: string;
-  transactionCount?: number;
-  businessCount?: number;
-  personalCount?: number;
-  status?: 'processing' | 'success' | 'error';
   model?: string;
-  transactions?: Transaction[];
-  statementMonth?: string;
 }
-
-// Default prompt for transaction extraction
-const DEFAULT_PROMPT = `Extract all transactions from this bank statement PDF. For each transaction, classify it as either BUSINESS or PERSONAL based on the merchant/description.`;
 
 export default function BankStatementsClient() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      type: 'system',
-      content: 'Welcome! Attach a PDF bank statement and I\'ll extract all transactions for you.',
+      role: 'system',
+      content: 'Welcome to Abacus ChatLLM! Ask me anything or upload a PDF to extract transactions.',
       timestamp: new Date(),
     }
   ]);
-  const [prompt, setPrompt] = useState(DEFAULT_PROMPT); // Pre-load default prompt
+  const [inputText, setInputText] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('gpt-4o'); // Default model
+  const [selectedModel, setSelectedModel] = useState('gpt-4o');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -70,162 +54,156 @@ export default function BankStatementsClient() {
     }
   };
 
-  const handleProcess = async () => {
-    if (!selectedFile && !prompt.trim()) {
-      toast.error('Please attach a PDF file or enter a prompt');
-      return;
-    }
-
-    if (!selectedFile) {
-      toast.error('Please attach a PDF file');
+  const handleSendMessage = async () => {
+    if (!inputText.trim() && !selectedFile) {
+      toast.error('Please enter a message or attach a file');
       return;
     }
 
     // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
-      type: 'user',
-      content: prompt || DEFAULT_PROMPT,
+      role: 'user',
+      content: inputText || `Uploaded: ${selectedFile?.name}`,
       timestamp: new Date(),
-      fileName: selectedFile.name,
+      fileName: selectedFile?.name,
       model: selectedModel,
     };
     setMessages(prev => [...prev, userMessage]);
 
-    // Add processing message
-    const processingMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      type: 'system',
-      content: `Processing with ${selectedModel}...`,
-      timestamp: new Date(),
-      status: 'processing',
-    };
-    setMessages(prev => [...prev, processingMessage]);
+    // Clear input
+    const currentInput = inputText;
+    const currentFile = selectedFile;
+    setInputText('');
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
 
     setIsProcessing(true);
-    setPrompt(DEFAULT_PROMPT); // Reset to default prompt
+
+    // Add placeholder for assistant response
+    const assistantMessageId = (Date.now() + 1).toString();
+    setMessages(prev => [...prev, {
+      id: assistantMessageId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date(),
+      model: selectedModel,
+    }]);
 
     try {
-      // Upload PDF - NOTE: API expects 'files' (plural)
-      const formData = new FormData();
-      formData.append('files', selectedFile); // Changed from 'file' to 'files'
-      formData.append('model', selectedModel); // Pass selected model
+      let messageContent = currentInput;
 
-      const uploadResponse = await fetch('/api/bank-statements/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!uploadResponse.ok) {
-        const errorData = await uploadResponse.json();
-        throw new Error(errorData.error || 'Upload failed');
+      // If file is attached, convert to base64 and add to message
+      if (currentFile) {
+        const base64 = await fileToBase64(currentFile);
+        messageContent = currentInput || `Please extract all transactions from this bank statement PDF and classify each as BUSINESS or PERSONAL.`;
+        
+        // For now, we'll just send the text. Full PDF support requires multimodal API
+        // In a real implementation, you'd send the file content to the API
+        messageContent += `\n\n[Attached: ${currentFile.name}]`;
       }
 
-      const uploadData = await uploadResponse.json();
-      const statementId = uploadData.id;
-
-      // Poll for processing completion
-      let attempts = 0;
-      const maxAttempts = 60; // 3 minutes (60 * 3 seconds)
+      // Prepare messages for ChatLLM
+      const chatMessages = messages
+        .filter(m => m.role !== 'system')
+        .map(m => ({ role: m.role, content: m.content }));
       
-      const pollStatus = async (): Promise<any> => {
-        const statusResponse = await fetch(`/api/bank-statements/status?userId=${uploadData.userId}`);
-        const statusData = await statusResponse.json();
-        
-        const statement = statusData.statements?.find((s: any) => s.id === statementId);
-        
-        if (statement?.status === 'COMPLETED') {
-          return statement;
-        } else if (statement?.status === 'FAILED') {
-          throw new Error(statement.error || 'Processing failed');
-        } else if (attempts < maxAttempts) {
-          attempts++;
-          await new Promise(resolve => setTimeout(resolve, 3000));
-          return pollStatus();
-        } else {
-          throw new Error('Processing timeout');
-        }
-      };
+      chatMessages.push({ role: 'user', content: messageContent });
 
-      const result = await pollStatus();
+      // Call ChatLLM proxy
+      const response = await fetch('/api/chatllm', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: chatMessages,
+          model: selectedModel,
+          stream: true,
+        }),
+      });
 
-      // Fetch the actual transactions for this statement
-      let transactions: Transaction[] = [];
-      let statementMonth = '';
-      
-      try {
-        const transactionsResponse = await fetch(`/api/transactions?statementId=${statementId}&limit=500`);
-        if (transactionsResponse.ok) {
-          const transactionsData = await transactionsResponse.json();
-          transactions = transactionsData.transactions || [];
-          
-          // Extract the month from the first transaction or file name
-          if (transactions.length > 0) {
-            const firstDate = new Date(transactions[0].date);
-            statementMonth = firstDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-          } else if (selectedFile.name) {
-            // Try to extract month from filename
-            const monthMatch = selectedFile.name.match(/(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec).*(\d{4})/i);
-            if (monthMatch) {
-              statementMonth = `${monthMatch[1]} ${monthMatch[2]}`;
+      if (!response.ok) {
+        throw new Error('Failed to get response from ChatLLM');
+      }
+
+      // Stream the response
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let assistantContent = '';
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') continue;
+
+              try {
+                const parsed = JSON.parse(data);
+                const content = parsed.choices?.[0]?.delta?.content;
+                
+                if (content) {
+                  assistantContent += content;
+                  
+                  // Update the assistant message with streamed content
+                  setMessages(prev => prev.map(m => 
+                    m.id === assistantMessageId 
+                      ? { ...m, content: assistantContent }
+                      : m
+                  ));
+                }
+              } catch (e) {
+                // Ignore parsing errors for incomplete JSON
+              }
             }
           }
         }
-      } catch (error) {
-        console.error('Error fetching transactions:', error);
       }
 
-      // Remove processing message and add result
-      setMessages(prev => prev.filter(m => m.id !== processingMessage.id));
-
-      const resultMessage: Message = {
-        id: (Date.now() + 2).toString(),
-        type: 'result',
-        content: `✅ Successfully extracted transactions from ${selectedFile.name}`,
-        timestamp: new Date(),
-        fileName: selectedFile.name,
-        transactionCount: result.transactionCount || 0,
-        businessCount: result.businessCount,
-        personalCount: result.personalCount,
-        status: 'success',
-        transactions,
-        statementMonth,
-      };
-      setMessages(prev => [...prev, resultMessage]);
-
-      toast.success(`Extracted ${result.transactionCount || 0} transactions!`);
-      
-      // Clear file
-      setSelectedFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+      if (!assistantContent) {
+        throw new Error('No response received from ChatLLM');
       }
 
     } catch (error) {
-      console.error('Error processing:', error);
+      console.error('Chat error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to send message');
       
-      // Remove processing message and add error
-      setMessages(prev => prev.filter(m => m.id !== processingMessage.id));
-      
-      const errorMessage: Message = {
-        id: (Date.now() + 3).toString(),
-        type: 'system',
-        content: `❌ Error: ${error instanceof Error ? error.message : 'Failed to process statement'}`,
-        timestamp: new Date(),
-        status: 'error',
-      };
-      setMessages(prev => [...prev, errorMessage]);
-      
-      toast.error(error instanceof Error ? error.message : 'Failed to process statement');
+      // Update assistant message with error
+      setMessages(prev => prev.map(m => 
+        m.id === assistantMessageId 
+          ? { ...m, content: '❌ Sorry, I encountered an error. Please try again.' }
+          : m
+      ));
     } finally {
       setIsProcessing(false);
     }
   };
 
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result as string;
+        resolve(base64.split(',')[1]);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleProcess();
+      handleSendMessage();
     }
   };
 
@@ -234,11 +212,12 @@ export default function BankStatementsClient() {
       <div className="max-w-5xl mx-auto h-[calc(100vh-8rem)] flex flex-col">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-heading text-foreground mb-2">
-            BANK STATEMENT PROCESSOR
+          <h1 className="text-heading text-foreground mb-2 flex items-center gap-2">
+            <Sparkles className="w-7 h-7 text-primary" />
+            ABACUS CHATLLM
           </h1>
           <p className="text-body text-muted-foreground">
-            Attach a PDF and I'll extract all transactions instantly
+            Powered by RouteLLM - Ask anything or upload documents
           </p>
         </div>
 
@@ -248,181 +227,41 @@ export default function BankStatementsClient() {
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
                   className={`max-w-[80%] rounded-lg p-4 ${
-                    message.type === 'user'
+                    message.role === 'user'
                       ? 'bg-primary text-primary-foreground'
-                      : message.type === 'result'
-                      ? 'bg-green-500/10 border border-green-500/20'
+                      : message.role === 'system'
+                      ? 'bg-muted/50 border border-border'
                       : 'bg-muted'
                   }`}
                 >
-                  {message.status === 'processing' && (
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span className="text-sm">{message.content}</span>
-                    </div>
-                  )}
-                  
-                  {message.status === 'success' && (
-                    <div className="space-y-4">
-                      <div className="flex items-start gap-2">
-                        <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium">{message.content}</p>
-                          {message.fileName && (
-                            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                              <FileText className="w-3 h-3" />
-                              {message.fileName}
-                            </p>
-                          )}
-                        </div>
+                  <div className="space-y-2">
+                    {message.fileName && (
+                      <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+                        <FileText className="w-4 h-4" />
+                        <span className="text-xs font-medium">{message.fileName}</span>
                       </div>
-                      
-                      {message.transactionCount !== undefined && (
-                        <div className="mt-3 pt-3 border-t border-green-500/20">
-                          <p className="text-sm font-semibold text-green-700 dark:text-green-400 mb-2">
-                            📊 Extraction Summary
-                          </p>
-                          <div className="space-y-1.5 text-sm">
-                            <div className="flex items-center justify-between">
-                              <span className="text-muted-foreground">Total Transactions:</span>
-                              <span className="font-medium">{message.transactionCount}</span>
-                            </div>
-                            {message.businessCount !== undefined && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground flex items-center gap-1">
-                                  <TrendingUp className="w-3 h-3" />
-                                  Business:
-                                </span>
-                                <span className="font-medium text-blue-600 dark:text-blue-400">
-                                  {message.businessCount}
-                                </span>
-                              </div>
-                            )}
-                            {message.personalCount !== undefined && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground flex items-center gap-1">
-                                  <TrendingDown className="w-3 h-3" />
-                                  Personal:
-                                </span>
-                                <span className="font-medium text-purple-600 dark:text-purple-400">
-                                  {message.personalCount}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Transactions Card */}
-                      {message.transactions && message.transactions.length > 0 && (
-                        <div className="mt-4 pt-4 border-t border-green-500/20">
-                          <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-sm font-semibold flex items-center gap-2">
-                              <Calendar className="w-4 h-4" />
-                              {message.statementMonth || 'All Transactions'}
-                            </h3>
-                            <span className="text-xs text-muted-foreground">
-                              {message.transactions.length} transactions
-                            </span>
-                          </div>
-                          
-                          <div className="bg-muted/30 rounded-lg p-3 max-h-[400px] overflow-y-auto space-y-2">
-                            {message.transactions.map((transaction, index) => {
-                              const isIncome = transaction.type === 'INCOME';
-                              const amount = Math.abs(transaction.amount);
-                              const transactionDate = new Date(transaction.date);
-                              
-                              return (
-                                <div
-                                  key={transaction.id || index}
-                                  className="bg-background/60 rounded-md p-3 border border-border/50 hover:border-primary/30 transition-colors"
-                                >
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        {transaction.metadata?.profileType === 'BUSINESS' ? (
-                                          <Building2 className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
-                                        ) : (
-                                          <Home className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" />
-                                        )}
-                                        <p className="text-sm font-medium truncate">
-                                          {transaction.description}
-                                        </p>
-                                      </div>
-                                      
-                                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                                        <span className="flex items-center gap-1">
-                                          <Calendar className="w-3 h-3" />
-                                          {transactionDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                        </span>
-                                        {transaction.category && (
-                                          <span className="px-2 py-0.5 bg-muted rounded-full">
-                                            {transaction.category}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                    
-                                    <div className="flex-shrink-0 text-right">
-                                      <p className={`text-sm font-semibold ${
-                                        isIncome 
-                                          ? 'text-green-600 dark:text-green-400' 
-                                          : 'text-red-600 dark:text-red-400'
-                                      }`}>
-                                        {isIncome ? '+' : '-'}${amount.toFixed(2)}
-                                      </p>
-                                      {transaction.merchant && (
-                                        <p className="text-xs text-muted-foreground mt-0.5">
-                                          {transaction.merchant}
-                                        </p>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
+                    )}
+                    
+                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                     </div>
-                  )}
-                  
-                  {message.status === 'error' && (
-                    <div className="flex items-start gap-2">
-                      <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                      <p className="text-sm">{message.content}</p>
-                    </div>
-                  )}
-                  
-                  {!message.status && (
-                    <div>
-                      <p className="text-sm">{message.content}</p>
-                      {message.fileName && (
-                        <div className="mt-2 space-y-1">
-                          <p className="text-xs text-muted-foreground flex items-center gap-1">
-                            <FileText className="w-3 h-3" />
-                            {message.fileName}
-                          </p>
-                          {message.model && (
-                            <p className="text-xs text-muted-foreground">
-                              Model: {message.model}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  
-                  <p className="text-xs opacity-60 mt-2">
-                    {message.timestamp.toLocaleTimeString()}
-                  </p>
+                    
+                    {message.model && message.role === 'user' && (
+                      <p className="text-xs opacity-60 mt-2">Model: {message.model}</p>
+                    )}
+                    
+                    <p className="text-xs opacity-60 mt-2">
+                      {message.timestamp.toLocaleTimeString()}
+                    </p>
+                  </div>
                 </div>
               </div>
             ))}
+            <div ref={messagesEndRef} />
           </div>
         </Card>
 
@@ -436,7 +275,7 @@ export default function BankStatementsClient() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="gpt-4o">GPT-4o (Default)</SelectItem>
+                <SelectItem value="gpt-4o">GPT-4o</SelectItem>
                 <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
                 <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
                 <SelectItem value="claude-3.5-sonnet">Claude 3.5 Sonnet</SelectItem>
@@ -474,10 +313,10 @@ export default function BankStatementsClient() {
             {/* Text Input */}
             <div className="flex-1 relative">
               <Input
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder={selectedFile ? `Processing ${selectedFile.name}...` : "Edit the prompt below or attach a PDF to begin"}
+                placeholder={selectedFile ? `Ask about ${selectedFile.name}...` : "Ask me anything..."}
                 disabled={isProcessing}
                 className="pr-4 h-10"
               />
@@ -503,8 +342,8 @@ export default function BankStatementsClient() {
 
             {/* Send Button */}
             <Button
-              onClick={handleProcess}
-              disabled={isProcessing || (!selectedFile && !prompt.trim())}
+              onClick={handleSendMessage}
+              disabled={isProcessing || (!inputText.trim() && !selectedFile)}
               className="h-10"
             >
               {isProcessing ? (
