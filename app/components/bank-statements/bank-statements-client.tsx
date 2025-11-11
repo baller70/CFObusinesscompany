@@ -7,7 +7,19 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Loader2, Paperclip, Send, CheckCircle2, AlertCircle, FileText, TrendingUp, TrendingDown } from 'lucide-react';
+import { Loader2, Paperclip, Send, CheckCircle2, AlertCircle, FileText, TrendingUp, TrendingDown, Calendar, DollarSign, Building2, Home } from 'lucide-react';
+
+interface Transaction {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  type: 'INCOME' | 'EXPENSE' | 'TRANSFER';
+  category?: string;
+  merchant?: string;
+  metadata?: any;
+  businessProfileId?: string;
+}
 
 interface Message {
   id: string;
@@ -20,6 +32,8 @@ interface Message {
   personalCount?: number;
   status?: 'processing' | 'success' | 'error';
   model?: string;
+  transactions?: Transaction[];
+  statementMonth?: string;
 }
 
 // Default prompt for transaction extraction
@@ -135,6 +149,32 @@ export default function BankStatementsClient() {
 
       const result = await pollStatus();
 
+      // Fetch the actual transactions for this statement
+      let transactions: Transaction[] = [];
+      let statementMonth = '';
+      
+      try {
+        const transactionsResponse = await fetch(`/api/transactions?statementId=${statementId}&limit=500`);
+        if (transactionsResponse.ok) {
+          const transactionsData = await transactionsResponse.json();
+          transactions = transactionsData.transactions || [];
+          
+          // Extract the month from the first transaction or file name
+          if (transactions.length > 0) {
+            const firstDate = new Date(transactions[0].date);
+            statementMonth = firstDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+          } else if (selectedFile.name) {
+            // Try to extract month from filename
+            const monthMatch = selectedFile.name.match(/(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec).*(\d{4})/i);
+            if (monthMatch) {
+              statementMonth = `${monthMatch[1]} ${monthMatch[2]}`;
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching transactions:', error);
+      }
+
       // Remove processing message and add result
       setMessages(prev => prev.filter(m => m.id !== processingMessage.id));
 
@@ -148,6 +188,8 @@ export default function BankStatementsClient() {
         businessCount: result.businessCount,
         personalCount: result.personalCount,
         status: 'success',
+        transactions,
+        statementMonth,
       };
       setMessages(prev => [...prev, resultMessage]);
 
@@ -225,7 +267,7 @@ export default function BankStatementsClient() {
                   )}
                   
                   {message.status === 'success' && (
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       <div className="flex items-start gap-2">
                         <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
                         <div>
@@ -271,6 +313,78 @@ export default function BankStatementsClient() {
                                 </span>
                               </div>
                             )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Transactions Card */}
+                      {message.transactions && message.transactions.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-green-500/20">
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-sm font-semibold flex items-center gap-2">
+                              <Calendar className="w-4 h-4" />
+                              {message.statementMonth || 'All Transactions'}
+                            </h3>
+                            <span className="text-xs text-muted-foreground">
+                              {message.transactions.length} transactions
+                            </span>
+                          </div>
+                          
+                          <div className="bg-muted/30 rounded-lg p-3 max-h-[400px] overflow-y-auto space-y-2">
+                            {message.transactions.map((transaction, index) => {
+                              const isIncome = transaction.type === 'INCOME';
+                              const amount = Math.abs(transaction.amount);
+                              const transactionDate = new Date(transaction.date);
+                              
+                              return (
+                                <div
+                                  key={transaction.id || index}
+                                  className="bg-background/60 rounded-md p-3 border border-border/50 hover:border-primary/30 transition-colors"
+                                >
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        {transaction.metadata?.profileType === 'BUSINESS' ? (
+                                          <Building2 className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                                        ) : (
+                                          <Home className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" />
+                                        )}
+                                        <p className="text-sm font-medium truncate">
+                                          {transaction.description}
+                                        </p>
+                                      </div>
+                                      
+                                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                        <span className="flex items-center gap-1">
+                                          <Calendar className="w-3 h-3" />
+                                          {transactionDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                        </span>
+                                        {transaction.category && (
+                                          <span className="px-2 py-0.5 bg-muted rounded-full">
+                                            {transaction.category}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="flex-shrink-0 text-right">
+                                      <p className={`text-sm font-semibold ${
+                                        isIncome 
+                                          ? 'text-green-600 dark:text-green-400' 
+                                          : 'text-red-600 dark:text-red-400'
+                                      }`}>
+                                        {isIncome ? '+' : '-'}${amount.toFixed(2)}
+                                      </p>
+                                      {transaction.merchant && (
+                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                          {transaction.merchant}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       )}

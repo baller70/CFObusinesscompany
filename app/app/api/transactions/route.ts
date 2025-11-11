@@ -20,14 +20,15 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0');
     const category = searchParams.get('category');
     const type = searchParams.get('type');
+    const statementId = searchParams.get('statementId');
 
     // Get current business profile ID
     const businessProfileId = await getCurrentBusinessProfileId();
 
     const where: any = {
       userId: session.user.id,
-      // Filter by business profile if one is selected
-      ...(businessProfileId ? { businessProfileId } : {})
+      // Filter by business profile if one is selected (unless filtering by statement)
+      ...(!statementId && businessProfileId ? { businessProfileId } : {})
     };
 
     if (category) {
@@ -36,6 +37,10 @@ export async function GET(request: NextRequest) {
 
     if (type) {
       where.type = type;
+    }
+
+    if (statementId) {
+      where.statementId = statementId;
     }
 
     const [transactions, total] = await Promise.all([
