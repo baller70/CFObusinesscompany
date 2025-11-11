@@ -2,155 +2,369 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import BankStatementUploader from '@/components/bank-statements/bank-statement-uploader';
-import UploadHistory, { UploadHistoryRef } from '@/components/bank-statements/upload-history';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Loader2, FileText } from 'lucide-react';
+import { Loader2, Paperclip, Send, CheckCircle2, AlertCircle, FileText, TrendingUp, TrendingDown } from 'lucide-react';
+
+interface Message {
+  id: string;
+  type: 'user' | 'system' | 'result';
+  content: string;
+  timestamp: Date;
+  fileName?: string;
+  transactionCount?: number;
+  businessCount?: number;
+  personalCount?: number;
+  status?: 'processing' | 'success' | 'error';
+}
 
 export default function BankStatementsClient() {
-  const historyRef = useRef<UploadHistoryRef>(null);
-  const [statementDate, setStatementDate] = useState('');
-  const [statementText, setStatementText] = useState('');
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: '1',
+      type: 'system',
+      content: 'Welcome! Attach a PDF bank statement and I\'ll extract all transactions for you.',
+      timestamp: new Date(),
+    }
+  ]);
+  const [prompt, setPrompt] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleUploadComplete = () => {
-    // Trigger refresh of the history component
-    historyRef.current?.refresh();
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.type !== 'application/pdf') {
+        toast.error('Please select a PDF file');
+        return;
+      }
+      if (file.size > 50 * 1024 * 1024) {
+        toast.error('File size exceeds 50MB limit');
+        return;
+      }
+      setSelectedFile(file);
+      toast.success(`Selected: ${file.name}`);
+    }
   };
 
-  const handleProcessText = async () => {
-    if (!statementDate || !statementText.trim()) {
-      toast.error('Please enter both statement date and statement text');
+  const handleProcess = async () => {
+    if (!selectedFile && !prompt.trim()) {
+      toast.error('Please attach a PDF file or enter a prompt');
       return;
     }
 
+    if (!selectedFile) {
+      toast.error('Please attach a PDF file');
+      return;
+    }
+
+    // Add user message
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      type: 'user',
+      content: prompt || 'Extract transactions from this PDF',
+      timestamp: new Date(),
+      fileName: selectedFile.name,
+    };
+    setMessages(prev => [...prev, userMessage]);
+
+    // Add processing message
+    const processingMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      type: 'system',
+      content: 'Processing your bank statement...',
+      timestamp: new Date(),
+      status: 'processing',
+    };
+    setMessages(prev => [...prev, processingMessage]);
+
     setIsProcessing(true);
+    setPrompt('');
+
     try {
-      const response = await fetch('/api/bank-statements/process-text', {
+      // Upload PDF
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      const uploadResponse = await fetch('/api/bank-statements/upload', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          statementDate,
-          statementText,
-        }),
+        body: formData,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to process statement text');
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json();
+        throw new Error(errorData.error || 'Upload failed');
       }
 
-      toast.success(`Processing started! ${data.transactionCount || 0} transactions extracted.`);
+      const uploadData = await uploadResponse.json();
+      const statementId = uploadData.id;
+
+      // Poll for processing completion
+      let attempts = 0;
+      const maxAttempts = 60; // 3 minutes (60 * 3 seconds)
       
-      // Clear form
-      setStatementDate('');
-      setStatementText('');
+      const pollStatus = async (): Promise<any> => {
+        const statusResponse = await fetch(`/api/bank-statements/status?userId=${uploadData.userId}`);
+        const statusData = await statusResponse.json();
+        
+        const statement = statusData.statements?.find((s: any) => s.id === statementId);
+        
+        if (statement?.status === 'COMPLETED') {
+          return statement;
+        } else if (statement?.status === 'FAILED') {
+          throw new Error(statement.error || 'Processing failed');
+        } else if (attempts < maxAttempts) {
+          attempts++;
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          return pollStatus();
+        } else {
+          throw new Error('Processing timeout');
+        }
+      };
+
+      const result = await pollStatus();
+
+      // Remove processing message and add result
+      setMessages(prev => prev.filter(m => m.id !== processingMessage.id));
+
+      const resultMessage: Message = {
+        id: (Date.now() + 2).toString(),
+        type: 'result',
+        content: `✅ Successfully extracted transactions from ${selectedFile.name}`,
+        timestamp: new Date(),
+        fileName: selectedFile.name,
+        transactionCount: result.transactionCount || 0,
+        businessCount: result.businessCount,
+        personalCount: result.personalCount,
+        status: 'success',
+      };
+      setMessages(prev => [...prev, resultMessage]);
+
+      toast.success(`Extracted ${result.transactionCount || 0} transactions!`);
       
-      // Refresh history
-      handleUploadComplete();
+      // Clear file
+      setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+
     } catch (error) {
-      console.error('Error processing text:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to process statement text');
+      console.error('Error processing:', error);
+      
+      // Remove processing message and add error
+      setMessages(prev => prev.filter(m => m.id !== processingMessage.id));
+      
+      const errorMessage: Message = {
+        id: (Date.now() + 3).toString(),
+        type: 'system',
+        content: `❌ Error: ${error instanceof Error ? error.message : 'Failed to process statement'}`,
+        timestamp: new Date(),
+        status: 'error',
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      
+      toast.error(error instanceof Error ? error.message : 'Failed to process statement');
     } finally {
       setIsProcessing(false);
     }
   };
 
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleProcess();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-background p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-5xl mx-auto h-[calc(100vh-8rem)] flex flex-col">
         {/* Header */}
-        <div className="mb-10">
-          <h1 className="text-heading text-foreground mb-3">
-            BANK STATEMENT PROCESSING
+        <div className="mb-6">
+          <h1 className="text-heading text-foreground mb-2">
+            BANK STATEMENT PROCESSOR
           </h1>
-          <p className="text-body text-muted-foreground max-w-3xl">
-            Upload your bank statements (CSV or PDF) and let our AI CFO automatically extract, categorize, and analyze your financial data. 
-            The system will distribute transactions to appropriate categories and provide strategic insights.
+          <p className="text-body text-muted-foreground">
+            Attach a PDF and I'll extract all transactions instantly
           </p>
         </div>
 
-        {/* Upload Section */}
-        <div className="mb-12">
-          <h2 className="text-subheading text-foreground mb-6">
-            UPLOAD STATEMENTS
-          </h2>
-          <BankStatementUploader onUploadComplete={handleUploadComplete} />
-        </div>
-
-        {/* Manual Text Entry Section */}
-        <div className="mb-12">
-          <h2 className="text-subheading text-foreground mb-6">
-            OR PASTE STATEMENT TEXT
-          </h2>
-          <Card className="p-6 bg-card-elevated border-primary/20">
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="statementDate" className="block text-sm font-medium text-foreground mb-2">
-                  Statement Date
-                </label>
-                <Input
-                  id="statementDate"
-                  type="date"
-                  value={statementDate}
-                  onChange={(e) => setStatementDate(e.target.value)}
-                  className="max-w-xs"
-                  placeholder="Select statement date"
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="statementText" className="block text-sm font-medium text-foreground mb-2">
-                  Statement Text
-                </label>
-                <Textarea
-                  id="statementText"
-                  value={statementText}
-                  onChange={(e) => setStatementText(e.target.value)}
-                  placeholder="Paste your bank statement text here..."
-                  className="min-h-[400px] font-mono text-sm"
-                  disabled={isProcessing}
-                />
-                <p className="text-xs text-muted-foreground mt-2">
-                  Copy and paste the text content from your PDF statement
-                </p>
-              </div>
-
-              <Button
-                onClick={handleProcessText}
-                disabled={isProcessing || !statementDate || !statementText.trim()}
-                className="w-full sm:w-auto"
+        {/* Messages Area */}
+        <Card className="flex-1 bg-card-elevated border-primary/20 mb-4 overflow-hidden flex flex-col">
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <FileText className="mr-2 h-4 w-4" />
-                    Process Statement Text
-                  </>
-                )}
+                <div
+                  className={`max-w-[80%] rounded-lg p-4 ${
+                    message.type === 'user'
+                      ? 'bg-primary text-primary-foreground'
+                      : message.type === 'result'
+                      ? 'bg-green-500/10 border border-green-500/20'
+                      : 'bg-muted'
+                  }`}
+                >
+                  {message.status === 'processing' && (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="text-sm">{message.content}</span>
+                    </div>
+                  )}
+                  
+                  {message.status === 'success' && (
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-2">
+                        <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium">{message.content}</p>
+                          {message.fileName && (
+                            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                              <FileText className="w-3 h-3" />
+                              {message.fileName}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {message.transactionCount !== undefined && (
+                        <div className="mt-3 pt-3 border-t border-green-500/20">
+                          <p className="text-sm font-semibold text-green-700 dark:text-green-400 mb-2">
+                            📊 Extraction Summary
+                          </p>
+                          <div className="space-y-1.5 text-sm">
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground">Total Transactions:</span>
+                              <span className="font-medium">{message.transactionCount}</span>
+                            </div>
+                            {message.businessCount !== undefined && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground flex items-center gap-1">
+                                  <TrendingUp className="w-3 h-3" />
+                                  Business:
+                                </span>
+                                <span className="font-medium text-blue-600 dark:text-blue-400">
+                                  {message.businessCount}
+                                </span>
+                              </div>
+                            )}
+                            {message.personalCount !== undefined && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground flex items-center gap-1">
+                                  <TrendingDown className="w-3 h-3" />
+                                  Personal:
+                                </span>
+                                <span className="font-medium text-purple-600 dark:text-purple-400">
+                                  {message.personalCount}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {message.status === 'error' && (
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                      <p className="text-sm">{message.content}</p>
+                    </div>
+                  )}
+                  
+                  {!message.status && (
+                    <div>
+                      <p className="text-sm">{message.content}</p>
+                      {message.fileName && (
+                        <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                          <FileText className="w-3 h-3" />
+                          {message.fileName}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  
+                  <p className="text-xs opacity-60 mt-2">
+                    {message.timestamp.toLocaleTimeString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Input Area */}
+        <Card className="bg-card-elevated border-primary/20 p-4">
+          <div className="flex items-end gap-3">
+            {/* File Attachment Button */}
+            <div className="flex-shrink-0">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf"
+                onChange={handleFileSelect}
+                className="hidden"
+                disabled={isProcessing}
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isProcessing}
+                className="h-10 w-10"
+              >
+                <Paperclip className="w-5 h-5" />
               </Button>
             </div>
-          </Card>
-        </div>
 
-        {/* History Section */}
-        <div>
-          <h2 className="text-subheading text-foreground mb-6">
-            PROCESSING HISTORY
-          </h2>
-          <UploadHistory ref={historyRef} />
-        </div>
+            {/* Text Input */}
+            <div className="flex-1 relative">
+              <Input
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder={selectedFile ? `Processing ${selectedFile.name}...` : "Type a message... (e.g., 'Extract transactions from this PDF')"}
+                disabled={isProcessing}
+                className="pr-4 h-10"
+              />
+              {selectedFile && (
+                <div className="absolute -top-8 left-0 right-0 bg-muted/50 backdrop-blur-sm rounded-t-lg px-3 py-1 flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <FileText className="w-3 h-3" />
+                    {selectedFile.name}
+                  </span>
+                  <button
+                    onClick={() => {
+                      setSelectedFile(null);
+                      if (fileInputRef.current) fileInputRef.current.value = '';
+                    }}
+                    className="text-xs text-red-500 hover:text-red-600"
+                    disabled={isProcessing}
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Send Button */}
+            <Button
+              onClick={handleProcess}
+              disabled={isProcessing || (!selectedFile && !prompt.trim())}
+              className="h-10"
+            >
+              {isProcessing ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Send className="w-5 h-5" />
+              )}
+            </Button>
+          </div>
+        </Card>
       </div>
     </div>
   );
