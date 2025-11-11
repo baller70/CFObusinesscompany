@@ -61,11 +61,19 @@ export default function BankStatementsClient() {
   const [statementDate, setStatementDate] = useState('');
   const [isProcessingManual, setIsProcessingManual] = useState(false);
   const [manualTransactionCards, setManualTransactionCards] = useState<ManualTransactionCard[]>([]);
+  const manualCardsRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Auto-scroll to transaction cards when a new card is created
+  useEffect(() => {
+    if (manualTransactionCards.length > 0) {
+      manualCardsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [manualTransactionCards.length]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -700,8 +708,11 @@ export default function BankStatementsClient() {
 
           {/* Manual Transaction Cards Display */}
           {manualTransactionCards.length > 0 && (
-            <div className="mt-6 space-y-4">
-              <h3 className="text-sm font-semibold text-foreground">Transaction Cards</h3>
+            <div ref={manualCardsRef} className="mt-6 space-y-4 border-t pt-6 border-primary/20">
+              <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-green-500" />
+                Transaction Cards ({manualTransactionCards.length})
+              </h3>
               {manualTransactionCards.map((card) => (
                 <Card key={card.id} className="bg-card border-primary/30 p-4">
                   <div className="space-y-3">
