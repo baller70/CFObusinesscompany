@@ -14,9 +14,18 @@ export default async function ChartOfAccountsPage() {
     redirect('/auth/signin')
   }
 
-  // Fetch real chart of accounts from database
+  // Get user's current business profile
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { currentBusinessProfileId: true }
+  })
+
+  // Fetch real chart of accounts from database for current business profile
   const allAccounts = await prisma.chartOfAccount.findMany({
-    where: { userId: session.user.id },
+    where: { 
+      userId: session.user.id,
+      businessProfileId: user?.currentBusinessProfileId || null
+    },
     orderBy: { code: 'asc' }
   })
 

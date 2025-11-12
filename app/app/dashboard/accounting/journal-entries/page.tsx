@@ -13,10 +13,13 @@ import { format } from 'date-fns'
 import Link from 'next/link'
 
 import { BackButton } from '@/components/ui/back-button';
-async function getJournalEntriesData(userId: string) {
+async function getJournalEntriesData(userId: string, businessProfileId: string | null) {
   const [journalEntries, journalStats] = await Promise.all([
     prisma.journalEntry.findMany({
-      where: { userId },
+      where: { 
+        userId,
+        businessProfileId
+      },
       include: {
         lines: {
           include: { account: true }
@@ -25,7 +28,10 @@ async function getJournalEntriesData(userId: string) {
       orderBy: { date: 'desc' }
     }).catch(() => []),
     prisma.journalEntry.count({
-      where: { userId }
+      where: { 
+        userId,
+        businessProfileId
+      }
     }).catch(() => 0)
   ])
 
@@ -39,7 +45,16 @@ export default async function JournalEntriesPage() {
     redirect('/auth/signin')
   }
 
-  const { journalEntries, journalStats } = await getJournalEntriesData(session.user.id)
+  // Get user's current business profile
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { currentBusinessProfileId: true }
+  })
+
+  const { journalEntries, journalStats } = await getJournalEntriesData(
+    session.user.id, 
+    user?.currentBusinessProfileId || null
+  )
 
   // Calculate statistics
   const now = new Date()
