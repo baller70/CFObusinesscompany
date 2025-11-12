@@ -13,11 +13,10 @@ import { format } from 'date-fns'
 import Link from 'next/link'
 
 import { BackButton } from '@/components/ui/back-button';
-async function getReconciliationData(userId: string, businessProfileId: string | null) {
+async function getReconciliationData(userId: string) {
   const reconciliations = await prisma.reconciliation.findMany({
     where: { 
-      userId,
-      businessProfileId
+      userId
     },
     orderBy: [{ year: 'desc' }, { month: 'desc' }]
   }).catch(() => [])
@@ -25,8 +24,7 @@ async function getReconciliationData(userId: string, businessProfileId: string |
   const reconciliationStats = await prisma.reconciliation.groupBy({
     by: ['status'],
     where: { 
-      userId,
-      businessProfileId
+      userId
     },
     _count: { _all: true },
     _sum: { difference: true }
@@ -42,15 +40,8 @@ export default async function ReconciliationPage() {
     redirect('/auth/signin')
   }
 
-  // Get user's current business profile
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { currentBusinessProfileId: true }
-  })
-
   const { reconciliations, reconciliationStats } = await getReconciliationData(
-    session.user.id,
-    user?.currentBusinessProfileId || null
+    session.user.id
   )
 
   const getStatusBadge = (status: string) => {
