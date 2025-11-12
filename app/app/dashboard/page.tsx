@@ -42,52 +42,15 @@ async function getDashboardData(userId: string) {
     select: { date: true }
   })
 
-  // Use the most recent transaction month, or fall back to current month
+  // Use the most recent transaction month - always use actual transaction date, not current date
   let targetDate = mostRecentTransaction?.date || currentDate
   const targetMonth = targetDate.getMonth()
   const targetYear = targetDate.getFullYear()
-  const firstDayOfMonth = new Date(targetYear, targetMonth, 1)
-  const lastDayOfMonth = new Date(targetYear, targetMonth + 1, 0)
   
-  // Check if this month has sufficient data (at least 3 transactions)
-  const transactionCount = await prisma.transaction.count({
-    where: {
-      userId,
-      ...profileWhere,
-      date: { gte: firstDayOfMonth, lte: lastDayOfMonth }
-    }
-  })
-  
-  // If current month has few transactions, find the most recent month with activity
+  // Always use the month of the most recent transaction
   let finalMonth = targetMonth
   let finalYear = targetYear
   let periodLabel = `${new Date(finalYear, finalMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
-  
-  if (transactionCount < 3 && mostRecentTransaction) {
-    // Find the most recent month with at least 5 transactions
-    for (let i = 1; i <= 12; i++) {
-      const checkDate = new Date(targetYear, targetMonth - i, 1)
-      const checkMonth = checkDate.getMonth()
-      const checkYear = checkDate.getFullYear()
-      const checkFirstDay = new Date(checkYear, checkMonth, 1)
-      const checkLastDay = new Date(checkYear, checkMonth + 1, 0)
-      
-      const checkCount = await prisma.transaction.count({
-        where: {
-          userId,
-          ...profileWhere,
-          date: { gte: checkFirstDay, lte: checkLastDay }
-        }
-      })
-      
-      if (checkCount >= 5) {
-        finalMonth = checkMonth
-        finalYear = checkYear
-        periodLabel = `${new Date(finalYear, finalMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
-        break
-      }
-    }
-  }
   
   const firstDayOfFinalMonth = new Date(finalYear, finalMonth, 1)
   const lastDayOfFinalMonth = new Date(finalYear, finalMonth + 1, 0)

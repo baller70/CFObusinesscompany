@@ -27,7 +27,9 @@ export default function TransactionsPage() {
     search: '',
     category: 'all',
     account: 'all',
-    status: 'all'
+    status: 'all',
+    year: 'all',
+    month: 'all'
   })
   
   // Fetch transactions from API
@@ -95,12 +97,33 @@ export default function TransactionsPage() {
       )
     }
 
+    // Apply year filter
+    if (filters.year !== 'all') {
+      filtered = filtered.filter(t => {
+        const txDate = new Date(t.date)
+        return txDate.getFullYear().toString() === filters.year
+      })
+    }
+
+    // Apply month filter
+    if (filters.month !== 'all') {
+      filtered = filtered.filter(t => {
+        const txDate = new Date(t.date)
+        return (txDate.getMonth() + 1).toString() === filters.month
+      })
+    }
+
     setFilteredTransactions(filtered)
   }
 
   const handleRefresh = () => {
     setRefreshKey(k => k + 1)
   }
+
+  // Get unique years from transactions
+  const availableYears = Array.from(new Set(
+    transactions.map(t => new Date(t.date).getFullYear())
+  )).sort((a, b) => b - a)
   
   if (status === 'loading') return <div className="p-6">
         <BackButton href="/dashboard" />Loading...</div>
@@ -255,8 +278,8 @@ export default function TransactionsPage() {
         {/* Search and Filters */}
         <Card>
           <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="relative">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <div className="relative md:col-span-2">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
                   placeholder="Search transactions..."
@@ -265,6 +288,45 @@ export default function TransactionsPage() {
                   onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
                 />
               </div>
+              
+              <Select 
+                value={filters.year} 
+                onValueChange={(value) => setFilters(prev => ({ ...prev, year: value, month: value === 'all' ? 'all' : prev.month }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Year" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Years</SelectItem>
+                  {availableYears.map(year => (
+                    <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select 
+                value={filters.month} 
+                onValueChange={(value) => setFilters(prev => ({ ...prev, month: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Month" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Months</SelectItem>
+                  <SelectItem value="1">January</SelectItem>
+                  <SelectItem value="2">February</SelectItem>
+                  <SelectItem value="3">March</SelectItem>
+                  <SelectItem value="4">April</SelectItem>
+                  <SelectItem value="5">May</SelectItem>
+                  <SelectItem value="6">June</SelectItem>
+                  <SelectItem value="7">July</SelectItem>
+                  <SelectItem value="8">August</SelectItem>
+                  <SelectItem value="9">September</SelectItem>
+                  <SelectItem value="10">October</SelectItem>
+                  <SelectItem value="11">November</SelectItem>
+                  <SelectItem value="12">December</SelectItem>
+                </SelectContent>
+              </Select>
               
               <Select 
                 value={filters.category} 
@@ -281,21 +343,6 @@ export default function TransactionsPage() {
                   <SelectItem value="marketing">Marketing</SelectItem>
                   <SelectItem value="equipment">Equipment</SelectItem>
                   <SelectItem value="professional">Professional Services</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select 
-                value={filters.account} 
-                onValueChange={(value) => setFilters(prev => ({ ...prev, account: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Account" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Accounts</SelectItem>
-                  <SelectItem value="checking">Business Checking</SelectItem>
-                  <SelectItem value="savings">Business Savings</SelectItem>
-                  <SelectItem value="credit">Business Credit Card</SelectItem>
                 </SelectContent>
               </Select>
 

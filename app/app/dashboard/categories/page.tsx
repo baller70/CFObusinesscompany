@@ -8,8 +8,17 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
-import { Plus, Tag, TrendingUp, TrendingDown, DollarSign, Percent, Edit, Trash2, Search, Filter, RefreshCw } from 'lucide-react'
+import { Plus, Tag, TrendingUp, TrendingDown, DollarSign, Percent, Edit, Trash2, Search, Filter, RefreshCw, X } from 'lucide-react'
 import { CategoryActions } from '@/components/categories/category-actions'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { format } from 'date-fns'
 import Link from 'next/link'
 import { toast } from 'sonner'
 
@@ -18,6 +27,9 @@ export default function CategoriesPage() {
   const { data: session, status } = useSession() || {}
   const [mockCategories, setMockCategories] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [settingBudgets, setSettingBudgets] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState<any | null>(null)
+  const [showTransactionsDialog, setShowTransactionsDialog] = useState(false)
   
   useEffect(() => {
     if (session?.user?.id) {
@@ -71,6 +83,37 @@ export default function CategoriesPage() {
     return 'text-green-600 bg-green-100'
   }
 
+  const handleCategoryClick = (category: any) => {
+    setSelectedCategory(category)
+    setShowTransactionsDialog(true)
+  }
+
+  const setBudgetLimitsFrom2024 = async () => {
+    try {
+      setSettingBudgets(true)
+      const response = await fetch('/api/categories/set-budget-limits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year: 2024 })
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        toast.success(`Success! Set budget limits for ${result.categoriesUpdated} expense categories based on 2024 data.`)
+        // Refresh categories to show updated budget limits
+        fetchCategories()
+      } else {
+        const error = await response.json()
+        toast.error(`Error: ${error.error}`)
+      }
+    } catch (error) {
+      console.error('Error setting budget limits:', error)
+      toast.error('Failed to set budget limits. Please try again.')
+    } finally {
+      setSettingBudgets(false)
+    }
+  }
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-8">
@@ -86,6 +129,15 @@ export default function CategoriesPage() {
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
+          </Button>
+          <Button
+            variant="outline"
+            onClick={setBudgetLimitsFrom2024}
+            disabled={settingBudgets}
+            className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+          >
+            <DollarSign className={`h-4 w-4 mr-2 ${settingBudgets ? 'animate-pulse' : ''}`} />
+            {settingBudgets ? 'Setting Limits...' : 'Set Budget Limits'}
           </Button>
           <Link href="/dashboard/categories/new">
             <Button>
@@ -195,7 +247,11 @@ export default function CategoriesPage() {
                 const budgetUsage = getBudgetUsage(category)
 
                 return (
-                  <Card key={category.id} className={`hover:shadow-lg transition-shadow ${!category.isActive ? 'opacity-60' : ''}`}>
+                  <Card 
+                    key={category.id} 
+                    className={`hover:shadow-lg transition-shadow cursor-pointer ${!category.isActive ? 'opacity-60' : ''}`}
+                    onClick={() => handleCategoryClick(category)}
+                  >
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center space-x-3">
@@ -610,6 +666,83 @@ export default function CategoriesPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Transactions Dialog */}
+      <Dialog open={showTransactionsDialog} onOpenChange={setShowTransactionsDialog}>
+        <DialogContent className="max-w-3xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              {selectedCategory && (
+                <>
+                  <div 
+                    className="w-4 h-4 rounded-full" 
+                    style={{ backgroundColor: selectedCategory.color }}
+                  />
+                  <span>{selectedCategory.name} Transactions</span>
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedCategory && (
+                <div className="flex gap-4 mt-2">
+                  <Badge variant={selectedCategory.type === 'INCOME' ? 'default' : 'destructive'}>
+                    {selectedCategory.type}
+                  </Badge>
+                  <span className="text-sm">
+                    {selectedCategory.transactions?.length || 0} transactions
+                  </span>
+                  <span className="text-sm font-semibold">
+                    Total: {selectedCategory.type === 'INCOME' ? '+' : '-'}$
+                    {Math.abs(getTotalAmount(selectedCategory)).toLocaleString()}
+                  </span>
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <ScrollArea className="max-h-[60vh] pr-4">
+            {selectedCategory && selectedCategory.transactions && selectedCategory.transactions.length > 0 ? (
+              <div className="space-y-3">
+                {selectedCategory.transactions.map((transaction: any) => (
+                  <div 
+                    key={transaction.id}
+                    className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-1">
+                        <h4 className="font-medium text-gray-900">{transaction.description}</h4>
+                        <Badge variant="outline" className="text-xs">
+                          {transaction.type}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <span>{format(new Date(transaction.date), 'MMM dd, yyyy')}</span>
+                        {transaction.category && (
+                          <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                            {transaction.category}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className={`text-lg font-semibold ${
+                        transaction.type === 'INCOME' ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {transaction.type === 'INCOME' ? '+' : '-'}$
+                        {Math.abs(transaction.amount).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-gray-500">No transactions in this category</p>
+              </div>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

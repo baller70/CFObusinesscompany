@@ -44,6 +44,7 @@ function BudgetPageClient() {
   const { data: session } = useSession() || {}
   const [budgetData, setBudgetData] = useState<BudgetData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [generating, setGenerating] = useState(false)
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1)
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
 
@@ -69,6 +70,32 @@ function BudgetPageClient() {
       fetchBudgets()
     }
   }, [session, selectedMonth, selectedYear])
+
+  const generateBudgetsFrom2024 = async () => {
+    try {
+      setGenerating(true)
+      const response = await fetch('/api/budgets/generate-from-history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year: 2024, targetYear: 2025 })
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        alert(`Success! Generated ${result.budgetsCreated} monthly budgets for 2025 based on your 2024 data.\n\nAnalyzed: ${result.transactionsAnalyzed} transactions across ${result.categoriesAnalyzed} categories.`)
+        // Refresh budgets to show newly created ones
+        fetchBudgets()
+      } else {
+        const error = await response.json()
+        alert(`Error: ${error.error}`)
+      }
+    } catch (error) {
+      console.error('Error generating budgets:', error)
+      alert('Failed to generate budgets. Please try again.')
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   const getProgressColor = (percentUsed: number) => {
     if (percentUsed >= 100) return 'bg-red-500'
@@ -167,11 +194,23 @@ function BudgetPageClient() {
             <PieChart className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No budgets for this period</h3>
             <p className="text-gray-600 mb-6">
-              Upload bank statements to automatically create budgets based on your transactions.
+              Generate your 2025 budget based on 12 months of 2024 transaction data, or upload more statements.
             </p>
-            <Button onClick={() => window.location.href = '/dashboard/bank-statements'}>
-              Go to Financial Statements
-            </Button>
+            <div className="flex gap-3 justify-center">
+              <Button 
+                onClick={generateBudgetsFrom2024}
+                disabled={generating}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {generating ? 'Generating...' : 'Generate 2025 Budget from 2024 Data'}
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => window.location.href = '/dashboard/bank-statements'}
+              >
+                Go to Financial Statements
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
