@@ -24,6 +24,7 @@ export async function GET() {
 
     if (!user || !user.businessProfiles[0]) {
       return NextResponse.json({ 
+        charges: [],
         recurringCharges: [],
         summary: {
           totalCharges: 0,
@@ -94,11 +95,12 @@ export async function GET() {
       categories
     };
 
-    return NextResponse.json({ recurringCharges, summary });
+    return NextResponse.json({ charges: recurringCharges, recurringCharges, summary });
   } catch (error) {
     console.error('Error fetching recurring charges:', error);
     return NextResponse.json({ 
       error: 'Internal server error',
+      charges: [],
       recurringCharges: [],
       summary: {
         totalCharges: 0,
