@@ -14,13 +14,19 @@ export default async function ChartOfAccountsPage() {
     redirect('/auth/signin')
   }
 
-  // Empty accounts data - users can add their own
+  // Fetch real chart of accounts from database
+  const allAccounts = await prisma.chartOfAccount.findMany({
+    where: { userId: session.user.id },
+    orderBy: { code: 'asc' }
+  })
+
+  // Group accounts by type
   const accounts = {
-    ASSET: [],
-    LIABILITY: [],
-    EQUITY: [],
-    REVENUE: [],
-    EXPENSE: []
+    ASSET: allAccounts.filter(a => a.type === 'ASSET'),
+    LIABILITY: allAccounts.filter(a => a.type === 'LIABILITY'),
+    EQUITY: allAccounts.filter(a => a.type === 'EQUITY'),
+    REVENUE: allAccounts.filter(a => a.type === 'REVENUE'),
+    EXPENSE: allAccounts.filter(a => a.type === 'EXPENSE')
   }
 
   return (

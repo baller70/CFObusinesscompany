@@ -41,9 +41,18 @@ export default async function JournalEntriesPage() {
 
   const { journalEntries, journalStats } = await getJournalEntriesData(session.user.id)
 
-  const thisMonthEntries = 0
-  const totalDebits = 0
-  const averageEntry = 0
+  // Calculate statistics
+  const now = new Date()
+  const currentMonth = now.getMonth()
+  const currentYear = now.getFullYear()
+  
+  const thisMonthEntries = journalEntries.filter(entry => {
+    const entryDate = new Date(entry.date)
+    return entryDate.getMonth() === currentMonth && entryDate.getFullYear() === currentYear
+  }).length
+  
+  const totalDebits = journalEntries.reduce((sum, entry) => sum + entry.totalDebit, 0)
+  const averageEntry = journalEntries.length > 0 ? totalDebits / journalEntries.length : 0
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
