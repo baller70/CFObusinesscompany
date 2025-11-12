@@ -58,10 +58,10 @@ export default function CategoriesPage() {
   }
 
   const getBudgetUsage = (category: any) => {
-    if (!category.budgetLimit || category.type === 'INCOME') return null
+    if (!category.budget || category.type === 'INCOME') return null
     const spent = Math.abs(getTotalAmount(category))
-    const percentage = (spent / category.budgetLimit) * 100
-    return { spent, percentage, limit: category.budgetLimit }
+    const percentage = (spent / category.budget) * 100
+    return { spent, percentage, limit: category.budget }
   }
 
   const getBudgetColor = (percentage: number) => {
@@ -134,7 +134,7 @@ export default function CategoriesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {mockCategories.filter(cat => cat.budgetLimit).length}
+              {mockCategories.filter(cat => cat.budget).length}
             </div>
             <p className="text-xs text-gray-500 mt-1">With budget limits</p>
           </CardContent>
