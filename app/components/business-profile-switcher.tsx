@@ -138,7 +138,7 @@ export function BusinessProfileSwitcher() {
             <DialogHeader>
               <DialogTitle>Create New Profile</DialogTitle>
               <DialogDescription>
-                Add a new personal/household or business profile to manage finances separately.
+                Add a new business profile to manage finances separately.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -160,7 +160,7 @@ export function BusinessProfileSwitcher() {
                         <div>
                           <div className="font-medium">Personal/Household</div>
                           <div className="text-xs text-muted-foreground">
-                            Family expenses, personal obligations, household finances
+                            Business expenses, obligations, and financial operations
                           </div>
                         </div>
                       </div>

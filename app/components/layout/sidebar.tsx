@@ -178,7 +178,7 @@ const businessMenuItems = [
     icon: Upload
   },
   {
-    title: 'Personal Finance',
+    title: 'Business Finance',
     icon: Brain,
     submenu: [
       { title: 'Budget Planner', href: '/dashboard/budget', icon: PieChart },
@@ -283,7 +283,7 @@ export function Sidebar({ className }: SidebarProps) {
   // Determine which menu to show based on profile type
   const isPersonal = currentProfile?.type === 'PERSONAL'
   const menuItems = isPersonal ? personalMenuItems : businessMenuItems
-  const appTitle = isPersonal ? 'Personal Finance' : 'CFO Business'
+  const appTitle = isPersonal ? 'Business Finance' : 'CFO Business'
   const AppIcon = isPersonal ? Wallet : AccountingIcon
 
   return (
