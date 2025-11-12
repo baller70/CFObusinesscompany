@@ -11,7 +11,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { useBusinessProfile } from '@/lib/business-profile-context'
 import { 
   Home, 
-  CheckSquare,
   ArrowUpDown,
   FileText,
   Receipt,
@@ -19,17 +18,12 @@ import {
   FolderOpen,
   FileBarChart,
   DollarSign as AccountingIcon,
-  UserCheck,
-  Zap,
   BarChart3,
   Settings,
   ChevronRight,
   ChevronDown,
-  Building2,
   ShoppingCart,
   Calculator,
-  Clock,
-  File,
   Briefcase,
   BookOpen,
   TrendingUp,
@@ -45,7 +39,6 @@ import {
   Shield,
   Calendar,
   FileSpreadsheet,
-  Search,
   Landmark,
   Activity,
   Workflow,
@@ -161,11 +154,6 @@ const personalMenuItems = [
     ]
   },
   {
-    title: 'Documents',
-    href: '/dashboard/documents',
-    icon: File
-  },
-  {
     title: 'Settings',
     href: '/dashboard/settings',
     icon: Settings
@@ -178,11 +166,6 @@ const businessMenuItems = [
     title: 'Dashboards',
     href: '/dashboard',
     icon: Home
-  },
-  {
-    title: 'Tasks',
-    href: '/dashboard/tasks',
-    icon: CheckSquare
   },
   {
     title: 'Transactions',
@@ -241,16 +224,6 @@ const businessMenuItems = [
     ]
   },
   {
-    title: 'Board & Investors',
-    icon: Users,
-    submenu: [
-      { title: 'Board Members', href: '/dashboard/board/members', icon: Users },
-      { title: 'Board Meetings', href: '/dashboard/board/meetings', icon: Calendar },
-      { title: 'Investor Updates', href: '/dashboard/board/investor-updates', icon: FileText },
-      { title: 'Shareholders', href: '/dashboard/board/shareholders', icon: UserCheck }
-    ]
-  },
-  {
     title: 'Advanced Reports',
     icon: FileSpreadsheet,
     submenu: [
@@ -259,20 +232,6 @@ const businessMenuItems = [
       { title: 'Investor Reports', href: '/dashboard/reports/investor', icon: FileText },
       { title: 'Compliance Reports', href: '/dashboard/reports/compliance', icon: Shield }
     ]
-  },
-  {
-    title: 'Market Intelligence',
-    icon: Search,
-    submenu: [
-      { title: 'Market Data', href: '/dashboard/market/data', icon: TrendingUp },
-      { title: 'Competitive Analysis', href: '/dashboard/market/competitive', icon: Search },
-      { title: 'Industry Benchmarks', href: '/dashboard/market/benchmarks', icon: BarChart3 }
-    ]
-  },
-  {
-    title: 'Invoices & Estimates',
-    href: '/dashboard/invoices',
-    icon: FileText
   },
   {
     title: 'Expenses',
@@ -286,31 +245,6 @@ const businessMenuItems = [
     ]
   },
   {
-    title: 'Contacts & Products',
-    icon: Building2,
-    submenu: [
-      { title: 'People & Contractors', href: '/dashboard/contacts/contractors', icon: UserCheck },
-      { title: 'Vendors', href: '/dashboard/contacts/vendors', icon: Building2 },
-      { title: 'Customers', href: '/dashboard/contacts/customers', icon: Users },
-      { title: 'Products & Services', href: '/dashboard/contacts/products', icon: ShoppingCart }
-    ]
-  },
-  {
-    title: 'Projects',
-    href: '/dashboard/projects',
-    icon: FolderOpen
-  },
-  {
-    title: 'Documents',
-    href: '/dashboard/documents',
-    icon: File
-  },
-  {
-    title: 'Data Import',
-    href: '/dashboard/import',
-    icon: Upload
-  },
-  {
     title: 'Accounting',
     icon: AccountingIcon,
     submenu: [
@@ -318,16 +252,6 @@ const businessMenuItems = [
       { title: 'Reconciliation', href: '/dashboard/accounting/reconciliation', icon: Calculator },
       { title: 'Journal Entries', href: '/dashboard/accounting/journal-entries', icon: FileText }
     ]
-  },
-  {
-    title: 'Payroll',
-    href: '/dashboard/payroll',
-    icon: UserCheck
-  },
-  {
-    title: 'Automations',
-    href: '/dashboard/automations',
-    icon: Zap
   },
   {
     title: 'Settings',
