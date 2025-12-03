@@ -104,7 +104,7 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -120,13 +120,69 @@ export async function DELETE(
       );
     }
 
+    // Delete the transaction
     await prisma.transaction.delete({
       where: {
         id: params.id
       }
     });
 
-    return NextResponse.json({ success: true, message: "Transaction deleted successfully" });
+    // Check if there are any remaining transactions for this user/profile
+    const remainingTransactions = await prisma.transaction.count({
+      where: {
+        userId: session.user.id,
+        businessProfileId: existingTransaction.businessProfileId
+      }
+    });
+
+    // If no remaining transactions, clean up related data
+    if (remainingTransactions === 0 && existingTransaction.businessProfileId) {
+      // Delete budgets for this profile
+      await prisma.budget.deleteMany({
+        where: {
+          userId: session.user.id,
+          businessProfileId: existingTransaction.businessProfileId
+        }
+      });
+
+      // Delete recurring charges for this profile
+      await prisma.recurringCharge.deleteMany({
+        where: {
+          userId: session.user.id,
+          businessProfileId: existingTransaction.businessProfileId
+        }
+      });
+
+      // Delete recurring patterns for this profile
+      await prisma.recurringPattern.deleteMany({
+        where: {
+          userId: session.user.id,
+          businessProfileId: existingTransaction.businessProfileId
+        }
+      });
+
+      // Reset financial metrics for this profile
+      await prisma.financialMetrics.updateMany({
+        where: {
+          userId: session.user.id,
+          businessProfileId: existingTransaction.businessProfileId
+        },
+        data: {
+          monthlyIncome: 0,
+          monthlyExpenses: 0,
+          monthlyBurnRate: 0,
+          lastCalculated: new Date()
+        }
+      });
+
+      console.log(`[Delete Transaction] Cleaned up related data for empty profile`);
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Transaction deleted successfully",
+      remainingTransactions
+    });
 
   } catch (error) {
     console.error("Delete transaction error:", error);

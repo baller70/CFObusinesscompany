@@ -8,11 +8,11 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { 
-  Plus, 
-  CreditCard, 
-  Building2, 
-  TrendingDown, 
+import {
+  Plus,
+  CreditCard,
+  Building2,
+  TrendingDown,
   AlertCircle,
   CheckCircle,
   Clock,
@@ -27,9 +27,11 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useBusinessProfile } from '@/lib/business-profile-context'
 
 import { BackButton } from '@/components/ui/back-button';
 export default function DebtsPage() {
+  const { currentBusinessProfileId } = useBusinessProfile()
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedStrategy, setSelectedStrategy] = useState('avalanche')
   const [debts, setDebts] = useState<any[]>([])
@@ -82,7 +84,10 @@ export default function DebtsPage() {
       const response = await fetch('/api/debts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newDebt)
+        body: JSON.stringify({
+          ...newDebt,
+          businessProfileId: currentBusinessProfileId
+        })
       })
 
       if (response.ok) {

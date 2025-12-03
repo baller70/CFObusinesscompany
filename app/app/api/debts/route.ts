@@ -4,6 +4,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -20,12 +22,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    // Get all active debts for the user
+    // Get the currently selected business profile ID from user
+    const activeProfileId = user.currentBusinessProfileId
+
+    // Build where clause to filter by active profile
+    const whereClause: any = {
+      userId: user.id,
+      isActive: true
+    }
+
+    // Filter by active profile if exists
+    if (activeProfileId) {
+      whereClause.businessProfileId = activeProfileId
+    }
+
+    // Get debts filtered by active business profile
     const debts = await prisma.debt.findMany({
-      where: {
-        userId: user.id,
-        isActive: true
-      },
+      where: whereClause,
       include: {
         businessProfile: true,
         payments: {

@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ArrowLeft, Target, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { useBusinessProfile } from '@/lib/business-profile-context'
 
 interface GoalFormProps {
   userId: string
@@ -20,6 +21,7 @@ interface GoalFormProps {
 
 export function GoalForm({ userId }: GoalFormProps) {
   const router = useRouter()
+  const { currentBusinessProfileId } = useBusinessProfile()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [formData, setFormData] = useState({
@@ -55,6 +57,7 @@ export function GoalForm({ userId }: GoalFormProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId,
+          businessProfileId: currentBusinessProfileId,
           name: formData.name,
           description: formData.description || null,
           targetAmount: parseFloat(formData.targetAmount),

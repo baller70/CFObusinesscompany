@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { subMonths } from 'date-fns'
 
+export const dynamic = 'force-dynamic';
+
 // Generate industry benchmarks and comparisons
 export async function POST(req: NextRequest) {
   try {

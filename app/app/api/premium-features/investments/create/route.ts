@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic';
+
 const createInvestmentSchema = z.object({
   name: z.string().min(1),
   type: z.enum(['STOCK', 'BOND', 'MUTUAL_FUND', 'ETF', 'REAL_ESTATE', 'COMMODITIES', 'CRYPTOCURRENCY', 'PRIVATE_EQUITY', 'VENTURE_CAPITAL', 'ALTERNATIVE', 'CASH', 'CD', 'TREASURY', 'CORPORATE_BOND', 'MUNICIPAL_BOND', 'OPTIONS', 'FUTURES', 'FOREX']),

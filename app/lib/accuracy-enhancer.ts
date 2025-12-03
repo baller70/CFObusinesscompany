@@ -278,9 +278,16 @@ export async function detectRecurringPattern(
       // Calculate average amount
       const avgAmount = recentTransactions.reduce((sum, t) => sum + t.amount, 0) / recentTransactions.length;
 
-      // Create new pattern
-      const newPattern = await prisma.recurringPattern.create({
-        data: {
+      // Upsert pattern (create or update if exists)
+      const newPattern = await prisma.recurringPattern.upsert({
+        where: {
+          userId_merchantName_businessProfileId: {
+            userId,
+            merchantName,
+            businessProfileId: businessProfileId || ''
+          }
+        },
+        create: {
           userId,
           businessProfileId,
           merchantName,
@@ -292,10 +299,19 @@ export async function detectRecurringPattern(
           lastOccurrence: date,
           nextExpected,
           confidence: Math.min(0.9, recentTransactions.length * 0.2)
+        },
+        update: {
+          category: recentTransactions[0].category,
+          averageAmount: avgAmount,
+          frequency,
+          detectedFrom: recentTransactions.length,
+          lastOccurrence: date,
+          nextExpected,
+          confidence: Math.min(0.9, recentTransactions.length * 0.2)
         }
       });
 
-      console.log(`[Accuracy] ✅ New recurring pattern created: ${merchantName} (${frequency}, confidence: ${newPattern.confidence})`);
+      console.log(`[Accuracy] ✅ Recurring pattern upserted: ${merchantName} (${frequency}, confidence: ${newPattern.confidence})`);
       return {
         isRecurring: true,
         pattern: newPattern,

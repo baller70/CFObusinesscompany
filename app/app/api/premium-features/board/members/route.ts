@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic';
+
 const createBoardMemberSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),

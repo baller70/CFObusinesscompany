@@ -4,6 +4,8 @@ import { NextResponse } from 'next/server'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
+export const dynamic = 'force-dynamic';
+
 // We'll store notification preferences in a separate table or in JSON format
 // For now, we'll create a simple preferences store
 

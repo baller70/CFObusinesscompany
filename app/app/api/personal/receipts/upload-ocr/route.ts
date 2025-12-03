@@ -7,6 +7,8 @@ import { uploadFile } from '@/lib/s3'
 import { getBucketConfig } from '@/lib/aws-config'
 import { processReceiptWithAzureOCR } from '@/lib/azure-ocr'
 
+export const dynamic = 'force-dynamic';
+
 // Upload receipts with OCR processing
 export async function POST(request: NextRequest) {
   try {

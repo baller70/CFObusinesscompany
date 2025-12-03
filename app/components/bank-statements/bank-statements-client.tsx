@@ -1,32 +1,14 @@
 'use client';
 
 import { useRef, useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { Loader2, Paperclip, Send, Sparkles, FileText, Building2, Home, CheckCircle, Copy, Trash2, X } from 'lucide-react';
-
-interface Message {
-  id: string;
-  role: 'user' | 'assistant' | 'system';
-  content: string | Array<{type: string; text?: string; file?: {filename: string; file_data: string}}>;
-  timestamp: Date;
-  fileName?: string;
-  model?: string;
-  extractedTransactions?: ExtractedTransaction[];
-}
-
-interface ExtractedTransaction {
-  date: string;
-  description: string;
-  amount: number;
-  category?: string;
-  profileType: 'BUSINESS' | 'PERSONAL';
-}
+import { Loader2, FileText, Building2, Home, Copy, Trash2, X, Upload, AlertCircle, Clock, CheckCircle, CheckCircle2, DollarSign, AlertTriangle, ClipboardPaste } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 
 interface ManualTransaction {
   date: string;
@@ -43,37 +25,206 @@ interface ManualTransactionCard {
 }
 
 export default function BankStatementsClient() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'system',
-      content: 'Welcome to Abacus ChatLLM! Upload a PDF bank statement and I\'ll extract all transactions and classify them as BUSINESS or PERSONAL.',
-      timestamp: new Date(),
-    }
-  ]);
-  const [inputText, setInputText] = useState('Please extract all transactions from this bank statement PDF and classify each as BUSINESS or PERSONAL. For each transaction, include: date, description, amount, and category.');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('RouteLLM');
-  const [loadingTransactions, setLoadingTransactions] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  
   // Manual transaction entry state
   const [manualTransactionText, setManualTransactionText] = useState('');
   const [statementDate, setStatementDate] = useState('');
   const [isProcessingManual, setIsProcessingManual] = useState(false);
   const [manualTransactionCards, setManualTransactionCards] = useState<ManualTransactionCard[]>([]);
   const manualCardsRef = useRef<HTMLDivElement>(null);
-  
+  const [selectedModel, setSelectedModel] = useState('RouteLLM');
+  const [loadingTransactions, setLoadingTransactions] = useState<string | null>(null);
+
   // Saved statements state
   const [savedStatements, setSavedStatements] = useState<any[]>([]);
   const [loadingSavedStatements, setLoadingSavedStatements] = useState(false);
-  
+
   // View statement modal state
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [viewingTransactions, setViewingTransactions] = useState<any[]>([]);
   const [viewingStatementInfo, setViewingStatementInfo] = useState<any>(null);
+
+  // PDF Upload state
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'processing' | 'success' | 'error'>('idle');
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadResult, setUploadResult] = useState<any>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
+
+  // Handle PDF file selection
+  const handlePdfSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.type !== 'application/pdf') {
+        toast.error('Please select a PDF file');
+        return;
+      }
+      if (file.size > 50 * 1024 * 1024) {
+        toast.error('File size exceeds 50MB limit');
+        return;
+      }
+      setPdfFile(file);
+      setUploadStatus('idle');
+      setUploadError(null);
+      setUploadResult(null);
+      toast.success(`Selected: ${file.name}`);
+    }
+  };
+
+  // Handle PDF upload
+  const handlePdfUpload = async () => {
+    if (!pdfFile) {
+      toast.error('Please select a PDF file first');
+      return;
+    }
+
+    setIsUploadingPdf(true);
+    setUploadProgress(0);
+    setUploadStatus('uploading');
+    setUploadError(null);
+    setUploadResult(null);
+
+    try {
+      // Step 1: Upload the file
+      setUploadProgress(10);
+      const formData = new FormData();
+      formData.append('files', pdfFile);
+      formData.append('sourceTypes', 'BANK');
+      formData.append('model', 'gpt-4o');
+
+      const uploadResponse = await fetch('/api/bank-statements/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json();
+        throw new Error(errorData.error || 'Upload failed');
+      }
+
+      const uploadData = await uploadResponse.json();
+      setUploadProgress(30);
+      setUploadStatus('processing');
+      toast.success(`File uploaded! Processing...`);
+
+      // Step 2: Poll for processing status
+      const statementId = uploadData.id;
+      if (statementId) {
+        let attempts = 0;
+        // Increased timeout: 15 minutes max wait (450 × 2 seconds)
+        // Large PDFs with many transactions and AI API retries can take 8-12 minutes
+        // AI processing stages: extraction (2-3 min) + categorization (3-5 min) + validation (2-4 min)
+        const maxAttempts = 450;
+        const POLL_INTERVAL_MS = 2000;
+
+        const pollStatus = async () => {
+          attempts++;
+          const elapsedMinutes = Math.floor((attempts * POLL_INTERVAL_MS) / 60000);
+
+          try {
+            const statusResponse = await fetch(`/api/bank-statements/status?id=${statementId}`);
+            if (statusResponse.ok) {
+              const statusData = await statusResponse.json();
+              const statement = statusData.statements?.[0] || statusData;
+
+              // Update progress based on processing stage
+              // Backend stages: EXTRACTING_DATA → CATEGORIZING_TRANSACTIONS → ANALYZING_PATTERNS → DISTRIBUTING_DATA → VALIDATING → COMPLETED
+              if (statement.processingStage === 'UPLOADED') setUploadProgress(35);
+              else if (statement.processingStage === 'QUEUED') setUploadProgress(40);
+              else if (statement.processingStage === 'EXTRACTING_DATA') setUploadProgress(50);
+              else if (statement.processingStage === 'CATEGORIZING_TRANSACTIONS') setUploadProgress(60);
+              else if (statement.processingStage === 'ANALYZING_PATTERNS') setUploadProgress(70);
+              else if (statement.processingStage === 'DISTRIBUTING_DATA') setUploadProgress(80);
+              else if (statement.processingStage === 'VALIDATING') setUploadProgress(90);
+              else if (statement.processingStage === 'COMPLETED') setUploadProgress(100);
+
+              if (statement.status === 'COMPLETED') {
+                setUploadProgress(100);
+                setUploadStatus('success');
+                setUploadResult({
+                  statementId: statement.id || statementId,
+                  transactionCount: statement.transactionCount || 0,
+                  bankName: statement.bankName,
+                  accountNumber: statement.accountNumber,
+                  statementPeriod: statement.statementPeriod,
+                });
+                toast.success(`✅ Successfully processed ${statement.transactionCount || 0} transactions!`);
+                await fetchSavedStatements();
+                setPdfFile(null);
+                if (pdfInputRef.current) pdfInputRef.current.value = '';
+                setIsUploadingPdf(false);
+                return;
+              } else if (statement.status === 'FAILED') {
+                setUploadStatus('error');
+                setUploadError(statement.errorLog || statement.errorMessage || 'Processing failed');
+                toast.error(`❌ Processing failed: ${statement.errorLog || 'Unknown error'}`);
+                setIsUploadingPdf(false);
+                return;
+              } else if (attempts < maxAttempts) {
+                // Still processing, continue polling
+                // Show progress message every 2 minutes with stage info
+                if (elapsedMinutes > 0 && elapsedMinutes % 2 === 0 && (attempts * POLL_INTERVAL_MS) % 120000 < POLL_INTERVAL_MS) {
+                  const stage = statement.status === 'EXTRACTING_DATA' ? 'Extracting transactions from PDF...' :
+                               statement.status === 'CATEGORIZING_TRANSACTIONS' ? 'AI categorizing transactions...' :
+                               statement.status === 'ANALYZING_PATTERNS' ? 'Detecting recurring patterns...' :
+                               statement.status === 'VALIDATING' ? 'Validating data...' :
+                               'Processing...';
+                  toast.info(`⏳ ${stage} ${elapsedMinutes} min elapsed. Large statements can take 10-15 minutes.`, { duration: 4000 });
+                }
+                setTimeout(pollStatus, POLL_INTERVAL_MS);
+              } else {
+                // Timeout after 15 minutes - processing continues in background
+                setUploadStatus('processing'); // Keep showing as processing
+                toast.info('⏳ Processing continues in the background. The statement will appear in "Saved Statements" when complete. You can navigate away.', { duration: 8000 });
+                await fetchSavedStatements(); // Refresh list anyway
+                // Don't clear file or reset - let user know it's still working
+                setIsUploadingPdf(false);
+                return;
+              }
+            } else {
+              // Status API error, retry
+              if (attempts < maxAttempts) {
+                setTimeout(pollStatus, POLL_INTERVAL_MS);
+              } else {
+                setUploadStatus('processing');
+                toast.info('⏳ Could not get processing status. Check "Saved Statements" shortly - processing continues in background.', { duration: 6000 });
+                setIsUploadingPdf(false);
+              }
+            }
+          } catch (pollError) {
+            console.error('Status poll error:', pollError);
+            if (attempts < maxAttempts) {
+              setTimeout(pollStatus, POLL_INTERVAL_MS);
+            } else {
+              // Don't throw - gracefully handle timeout
+              setUploadStatus('processing');
+              toast.info('⏳ Processing continues in the background. Check "Saved Statements" shortly.', { duration: 6000 });
+              setIsUploadingPdf(false);
+            }
+          }
+        };
+
+        setTimeout(pollStatus, POLL_INTERVAL_MS);
+      } else {
+        setUploadProgress(100);
+        setUploadStatus('success');
+        toast.success('File uploaded successfully!');
+        await fetchSavedStatements();
+      }
+
+    } catch (error) {
+      console.error('PDF upload error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+      setUploadStatus('error');
+      setUploadError(errorMessage);
+      toast.error(`❌ ${errorMessage}`);
+    } finally {
+      if (uploadStatus !== 'processing') {
+        setIsUploadingPdf(false);
+      }
+    }
+  };
 
   // Fetch saved statements
   const fetchSavedStatements = async () => {
@@ -120,11 +271,6 @@ export default function BankStatementsClient() {
     }
   };
 
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
   // Auto-scroll to transaction cards when a new card is created
   useEffect(() => {
     if (manualTransactionCards.length > 0) {
@@ -136,293 +282,6 @@ export default function BankStatementsClient() {
   useEffect(() => {
     fetchSavedStatements();
   }, []);
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.type !== 'application/pdf') {
-        toast.error('Please select a PDF file');
-        return;
-      }
-      if (file.size > 50 * 1024 * 1024) {
-        toast.error('File size exceeds 50MB limit');
-        return;
-      }
-      setSelectedFile(file);
-      toast.success(`Selected: ${file.name}`);
-    }
-  };
-
-  const handleSendMessage = async () => {
-    if (!inputText.trim() && !selectedFile) {
-      toast.error('Please enter a message or attach a file');
-      return;
-    }
-
-    // Add user message
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: inputText || `Uploaded: ${selectedFile?.name}`,
-      timestamp: new Date(),
-      fileName: selectedFile?.name,
-      model: selectedModel,
-    };
-    setMessages(prev => [...prev, userMessage]);
-
-    // Clear input
-    const currentInput = inputText;
-    const currentFile = selectedFile;
-    setInputText('');
-    setSelectedFile(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-
-    setIsProcessing(true);
-
-    // Add placeholder for assistant response
-    const assistantMessageId = (Date.now() + 1).toString();
-    setMessages(prev => [...prev, {
-      id: assistantMessageId,
-      role: 'assistant',
-      content: '',
-      timestamp: new Date(),
-      model: selectedModel,
-    }]);
-
-    try {
-      // Prepare messages for ChatLLM - only send the current message
-      const chatMessages: any[] = [];
-      
-      // If file is attached, send it as multimodal content
-      if (currentFile) {
-        const base64 = await fileToBase64(currentFile);
-        const userPrompt = currentInput || `Please extract all transactions from this bank statement PDF and classify each as BUSINESS or PERSONAL. For each transaction, include: date, description, amount, and category.`;
-        
-        // Send PDF as multimodal message with file content
-        chatMessages.push({
-          role: 'user',
-          content: [
-            {
-              type: 'file',
-              file: {
-                filename: currentFile.name,
-                file_data: `data:application/pdf;base64,${base64}`
-              }
-            },
-            {
-              type: 'text',
-              text: userPrompt
-            }
-          ]
-        });
-      } else {
-        // Text-only message - ensure content is always a string
-        chatMessages.push({ 
-          role: 'user', 
-          content: currentInput 
-        });
-      }
-
-      // Call ChatLLM proxy
-      const response = await fetch('/api/chatllm', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: chatMessages,
-          model: selectedModel,
-          stream: true,
-        }),
-      });
-
-      if (!response.ok) {
-        let errorMessage = 'Failed to get response from ChatLLM';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorMessage;
-        } catch {
-          // Use default error message
-        }
-        throw new Error(errorMessage);
-      }
-
-      // Stream the response
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let assistantContent = '';
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
-
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6);
-              if (data === '[DONE]') continue;
-
-              try {
-                const parsed = JSON.parse(data);
-                const content = parsed.choices?.[0]?.delta?.content;
-                
-                if (content) {
-                  assistantContent += content;
-                  
-                  // Update the assistant message with streamed content
-                  setMessages(prev => prev.map(m => 
-                    m.id === assistantMessageId 
-                      ? { ...m, content: assistantContent }
-                      : m
-                  ));
-                }
-              } catch (e) {
-                // Ignore parsing errors for incomplete JSON
-              }
-            }
-          }
-        }
-      }
-
-      if (!assistantContent) {
-        throw new Error('No response received from ChatLLM');
-      }
-
-      // Parse transactions from the response
-      const extractedTransactions = parseTransactions(assistantContent);
-      if (extractedTransactions.length > 0) {
-        // Update the message with extracted transactions
-        setMessages(prev => prev.map(m => 
-          m.id === assistantMessageId 
-            ? { ...m, extractedTransactions }
-            : m
-        ));
-      }
-
-    } catch (error) {
-      console.error('Chat error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to send message';
-      toast.error(errorMessage);
-      
-      // Update assistant message with detailed error
-      setMessages(prev => prev.map(m => 
-        m.id === assistantMessageId 
-          ? { ...m, content: `❌ Error: ${errorMessage}\n\nPlease try again or select a different model.` }
-          : m
-      ));
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = reader.result as string;
-        resolve(base64.split(',')[1]);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const parseTransactions = (content: string): ExtractedTransaction[] => {
-    try {
-      // Try to find JSON array in the content
-      const jsonMatch = content.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        if (Array.isArray(parsed)) {
-          return parsed.map((t: any) => ({
-            date: t.date || t.Date || '',
-            description: t.description || t.Description || '',
-            amount: parseFloat(t.amount || t.Amount || 0),
-            category: t.category || t.Category || '',
-            profileType: (t.profileType || t.profile || t.type || 'BUSINESS').toUpperCase() as 'BUSINESS' | 'PERSONAL'
-          }));
-        }
-      }
-
-      // Fallback: Try to parse line by line if JSON parsing fails
-      const lines = content.split('\n');
-      const transactions: ExtractedTransaction[] = [];
-      
-      for (const line of lines) {
-        // Look for transaction patterns
-        const match = line.match(/(\d{1,2}\/\d{1,2}\/\d{4})\s+(.+?)\s+([\$\-\+]?[\d,]+\.?\d*)\s+(BUSINESS|PERSONAL)/i);
-        if (match) {
-          transactions.push({
-            date: match[1],
-            description: match[2].trim(),
-            amount: parseFloat(match[3].replace(/[\$,]/g, '')),
-            profileType: match[4].toUpperCase() as 'BUSINESS' | 'PERSONAL'
-          });
-        }
-      }
-
-      return transactions;
-    } catch (error) {
-      console.error('Error parsing transactions:', error);
-      return [];
-    }
-  };
-
-  const handleCopyTransactions = (transactions: ExtractedTransaction[]) => {
-    try {
-      // Format transactions as clean JSON
-      const jsonString = JSON.stringify(transactions, null, 2);
-      
-      // Copy to clipboard
-      navigator.clipboard.writeText(jsonString);
-      
-      toast.success(`✅ Copied ${transactions.length} transactions to clipboard!`);
-    } catch (error) {
-      console.error('Error copying transactions:', error);
-      toast.error('Failed to copy transactions. Please try again.');
-    }
-  };
-
-  const handleLoadTransactions = async (messageId: string, transactions: ExtractedTransaction[]) => {
-    setLoadingTransactions(messageId);
-    
-    try {
-      // Save transactions to database
-      const response = await fetch('/api/bank-statements/load-transactions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ transactions }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to save transactions');
-      }
-
-      const result = await response.json();
-      
-      toast.success(`✅ Successfully loaded ${result.count} transactions!`);
-      
-      // Update message to show loaded state
-      setMessages(prev => prev.map(m => 
-        m.id === messageId 
-          ? { ...m, extractedTransactions: undefined }
-          : m
-      ));
-      
-    } catch (error) {
-      console.error('Error loading transactions:', error);
-      toast.error('Failed to load transactions. Please try again.');
-    } finally {
-      setLoadingTransactions(null);
-    }
-  };
 
   const handleProcessManualTransactions = () => {
     try {
@@ -559,21 +418,23 @@ export default function BankStatementsClient() {
         // WE FOUND A DATE - THIS IS A TRANSACTION!
         // ============================================
         
-        // Now find the amount (look for any numeric value with optional $ and ,)
+        // Now find the amount (look for any numeric value with optional $ and , - supports negative amounts)
         let amount = 0;
         let amountIndex = -1;
         for (let j = dateIndex + 1; j < parts.length; j++) {
+          // Remove $ and , but preserve negative sign
           const cleanPart = parts[j].replace(/[\$,]/g, '');
           const parsedAmount = parseFloat(cleanPart);
-          if (!isNaN(parsedAmount) && parsedAmount > 0 && cleanPart.match(/^\d+\.?\d*$/)) {
+          // Match positive or negative numbers (e.g., 123.45, -123.45, 123, -123)
+          if (!isNaN(parsedAmount) && parsedAmount !== 0 && cleanPart.match(/^-?\d+\.?\d*$/)) {
             amount = parsedAmount;
             amountIndex = j;
             break;
           }
         }
-        
+
         // If no valid amount found, skip (malformed line)
-        if (amount === 0 || amountIndex === -1) {
+        if (amountIndex === -1) {
           console.log(`[Manual Parser] ⚠️  Date found but no valid amount: ${trimmedLine.substring(0, 60)}...`);
           continue;
         }
@@ -598,19 +459,25 @@ export default function BankStatementsClient() {
           description = 'Transaction';
         }
         
-        // Apply sign based on current section type
-        if (currentSectionType === 'expense') {
+        // Determine if this is an expense based on:
+        // 1. Explicit negative amount in input (e.g., -$156.78)
+        // 2. Section type being 'expense'
+        const isExplicitlyNegative = amount < 0;
+        const isExpense = isExplicitlyNegative || currentSectionType === 'expense';
+
+        // Apply sign: negative for expenses, positive for income
+        if (isExpense) {
           amount = -Math.abs(amount);
         } else {
           amount = Math.abs(amount);
         }
-        
+
         // CREATE THE TRANSACTION
         transactions.push({
           date,
           description,
           amount,
-          category: currentSectionType === 'income' ? 'Income' : 'Expense'
+          category: isExpense ? 'Expense' : 'Income'
         });
         
         console.log(`[Manual Parser] ✅ #${transactions.length}: ${date} | $${amount.toFixed(2)} | ${description.substring(0, 35)}...`);
@@ -804,10 +671,10 @@ Respond with a JSON array where each item has: { "index": number, "profileType":
 
   const handleViewStatement = async (statementId: string) => {
     try {
-      // Fetch transactions for this statement
-      const response = await fetch(`/api/transactions?statementId=${statementId}`);
+      // Fetch ALL transactions for this statement (no limit)
+      const response = await fetch(`/api/transactions?statementId=${statementId}&limit=10000`);
       if (!response.ok) throw new Error('Failed to fetch transactions');
-      
+
       const data = await response.json();
       const transactions = data.transactions || [];
       
@@ -828,11 +695,12 @@ Respond with a JSON array where each item has: { "index": number, "profileType":
 
   const handleDownloadStatement = async (statementId: string) => {
     try {
-      // Fetch transactions for this statement
-      const response = await fetch(`/api/transactions?statementId=${statementId}`);
+      // Fetch ALL transactions for this statement (no limit)
+      const response = await fetch(`/api/transactions?statementId=${statementId}&limit=10000`);
       if (!response.ok) throw new Error('Failed to fetch transactions');
-      
-      const transactions = await response.json();
+
+      const data = await response.json();
+      const transactions = data.transactions || [];
       
       // Convert to CSV format
       const csvHeader = 'Date,Description,Amount,Type,Category,Profile\n';
@@ -862,16 +730,275 @@ Respond with a JSON array where each item has: { "index": number, "profileType":
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gradient-background p-6 lg:p-8">
       <div className="max-w-6xl mx-auto space-y-6">
+        {/* Quick Actions Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h1 className="text-2xl font-bold text-foreground">Bank Statements</h1>
+          <Link href="/dashboard/bank-statements/hybrid?skipPdf=true">
+            <Button variant="outline" className="gap-2 border-primary/50 hover:bg-primary/10">
+              <ClipboardPaste className="w-4 h-4" />
+              Paste Statement Text
+            </Button>
+          </Link>
+        </div>
+
+        {/* PDF Upload Section - Primary */}
+        <Card className="bg-card-elevated border-primary/20 p-6 border-2 border-dashed border-primary/40 hover:border-primary/60 transition-colors">
+          <div className="space-y-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-foreground mb-2 flex items-center gap-2">
+                  <Upload className="w-5 h-5 text-primary" />
+                  Upload Bank Statement PDF
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Upload your bank statement PDF and we'll automatically extract all transactions using AI.
+                  Supports PNC Business Checking Plus and other common formats.
+                </p>
+              </div>
+              {uploadStatus === 'success' && (
+                <div className="flex items-center gap-2 text-green-600 bg-green-50 dark:bg-green-900/20 px-3 py-1 rounded-full">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span className="text-sm font-medium">Complete</span>
+                </div>
+              )}
+            </div>
+
+            {/* File Input Area - With Drag & Drop support */}
+            <div
+              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                pdfFile ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+              } ${isUploadingPdf ? 'pointer-events-none opacity-50' : ''}`}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.currentTarget.classList.add('border-primary', 'bg-primary/10');
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.currentTarget.classList.remove('border-primary', 'bg-primary/10');
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.currentTarget.classList.remove('border-primary', 'bg-primary/10');
+
+                const files = e.dataTransfer.files;
+                if (files && files.length > 0) {
+                  const file = files[0];
+                  if (file.type === 'application/pdf') {
+                    setPdfFile(file);
+                    setUploadStatus('idle');
+                    setUploadError(null);
+                    toast.success(`Selected: ${file.name}`);
+                  } else {
+                    toast.error('Please drop a PDF file');
+                  }
+                }
+              }}
+            >
+              {pdfFile ? (
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-16 h-16 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <FileText className="w-8 h-8 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold text-foreground">{pdfFile.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {(pdfFile.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                  </div>
+                  {!isUploadingPdf && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setPdfFile(null);
+                        setUploadStatus('idle');
+                        if (pdfInputRef.current) pdfInputRef.current.value = '';
+                      }}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="w-4 h-4 mr-1" />
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-4">
+                  <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center">
+                    <Upload className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-semibold text-foreground">
+                      Upload Bank Statement PDF
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      PDF files only, max 50MB
+                    </p>
+                  </div>
+
+                  {/* DRAG AND DROP - Primary method */}
+                  <div className="w-full max-w-md p-4 bg-blue-50 dark:bg-blue-950 border-2 border-blue-200 dark:border-blue-800 rounded-lg">
+                    <p className="text-blue-700 dark:text-blue-300 font-medium">
+                      📁 Drag and drop your PDF file here
+                    </p>
+                    <p className="text-blue-600 dark:text-blue-400 text-sm mt-1">
+                      Or use the file picker below
+                    </p>
+                  </div>
+
+                  {/* Standard file input */}
+                  <div className="mt-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Select PDF from your computer:
+                    </label>
+                    <input
+                      id="pdf-file-input"
+                      ref={pdfInputRef}
+                      type="file"
+                      name="pdfFile"
+                      accept=".pdf,application/pdf"
+                      onChange={handlePdfSelect}
+                      disabled={isUploadingPdf}
+                      className="block w-full text-sm text-gray-900 dark:text-gray-100
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-full file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-blue-600 file:text-white
+                        hover:file:bg-blue-700
+                        file:cursor-pointer
+                        cursor-pointer"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Progress Bar */}
+            {(uploadStatus === 'uploading' || uploadStatus === 'processing') && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    {uploadStatus === 'uploading' ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Clock className="w-4 h-4 animate-pulse" />
+                        Processing with AI...
+                      </>
+                    )}
+                  </span>
+                  <span className="font-medium text-primary">{uploadProgress}%</span>
+                </div>
+                <Progress value={uploadProgress} className="h-2" />
+              </div>
+            )}
+
+            {/* Success Result */}
+            {uploadStatus === 'success' && uploadResult && (
+              <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-green-800 dark:text-green-200">
+                      Successfully Processed!
+                    </h4>
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <span className="text-green-700 dark:text-green-300">Transactions:</span>
+                        <span className="ml-2 font-semibold text-green-900 dark:text-green-100">
+                          {uploadResult.transactionCount}
+                        </span>
+                      </div>
+                      {uploadResult.bankName && (
+                        <div>
+                          <span className="text-green-700 dark:text-green-300">Bank:</span>
+                          <span className="ml-2 font-semibold text-green-900 dark:text-green-100">
+                            {uploadResult.bankName}
+                          </span>
+                        </div>
+                      )}
+                      {uploadResult.accountNumber && (
+                        <div>
+                          <span className="text-green-700 dark:text-green-300">Account:</span>
+                          <span className="ml-2 font-semibold text-green-900 dark:text-green-100">
+                            {uploadResult.accountNumber}
+                          </span>
+                        </div>
+                      )}
+                      {uploadResult.statementPeriod && (
+                        <div>
+                          <span className="text-green-700 dark:text-green-300">Period:</span>
+                          <span className="ml-2 font-semibold text-green-900 dark:text-green-100">
+                            {uploadResult.statementPeriod}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    {/* Add Missing Transactions Button */}
+                    <div className="mt-4 pt-3 border-t border-green-200 dark:border-green-700">
+                      <p className="text-xs text-green-700 dark:text-green-300 mb-2">
+                        Missing some transactions? Add them manually:
+                      </p>
+                      <Link
+                        href={`/dashboard/bank-statements/hybrid?bankStatementId=${uploadResult.statementId}`}
+                      >
+                        <Button variant="outline" size="sm" className="gap-2">
+                          <ClipboardPaste className="w-4 h-4" />
+                          Add Missing Transactions
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Error Message */}
+            {uploadStatus === 'error' && uploadError && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-red-800 dark:text-red-200">
+                      Upload Failed
+                    </h4>
+                    <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                      {uploadError}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Upload Button */}
+            <Button
+              onClick={handlePdfUpload}
+              disabled={!pdfFile || isUploadingPdf || uploadStatus === 'processing'}
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-12 text-lg"
+            >
+              {isUploadingPdf || uploadStatus === 'processing' ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  {uploadStatus === 'processing' ? 'Processing...' : 'Uploading...'}
+                </>
+              ) : (
+                <>
+                  <Upload className="w-5 h-5 mr-2" />
+                  Upload & Process PDF
+                </>
+              )}
+            </Button>
+          </div>
+        </Card>
+
         {/* Manual Transaction Entry Section */}
         <Card className="bg-card-elevated border-primary/20 p-6">
           <div className="space-y-4">
@@ -1091,293 +1218,6 @@ Respond with a JSON array where each item has: { "index": number, "profileType":
           </Card>
         )}
 
-        {/* Abacus ChatLLM Section */}
-        <div className="h-[calc(100vh-32rem)] flex flex-col">
-          {/* Header */}
-          <div className="mb-6">
-            <h1 className="text-heading text-foreground mb-2 flex items-center gap-2">
-              <Sparkles className="w-7 h-7 text-primary" />
-              ABACUS CHATLLM
-            </h1>
-            <p className="text-body text-muted-foreground">
-              Powered by RouteLLM - Ask anything or upload documents
-            </p>
-          </div>
-
-        {/* Messages Area */}
-        <Card className="flex-1 bg-card-elevated border-primary/20 mb-4 overflow-hidden flex flex-col">
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[80%] rounded-lg p-4 ${
-                    message.role === 'user'
-                      ? 'bg-primary text-primary-foreground'
-                      : message.role === 'system'
-                      ? 'bg-muted/50 border border-border'
-                      : 'bg-muted'
-                  }`}
-                >
-                  <div className="space-y-2">
-                    {message.fileName && (
-                      <div className="flex items-center gap-2 pb-2 border-b border-border/50">
-                        <FileText className="w-4 h-4" />
-                        <span className="text-xs font-medium">{message.fileName}</span>
-                      </div>
-                    )}
-                    
-                    <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <p className="text-sm whitespace-pre-wrap">
-                        {typeof message.content === 'string' 
-                          ? message.content 
-                          : message.content.find(c => c.type === 'text')?.text || 'Processing...'}
-                      </p>
-                    </div>
-                    
-                    {/* Transaction Card */}
-                    {message.extractedTransactions && message.extractedTransactions.length > 0 && (
-                      <Card className="mt-4 bg-card border-primary/30">
-                        <div className="p-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                              <Sparkles className="w-4 h-4 text-primary" />
-                              Extracted Transactions
-                            </h3>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
-                                {message.extractedTransactions.length} transactions
-                              </span>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleCopyTransactions(message.extractedTransactions!)}
-                                className="h-7 px-2 text-xs"
-                              >
-                                <Copy className="w-3 h-3 mr-1" />
-                                Copy
-                              </Button>
-                            </div>
-                          </div>
-                          
-                          {/* Transaction List */}
-                          <div className="max-h-64 overflow-y-auto space-y-2 mb-4">
-                            {message.extractedTransactions.map((transaction, idx) => (
-                              <div 
-                                key={idx}
-                                className="flex items-start justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors"
-                              >
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    {transaction.profileType === 'BUSINESS' ? (
-                                      <Building2 className="w-3 h-3 text-blue-500" />
-                                    ) : (
-                                      <Home className="w-3 h-3 text-green-500" />
-                                    )}
-                                    <span className="text-xs font-medium text-foreground">
-                                      {transaction.description}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                                    <span>{transaction.date}</span>
-                                    {transaction.category && (
-                                      <>
-                                        <span>•</span>
-                                        <span>{transaction.category}</span>
-                                      </>
-                                    )}
-                                    <span>•</span>
-                                    <span className={transaction.profileType === 'BUSINESS' ? 'text-blue-500' : 'text-green-500'}>
-                                      {transaction.profileType}
-                                    </span>
-                                  </div>
-                                </div>
-                                <span className={`text-sm font-semibold ${
-                                  transaction.amount >= 0 ? 'text-green-600' : 'text-red-600'
-                                }`}>
-                                  {transaction.amount >= 0 ? '+' : ''}{transaction.amount.toFixed(2)}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                          
-                          {/* Load Results Button */}
-                          <Button 
-                            onClick={() => handleLoadTransactions(message.id, message.extractedTransactions!)}
-                            disabled={loadingTransactions === message.id}
-                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-                          >
-                            {loadingTransactions === message.id ? (
-                              <>
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                Loading transactions...
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle className="w-4 h-4 mr-2" />
-                                Load Results ({message.extractedTransactions.length} transactions)
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      </Card>
-                    )}
-                    
-                    {message.model && message.role === 'user' && (
-                      <p className="text-xs opacity-60 mt-2">Model: {message.model}</p>
-                    )}
-                    
-                    <p className="text-xs opacity-60 mt-2">
-                      {message.timestamp.toLocaleTimeString()}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-            <div ref={messagesEndRef} />
-          </div>
-        </Card>
-
-        {/* Input Area */}
-        <Card className="bg-card-elevated border-primary/20 p-4">
-          {/* Model Selector */}
-          <div className="mb-3 flex items-center gap-2">
-            <label className="text-sm font-medium text-muted-foreground">Model:</label>
-            <Select value={selectedModel} onValueChange={setSelectedModel} disabled={isProcessing}>
-              <SelectTrigger className="w-[250px] h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="max-h-[400px]">
-                {/* RouteLLM - Auto-selects best model */}
-                <SelectItem value="RouteLLM">RouteLLM (Auto-select best model)</SelectItem>
-                
-                {/* OpenAI Models */}
-                <SelectItem value="gpt-5">GPT-5</SelectItem>
-                <SelectItem value="gpt-5-pro">GPT-5 Pro</SelectItem>
-                <SelectItem value="gpt-5-thinking">GPT-5 Thinking</SelectItem>
-                <SelectItem value="gpt-5-mini">GPT-5 Mini</SelectItem>
-                <SelectItem value="gpt-4.1">GPT-4.1</SelectItem>
-                <SelectItem value="gpt-4.1-mini">GPT-4.1 Mini</SelectItem>
-                <SelectItem value="gpt-4.5">GPT-4.5</SelectItem>
-                <SelectItem value="gpt-4o">GPT-4o</SelectItem>
-                <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
-                <SelectItem value="o3">o3</SelectItem>
-                <SelectItem value="o3-mini">o3-mini</SelectItem>
-                <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
-                
-                {/* Anthropic Models */}
-                <SelectItem value="claude-opus-4.1">Claude Opus 4.1</SelectItem>
-                <SelectItem value="claude-sonnet-4">Claude Sonnet 4</SelectItem>
-                <SelectItem value="claude-3.7-sonnet">Claude 3.7 Sonnet</SelectItem>
-                <SelectItem value="claude-3.5-sonnet">Claude 3.5 Sonnet</SelectItem>
-                <SelectItem value="claude-3.5-haiku">Claude 3.5 Haiku</SelectItem>
-                <SelectItem value="claude-3-opus">Claude 3 Opus</SelectItem>
-                <SelectItem value="claude-3-sonnet">Claude 3 Sonnet</SelectItem>
-                <SelectItem value="claude-3-haiku">Claude 3 Haiku</SelectItem>
-                
-                {/* Google Gemini Models */}
-                <SelectItem value="gemini-2.5-pro">Gemini 2.5 Pro</SelectItem>
-                <SelectItem value="gemini-2.5">Gemini 2.5</SelectItem>
-                <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash</SelectItem>
-                <SelectItem value="gemini-2-flash">Gemini 2 Flash</SelectItem>
-                <SelectItem value="gemini-2-flash-thinking">Gemini 2 Flash Thinking</SelectItem>
-                <SelectItem value="gemini-1.5-pro">Gemini 1.5 Pro</SelectItem>
-                <SelectItem value="gemini-1.5-flash">Gemini 1.5 Flash</SelectItem>
-                
-                {/* xAI Grok Models */}
-                <SelectItem value="grok-4">Grok-4</SelectItem>
-                <SelectItem value="grok-3">Grok-3</SelectItem>
-                
-                {/* Meta Llama Models */}
-                <SelectItem value="llama-4">Llama 4</SelectItem>
-                <SelectItem value="llama-3.3-70b">Llama 3.3 70B</SelectItem>
-                <SelectItem value="llama-3.1-405b">Llama 3.1 405B</SelectItem>
-                <SelectItem value="llama-3.1-70b">Llama 3.1 70B</SelectItem>
-                <SelectItem value="llama-3.1-8b">Llama 3.1 8B</SelectItem>
-                
-                {/* Deepseek Models */}
-                <SelectItem value="deepseek-v3">Deepseek V3</SelectItem>
-                <SelectItem value="deepseek-r1">Deepseek r1</SelectItem>
-                <SelectItem value="deepseek">Deepseek</SelectItem>
-                
-                {/* Alibaba Qwen Models */}
-                <SelectItem value="qwen-3">Qwen 3</SelectItem>
-                <SelectItem value="qwen-2.5-72b">Qwen 2.5 72B</SelectItem>
-                <SelectItem value="qwen-2.5-32b">Qwen 2.5 32B</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-end gap-3">
-            {/* File Attachment Button */}
-            <div className="flex-shrink-0">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf"
-                onChange={handleFileSelect}
-                className="hidden"
-                disabled={isProcessing}
-              />
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isProcessing}
-                className="h-10 w-10"
-              >
-                <Paperclip className="w-5 h-5" />
-              </Button>
-            </div>
-
-            {/* Text Input */}
-            <div className="flex-1 relative">
-              <Input
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder={selectedFile ? `Ask about ${selectedFile.name}...` : "Ask me anything..."}
-                disabled={isProcessing}
-                className="pr-4 h-10"
-              />
-              {selectedFile && (
-                <div className="absolute -top-8 left-0 right-0 bg-muted/50 backdrop-blur-sm rounded-t-lg px-3 py-1 flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    <FileText className="w-3 h-3" />
-                    {selectedFile.name}
-                  </span>
-                  <button
-                    onClick={() => {
-                      setSelectedFile(null);
-                      if (fileInputRef.current) fileInputRef.current.value = '';
-                    }}
-                    className="text-xs text-red-500 hover:text-red-600"
-                    disabled={isProcessing}
-                  >
-                    Remove
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Send Button */}
-            <Button
-              onClick={handleSendMessage}
-              disabled={isProcessing || (!inputText.trim() && !selectedFile)}
-              className="h-10"
-            >
-              {isProcessing ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Send className="w-5 h-5" />
-              )}
-            </Button>
-          </div>
-        </Card>
-        </div>
-
       </div>
 
       {/* View Statement Modal */}
@@ -1396,8 +1236,99 @@ Respond with a JSON array where each item has: { "index": number, "profileType":
               <span className="text-sm">{viewingTransactions.length} transactions</span>
             </DialogDescription>
           </DialogHeader>
-          
-          <ScrollArea className="h-[60vh] pr-4">
+
+          {/* Balance Summary Card */}
+          {(viewingStatementInfo?.beginningBalance !== null || viewingStatementInfo?.endingBalance !== null) && (
+            <div className="mb-4 p-4 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg border border-primary/20">
+              <div className="flex items-center gap-2 mb-3">
+                <DollarSign className="w-5 h-5 text-primary" />
+                <h3 className="font-semibold text-foreground">Balance Summary</h3>
+                {viewingStatementInfo?.validationResult?.balanceReconciliation?.isReconciled !== undefined && (
+                  viewingStatementInfo.validationResult.balanceReconciliation.isReconciled ? (
+                    <span className="ml-auto text-xs bg-green-500/20 text-green-600 px-2 py-1 rounded-full flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Reconciled
+                    </span>
+                  ) : (
+                    <span className="ml-auto text-xs bg-amber-500/20 text-amber-600 px-2 py-1 rounded-full flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" /> Mismatch
+                    </span>
+                  )
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <div className="text-muted-foreground text-xs">Beginning Balance</div>
+                  <div className="font-medium text-foreground">
+                    ${viewingStatementInfo?.beginningBalance?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || 'N/A'}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground text-xs">Total Credits</div>
+                  <div className="font-medium text-green-600">
+                    +${viewingStatementInfo?.validationResult?.balanceReconciliation?.totalCredits?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || 'N/A'}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground text-xs">Total Debits</div>
+                  <div className="font-medium text-red-600">
+                    -${viewingStatementInfo?.validationResult?.balanceReconciliation?.totalDebits?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || 'N/A'}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground text-xs">Ending Balance</div>
+                  <div className="font-medium text-foreground">
+                    ${viewingStatementInfo?.endingBalance?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || 'N/A'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Balance Reconciliation Mismatch Warning */}
+              {viewingStatementInfo?.validationResult?.balanceReconciliation &&
+               !viewingStatementInfo.validationResult.balanceReconciliation.isReconciled && (
+                <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm">
+                      <div className="font-semibold text-red-700 mb-1">Balance Reconciliation Mismatch</div>
+                      <div className="text-red-600 space-y-1">
+                        <p>
+                          <span className="font-medium">Calculated:</span> ${viewingStatementInfo?.beginningBalance?.toLocaleString('en-US', { minimumFractionDigits: 2 })} +
+                          ${viewingStatementInfo.validationResult.balanceReconciliation.totalCredits?.toLocaleString('en-US', { minimumFractionDigits: 2 })} -
+                          ${viewingStatementInfo.validationResult.balanceReconciliation.totalDebits?.toLocaleString('en-US', { minimumFractionDigits: 2 })} =
+                          <span className="font-bold"> ${viewingStatementInfo.validationResult.balanceReconciliation.calculatedEnding?.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                        </p>
+                        <p>
+                          <span className="font-medium">Expected:</span>
+                          <span className="font-bold"> ${viewingStatementInfo?.endingBalance?.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                        </p>
+                        <p className="font-semibold text-red-700">
+                          Difference: ${Math.abs(viewingStatementInfo.validationResult.balanceReconciliation.difference || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          {(viewingStatementInfo.validationResult.balanceReconciliation.difference || 0) > 0 ? ' (missing credits or extra debits)' : ' (missing debits or extra credits)'}
+                        </p>
+                      </div>
+                      <p className="text-xs text-red-500/80 mt-2">
+                        ⚠️ Some transactions may not have been extracted from the PDF. Consider re-uploading or manually reviewing the original statement.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Sequential Statement Warning */}
+              {viewingStatementInfo?.validationResult?.sequentialValidation &&
+               !viewingStatementInfo.validationResult.sequentialValidation.isSequential && (
+                <div className="mt-3 p-2 bg-amber-500/10 border border-amber-500/20 rounded text-xs text-amber-700">
+                  <AlertTriangle className="w-3 h-3 inline mr-1" />
+                  Gap detected: Previous statement ended at ${viewingStatementInfo.validationResult.sequentialValidation.previousEndingBalance?.toFixed(2)},
+                  but this one begins at ${viewingStatementInfo.validationResult.sequentialValidation.currentBeginningBalance?.toFixed(2)}.
+                  You may be missing a statement.
+                </div>
+              )}
+            </div>
+          )}
+
+          <ScrollArea className="h-[50vh] pr-4">
             <div className="space-y-2">
               {viewingTransactions.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
@@ -1407,8 +1338,13 @@ Respond with a JSON array where each item has: { "index": number, "profileType":
                 viewingTransactions.map((transaction: any, idx: number) => (
                   <div
                     key={transaction.id || idx}
-                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
+                    className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
                   >
+                    {/* Sequential Transaction Number */}
+                    <div className="flex-shrink-0 w-12 h-8 bg-primary/10 rounded-md flex items-center justify-center">
+                      <span className="text-xs font-bold text-primary">#{idx + 1}</span>
+                    </div>
+
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex items-center gap-2">
                         {transaction.businessProfileId && (
@@ -1457,21 +1393,34 @@ Respond with a JSON array where each item has: { "index": number, "profileType":
             </div>
           </ScrollArea>
           
-          <div className="flex justify-end gap-2 pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (viewingStatementInfo?.id) {
-                  handleDownloadStatement(viewingStatementInfo.id);
-                }
-              }}
-            >
-              <Copy className="w-4 h-4 mr-2" />
-              Download CSV
-            </Button>
-            <Button onClick={() => setViewModalOpen(false)}>
-              Close
-            </Button>
+          <div className="flex items-center justify-between pt-4 border-t">
+            {/* Transaction Count Verification */}
+            <div className="text-sm text-muted-foreground">
+              {viewingTransactions.length > 0 && (
+                <span className="font-medium">
+                  Showing <span className="text-primary font-bold">#1</span> to{' '}
+                  <span className="text-primary font-bold">#{viewingTransactions.length}</span>{' '}
+                  of {viewingTransactions.length} transactions
+                </span>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (viewingStatementInfo?.id) {
+                    handleDownloadStatement(viewingStatementInfo.id);
+                  }
+                }}
+              >
+                <Copy className="w-4 h-4 mr-2" />
+                Download CSV
+              </Button>
+              <Button onClick={() => setViewModalOpen(false)}>
+                Close
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

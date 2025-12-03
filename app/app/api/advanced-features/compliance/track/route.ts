@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { addMonths, addQuarters, addYears, format } from 'date-fns'
 
+export const dynamic = 'force-dynamic';
+
 // Track business compliance requirements
 export async function POST(req: NextRequest) {
   try {

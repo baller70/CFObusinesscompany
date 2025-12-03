@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic';
+
 const createPortfolioSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
@@ -24,9 +26,23 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get portfolios
+    // Get the user's current business profile
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    const activeProfileId = user.currentBusinessProfileId
+
+    // Get portfolios filtered by current business profile
     const portfolios = await prisma.portfolio.findMany({
-      where: { userId: session.user.id },
+      where: {
+        userId: session.user.id,
+        ...(activeProfileId && { businessProfileId: activeProfileId })
+      },
       orderBy: { createdAt: 'desc' }
     })
 
@@ -102,12 +118,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Get the user's current business profile
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
     const body = await request.json()
     const validatedData = createPortfolioSchema.parse(body)
 
     const portfolio = await prisma.portfolio.create({
       data: {
         userId: session.user.id,
+        businessProfileId: user.currentBusinessProfileId,
         ...validatedData
       }
     })

@@ -7,6 +7,8 @@ import { uploadFile } from '@/lib/s3';
 import { queueManager } from '@/lib/queue-manager';
 import { getCurrentBusinessProfileId } from '@/lib/business-profile-utils';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);

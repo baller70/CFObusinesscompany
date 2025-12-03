@@ -7,6 +7,8 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
 import { createS3Client } from '@/lib/aws-config'
 
+export const dynamic = 'force-dynamic';
+
 // Generate shareable link for receipts
 export async function POST(request: NextRequest) {
   try {

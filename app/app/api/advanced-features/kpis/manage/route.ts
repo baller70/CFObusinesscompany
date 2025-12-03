@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { addMonths, startOfMonth, endOfMonth, parseISO } from 'date-fns'
 
+export const dynamic = 'force-dynamic';
+
 // Create and manage KPI targets
 export async function POST(req: NextRequest) {
   try {

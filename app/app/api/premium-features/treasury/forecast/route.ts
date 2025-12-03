@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic';
+
 const generateForecastSchema = z.object({
   horizon: z.number().min(1).max(365), // Days ahead
   includeScenarios: z.boolean().default(false)

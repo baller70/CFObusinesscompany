@@ -4,6 +4,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
+export const dynamic = 'force-dynamic';
+
 // Helper function to calculate next due date after payment
 function calculateNextDueDate(currentDate: Date, frequency: string, billingCycle: number = 1): Date {
   const nextDate = new Date(currentDate)

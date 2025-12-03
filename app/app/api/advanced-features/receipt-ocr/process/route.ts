@@ -6,6 +6,8 @@ import { prisma } from '@/lib/db'
 import { uploadFile } from '@/lib/s3'
 import { getBucketConfig } from '@/lib/aws-config'
 
+export const dynamic = 'force-dynamic';
+
 // Process receipts with OCR and AI analysis
 export async function POST(req: NextRequest) {
   try {

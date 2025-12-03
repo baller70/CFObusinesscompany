@@ -96,12 +96,17 @@ export async function processStatementWithValidation(statementId: string) {
     let extractedData: any;
 
     if (statement.fileType === 'PDF') {
-      // Process PDF (text-based extraction via pdftotext)
-      // Extract selected model from parsedData, default to gpt-4o
+      // Process PDF using text extraction (primary) or direct PDF mode (fallback)
       const selectedModel = (statement.parsedData as any)?.selectedModel || 'gpt-4o';
-      console.log(`[Processing] Extracting data from PDF using text-based method with model: ${selectedModel}`);
+      console.log(`[Processing] Extracting data from PDF with model: ${selectedModel}`);
       const pdfBuffer = Buffer.from(arrayBuffer);
-      extractedData = await aiProcessor.extractDataFromPDF(pdfBuffer, statement.fileName || 'statement.pdf', selectedModel);
+
+      extractedData = await aiProcessor.extractDataFromPDF(
+        pdfBuffer,
+        statement.fileName || 'statement.pdf',
+        selectedModel,
+        0 // retryCount
+      );
     } else {
       // Process CSV
       console.log(`[Processing] Processing CSV data`);
@@ -112,9 +117,49 @@ export async function processStatementWithValidation(statementId: string) {
       throw new Error('No transactions extracted from file');
     }
 
-    console.log(`[Processing] Extracted ${extractedData.transactions.length} transactions`);
+    console.log(`[Processing] Extracted ${extractedData.transactions.length} transactions (before filtering)`);
 
-    // Update with extracted data
+    // ========================================
+    // FILTER OUT BALANCE ENTRIES - These are NOT transactions
+    // ========================================
+    const balancePatterns = [
+      /^beginning\s*balance/i,
+      /^opening\s*balance/i,
+      /^starting\s*balance/i,
+      /^ending\s*balance/i,
+      /^closing\s*balance/i,
+      /^final\s*balance/i,
+      /^balance\s*forward/i,
+      /^previous\s*balance/i,
+      /^new\s*balance/i,
+      /^total\s*balance/i,
+    ];
+
+    const originalCount = extractedData.transactions.length;
+    extractedData.transactions = extractedData.transactions.filter((txn: any) => {
+      const description = (txn.description || '').toLowerCase();
+      const isBalanceEntry = balancePatterns.some(pattern => pattern.test(description));
+      if (isBalanceEntry) {
+        console.log(`[Processing] 🚫 Filtering out balance entry: "${txn.description}" ($${txn.amount})`);
+      }
+      return !isBalanceEntry;
+    });
+
+    if (extractedData.transactions.length < originalCount) {
+      console.log(`[Processing] ✅ Filtered ${originalCount - extractedData.transactions.length} balance entries, ${extractedData.transactions.length} actual transactions remain`);
+    }
+
+    // Extract balance information for reconciliation
+    const beginningBalance = extractedData.bankInfo?.beginningBalance || extractedData.balanceInfo?.beginningBalance || null;
+    const endingBalance = extractedData.bankInfo?.endingBalance || extractedData.balanceInfo?.endingBalance || null;
+
+    if (beginningBalance || endingBalance) {
+      console.log(`[Processing] 💰 Balance info: Beginning=$${beginningBalance}, Ending=$${endingBalance}`);
+    }
+
+    console.log(`[Processing] Final transaction count: ${extractedData.transactions.length} transactions`);
+
+    // Update with extracted data including balance information
     await prisma.bankStatement.update({
       where: { id: statementId },
       data: {
@@ -124,6 +169,8 @@ export async function processStatementWithValidation(statementId: string) {
         accountType: extractedData.bankInfo?.accountType,
         accountNumber: extractedData.bankInfo?.accountNumber,
         statementPeriod: extractedData.bankInfo?.statementPeriod,
+        beginningBalance: beginningBalance,
+        endingBalance: endingBalance,
         recordCount: extractedData.transactions?.length || 0
       }
     });
@@ -194,8 +241,26 @@ export async function processStatementWithValidation(statementId: string) {
     
     for (const catTxn of categorizedTransactions) {
       const originalTxn = catTxn.originalTransaction;
+
+      // ========================================
+      // VALIDATE TRANSACTION - Skip if originalTransaction is undefined
+      // ========================================
+      if (!originalTxn) {
+        console.log(`[Processing] ⚠️ Skipping categorized transaction with missing originalTransaction data`);
+        continue;
+      }
+
+      // ========================================
+      // VALIDATE DATE - Skip transactions with invalid dates
+      // ========================================
+      const parsedDate = new Date(originalTxn.date);
+      if (isNaN(parsedDate.getTime())) {
+        console.log(`[Processing] ⚠️ Skipping transaction with invalid date: ${originalTxn.description || 'Unknown'}`);
+        continue;
+      }
+
       const merchantName = catTxn.merchant || originalTxn.description?.substring(0, 50) || 'Unknown';
-      
+
       // Determine transaction type based on debit/credit from AI
       // Debit = money leaving account = EXPENSE
       // Credit = money entering account = INCOME
@@ -289,7 +354,7 @@ export async function processStatementWithValidation(statementId: string) {
         statement.userId,
         merchantName,
         amount,
-        new Date(originalTxn.date),
+        parsedDate,
         statement.businessProfileId
       );
 
@@ -348,7 +413,7 @@ export async function processStatementWithValidation(statementId: string) {
           userId: statement.userId,
           businessProfileId: targetProfileId, // Use enhanced routing
           bankStatementId: statementId,
-          date: new Date(originalTxn.date),
+          date: parsedDate,
           amount: amount,
           description: originalTxn.description || 'Unknown transaction',
           merchant: merchantName,
@@ -451,20 +516,32 @@ export async function processStatementWithValidation(statementId: string) {
       createdTransactions.map(ct => ct.transaction)
     );
 
-    // Run AI re-validation
-    console.log(`[Processing] Running AI re-validation...`);
-    const aiValidationResult = await aiProcessor.reValidateTransactions(
-      createdTransactions.map(ct => ({
-        id: ct.transaction.id,
-        description: ct.transaction.description,
-        amount: ct.transaction.amount,
-        category: ct.transaction.category,
-        type: ct.transaction.type,
-        profileType: ct.catTxn.profileType,
-        merchant: ct.transaction.merchant,
-        confidence: ct.transaction.confidence
-      }))
-    );
+    // Calculate average confidence - skip AI re-validation if most transactions are high-confidence
+    const avgConfidence = createdTransactions.reduce((sum, ct) => sum + (ct.transaction.confidence || 0.5), 0) / createdTransactions.length;
+    const highConfidenceCount = createdTransactions.filter(ct => (ct.transaction.confidence || 0) >= 0.85).length;
+    const highConfidenceRatio = highConfidenceCount / createdTransactions.length;
+
+    let aiValidationResult: any = { validatedTransactions: [], changedCategories: 0, changedProfiles: 0, issues: [] };
+
+    // Only run expensive AI re-validation if there are many low-confidence transactions
+    // This saves 2-4 minutes of processing time for well-categorized statements
+    if (avgConfidence < 0.80 || highConfidenceRatio < 0.70) {
+      console.log(`[Processing] Running AI re-validation (avg confidence: ${(avgConfidence * 100).toFixed(1)}%, high-confidence ratio: ${(highConfidenceRatio * 100).toFixed(1)}%)...`);
+      aiValidationResult = await aiProcessor.reValidateTransactions(
+        createdTransactions.map(ct => ({
+          id: ct.transaction.id,
+          description: ct.transaction.description,
+          amount: ct.transaction.amount,
+          category: ct.transaction.category,
+          type: ct.transaction.type,
+          profileType: ct.catTxn.profileType,
+          merchant: ct.transaction.merchant,
+          confidence: ct.transaction.confidence
+        }))
+      );
+    } else {
+      console.log(`[Processing] ⚡ Skipping AI re-validation (avg confidence: ${(avgConfidence * 100).toFixed(1)}%, ${(highConfidenceRatio * 100).toFixed(1)}% high-confidence) - saving 2-4 minutes`);
+    }
 
     // Generate comprehensive validation report
     console.log(`[Processing] Generating validation report...`);
@@ -524,15 +601,128 @@ export async function processStatementWithValidation(statementId: string) {
       console.log(`[Processing] ✨ Applied ${correctionsMade} auto-corrections based on validation`);
     }
 
+    // ========================================
+    // BALANCE RECONCILIATION - Verify extraction accuracy
+    // ========================================
+    let balanceReconciliation = null;
+    if (beginningBalance !== null && endingBalance !== null) {
+      console.log(`[Processing] 🔄 Performing balance reconciliation...`);
+
+      // Calculate totals from extracted transactions
+      const totalCredits = createdTransactions
+        .filter(ct => ct.transaction.type === 'INCOME')
+        .reduce((sum, ct) => sum + Math.abs(ct.transaction.amount), 0);
+
+      const totalDebits = createdTransactions
+        .filter(ct => ct.transaction.type === 'EXPENSE')
+        .reduce((sum, ct) => sum + Math.abs(ct.transaction.amount), 0);
+
+      const calculatedEndingBalance = beginningBalance + totalCredits - totalDebits;
+      const balanceDifference = Math.abs(calculatedEndingBalance - endingBalance);
+      const isReconciled = balanceDifference < 0.01; // Allow for rounding errors
+
+      balanceReconciliation = {
+        beginningBalance,
+        endingBalance,
+        totalCredits,
+        totalDebits,
+        calculatedEndingBalance,
+        balanceDifference,
+        isReconciled,
+        transactionCount: createdTransactions.length
+      };
+
+      if (isReconciled) {
+        console.log(`[Processing] ✅ Balance reconciliation PASSED`);
+        console.log(`[Processing]    Beginning: $${beginningBalance.toFixed(2)} + Credits: $${totalCredits.toFixed(2)} - Debits: $${totalDebits.toFixed(2)} = $${calculatedEndingBalance.toFixed(2)}`);
+        console.log(`[Processing]    Expected ending: $${endingBalance.toFixed(2)}`);
+      } else {
+        console.log(`[Processing] ⚠️ Balance reconciliation MISMATCH`);
+        console.log(`[Processing]    Beginning: $${beginningBalance.toFixed(2)} + Credits: $${totalCredits.toFixed(2)} - Debits: $${totalDebits.toFixed(2)} = $${calculatedEndingBalance.toFixed(2)}`);
+        console.log(`[Processing]    Expected ending: $${endingBalance.toFixed(2)}`);
+        console.log(`[Processing]    Difference: $${balanceDifference.toFixed(2)} (possible missing transactions)`);
+
+        // Add to validation issues
+        validationResult.issues.push({
+          type: 'BALANCE_MISMATCH',
+          severity: 'HIGH',
+          message: `Balance reconciliation failed: calculated ending balance ($${calculatedEndingBalance.toFixed(2)}) differs from statement ending balance ($${endingBalance.toFixed(2)}) by $${balanceDifference.toFixed(2)}. This may indicate missing transactions.`,
+          suggestion: 'Review the statement for any transactions that may have been missed during extraction.'
+        } as any);
+      }
+    } else {
+      console.log(`[Processing] ℹ️ Balance reconciliation skipped (balance info not available)`);
+    }
+
+    // ========================================
+    // SEQUENTIAL STATEMENT VALIDATION
+    // Check if this statement's beginning balance matches previous statement's ending balance
+    // ========================================
+    let sequentialValidation = null;
+    if (beginningBalance !== null && statement.accountNumber) {
+      console.log(`[Processing] 🔗 Checking sequential statement continuity...`);
+
+      // Find previous statement for the same account
+      const previousStatement = await prisma.bankStatement.findFirst({
+        where: {
+          userId: statement.userId,
+          accountNumber: statement.accountNumber,
+          id: { not: statementId },
+          status: 'COMPLETED',
+          endingBalance: { not: null }
+        },
+        orderBy: { periodEnd: 'desc' }
+      });
+
+      if (previousStatement && previousStatement.endingBalance !== null) {
+        const prevEndingBalance = previousStatement.endingBalance;
+        const balanceGap = Math.abs(prevEndingBalance - beginningBalance);
+        const isSequential = balanceGap < 0.01;
+
+        sequentialValidation = {
+          previousStatementId: previousStatement.id,
+          previousFileName: previousStatement.fileName,
+          previousEndingBalance: prevEndingBalance,
+          currentBeginningBalance: beginningBalance,
+          balanceGap,
+          isSequential
+        };
+
+        if (isSequential) {
+          console.log(`[Processing] ✅ Sequential validation PASSED`);
+          console.log(`[Processing]    Previous statement (${previousStatement.fileName}) ending: $${prevEndingBalance.toFixed(2)}`);
+          console.log(`[Processing]    Current statement beginning: $${beginningBalance.toFixed(2)}`);
+        } else {
+          console.log(`[Processing] ⚠️ Sequential statement GAP detected`);
+          console.log(`[Processing]    Previous (${previousStatement.fileName}) ending: $${prevEndingBalance.toFixed(2)}`);
+          console.log(`[Processing]    Current beginning: $${beginningBalance.toFixed(2)}`);
+          console.log(`[Processing]    Gap: $${balanceGap.toFixed(2)} (possible missing statement)`);
+
+          validationResult.issues.push({
+            type: 'STATEMENT_GAP',
+            severity: 'MEDIUM',
+            message: `Statement sequence gap detected: previous statement ended with $${prevEndingBalance.toFixed(2)} but this statement begins with $${beginningBalance.toFixed(2)} (difference: $${balanceGap.toFixed(2)}). You may be missing a statement between these periods.`,
+            suggestion: 'Upload any missing statements to ensure complete financial records.'
+          } as any);
+        }
+      } else {
+        console.log(`[Processing] ℹ️ Sequential validation skipped (no previous statement found for this account)`);
+      }
+    }
+
     // Update processed count and transaction count with validation results
     await prisma.bankStatement.update({
       where: { id: statementId },
       data: {
-        processedCount: categorizedTransactions.length,
-        transactionCount: categorizedTransactions.length,
+        processedCount: createdTransactions.length,
+        transactionCount: createdTransactions.length,
         processingStage: 'COMPLETED',
         status: 'COMPLETED',
-        validationResult: validationResult as any,
+        validationResult: {
+          ...validationResult,
+          balanceReconciliation,
+          sequentialValidation
+        } as any,
         validationConfidence: validationResult.confidence,
         flaggedIssues: validationResult.issues as any,
         validatedAt: new Date(),
@@ -811,24 +1001,42 @@ async function updateFinancialMetrics(userId: string) {
     const monthlyIncome = income / 30 * 30; // Normalize to monthly
     const monthlyExpenses = expenses / 30 * 30;
 
-    //@ts-ignore
-    await prisma.financialMetrics.upsert({
-      //@ts-ignore
+    // Get the business profile ID for this user (use the first one if multiple)
+    const businessProfile = await prisma.businessProfile.findFirst({
       where: { userId },
-      create: {
-        userId,
-        monthlyIncome,
-        monthlyExpenses,
-        monthlyBurnRate: monthlyExpenses - monthlyIncome,
-        lastCalculated: new Date()
-      },
-      update: {
-        monthlyIncome,
-        monthlyExpenses,
-        monthlyBurnRate: monthlyExpenses - monthlyIncome,
-        lastCalculated: new Date()
-      }
+      select: { id: true }
     });
+
+    if (businessProfile) {
+      await prisma.financialMetrics.upsert({
+        where: { businessProfileId: businessProfile.id },
+        create: {
+          userId,
+          businessProfileId: businessProfile.id,
+          monthlyIncome,
+          monthlyExpenses,
+          monthlyBurnRate: monthlyExpenses - monthlyIncome,
+          lastCalculated: new Date()
+        },
+        update: {
+          monthlyIncome,
+          monthlyExpenses,
+          monthlyBurnRate: monthlyExpenses - monthlyIncome,
+          lastCalculated: new Date()
+        }
+      });
+    } else {
+      // Create without business profile (will generate new ID)
+      await prisma.financialMetrics.create({
+        data: {
+          userId,
+          monthlyIncome,
+          monthlyExpenses,
+          monthlyBurnRate: monthlyExpenses - monthlyIncome,
+          lastCalculated: new Date()
+        }
+      });
+    }
   } catch (error) {
     console.error('[Processing] Error updating financial metrics:', error);
     // Don't throw - this is not critical

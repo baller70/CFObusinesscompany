@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { calculateCreditScore, saveCalculatedCreditScore } from '@/lib/credit-score-calculator';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/credit-scores/auto-update
  * Automatically calculate and update credit scores for all profiles

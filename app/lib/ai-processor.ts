@@ -1,8 +1,12 @@
-
 // AI Processing functions for bank statements
+// Using unpdf for text extraction and pdf-lib for page splitting
+// Canvas for PDF page to image conversion (Vision API)
+import { extractText, getDocumentProxy } from 'unpdf';
+import { PDFDocument } from 'pdf-lib';
+
 export class AIBankStatementProcessor {
   private apiKey: string;
-  
+
   constructor() {
     this.apiKey = process.env.ABACUSAI_API_KEY || '';
     if (!this.apiKey) {
@@ -12,31 +16,464 @@ export class AIBankStatementProcessor {
     console.log('[AI Processor] Initialized with API key');
   }
 
-  async extractDataFromPDF(pdfBuffer: Buffer, fileName: string, model: string = 'gpt-4o', retryCount: number = 0): Promise<any> {
-    console.log(`[AI Processor] 🚀 SIMPLE MODE - Sending PDF directly to LLM (like Abacus Chat Element)`);
-    console.log(`[AI Processor] PDF: ${fileName}, size: ${pdfBuffer.length} bytes`);
-    console.log(`[AI Processor] 🤖 Using model: ${model}`);
-    
+  async extractDataFromPDF(
+    pdfBuffer: Buffer,
+    fileName: string,
+    model: string = 'gpt-4o',
+    retryCount: number = 0
+  ): Promise<any> {
+    const sizeKB = pdfBuffer.length / 1024;
+    console.log(`[AI Processor] 🚀 PROCESSING PDF: ${fileName}`);
+    console.log(`[AI Processor] PDF size: ${sizeKB.toFixed(1)} KB`);
+
+    // For large PDFs (>100KB), use IMAGE-BASED PAGE-BY-PAGE PROCESSING
+    // This approach converts each page to an image and uses GPT-4o Vision
+    if (sizeKB > 100) {
+      console.log(`[AI Processor] 📄 Large PDF detected (${sizeKB.toFixed(1)} KB) - using PAGE-BY-PAGE IMAGE PROCESSING`);
+      try {
+        const result = await this.extractDataPageByPageVision(pdfBuffer, fileName, model);
+        if (result && result.transactions && result.transactions.length > 0) {
+          return result;
+        }
+        console.log(`[AI Processor] ⚠️ Page-by-page returned no transactions, trying text extraction...`);
+      } catch (pageError: any) {
+        console.log(`[AI Processor] ⚠️ Page-by-page processing failed: ${pageError.message}`);
+        console.log(`[AI Processor] 🔄 Falling back to text extraction...`);
+      }
+
+      // Fallback: Try text extraction
+      try {
+        const textResult = await this.extractTextFromPDF(pdfBuffer);
+        if (textResult && textResult.text.length > 100) {
+          console.log(`[AI Processor] ✅ Text extraction got ${textResult.text.length} characters from ${textResult.totalPages} pages`);
+          return this.extractDataFromTextImproved(textResult.text, fileName, model);
+        }
+      } catch (textError: any) {
+        console.log(`[AI Processor] ⚠️ Text extraction also failed: ${textError.message}`);
+      }
+    }
+
+    // For small PDFs or if all methods failed, use direct PDF mode
+    const effectiveModel = sizeKB > 150 ? 'gpt-4.1-mini' : model;
+    console.log(`[AI Processor] 🤖 Using direct PDF mode with model: ${effectiveModel}`);
+    return this.extractDataFromPDFDirect(pdfBuffer, fileName, effectiveModel, retryCount);
+  }
+
+  // NEW: Page-by-page vision-based processing
+  // Splits PDF into single pages and processes each with GPT-4o Vision
+  async extractDataPageByPageVision(pdfBuffer: Buffer, fileName: string, model: string = 'gpt-4o'): Promise<any> {
+    console.log(`[AI Processor] 🖼️ Starting PAGE-BY-PAGE VISION processing...`);
+
+    // Load PDF and get page count
+    const pdfDoc = await PDFDocument.load(pdfBuffer);
+    const totalPages = pdfDoc.getPageCount();
+    console.log(`[AI Processor] 📊 PDF has ${totalPages} pages`);
+
+    const allTransactions: any[] = [];
+    const pageTransactionCounts: number[] = []; // Track transaction counts per page
+    let metadata: any = null;
+    let failedPages: number[] = [];
+
+    // Minimum expected transactions per page (for non-first/last pages)
+    // Bank statements typically have 15-30 transactions per page
+    const MIN_EXPECTED_TRANSACTIONS_MIDDLE_PAGE = 10;
+    const MIN_EXPECTED_TRANSACTIONS_FIRST_PAGE = 5; // First page often has header info
+    const MIN_EXPECTED_TRANSACTIONS_LAST_PAGE = 3;  // Last page often has summary
+
+    // Process each page
+    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+      console.log(`[AI Processor] 📄 Processing page ${pageNum} of ${totalPages}...`);
+
+      // Extract single page as PDF
+      const singlePagePdf = await PDFDocument.create();
+      const [copiedPage] = await singlePagePdf.copyPages(pdfDoc, [pageNum - 1]);
+      singlePagePdf.addPage(copiedPage);
+      const singlePageBuffer = Buffer.from(await singlePagePdf.save());
+
+      const pageSizeKB = singlePageBuffer.length / 1024;
+      console.log(`[AI Processor]   Page ${pageNum} size: ${pageSizeKB.toFixed(1)} KB`);
+
+      // Determine minimum expected transactions for this page
+      let minExpected = MIN_EXPECTED_TRANSACTIONS_MIDDLE_PAGE;
+      if (pageNum === 1) minExpected = MIN_EXPECTED_TRANSACTIONS_FIRST_PAGE;
+      else if (pageNum === totalPages) minExpected = MIN_EXPECTED_TRANSACTIONS_LAST_PAGE;
+
+      // Process this page with smart retry logic
+      let bestResult: any = null;
+      let bestTransactionCount = 0;
+      let retryCount = 0;
+      const maxRetries = 3;
+      const maxLowCountRetries = 2; // Extra retries specifically for low transaction counts
+
+      while (retryCount < maxRetries) {
+        try {
+          if (retryCount > 0) {
+            const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff: 2s, 4s, 8s
+            console.log(`[AI Processor]   🔄 Retry ${retryCount}/${maxRetries} after ${delay/1000}s delay...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+
+          const pageResult = await this.extractSinglePageVision(
+            singlePageBuffer,
+            fileName,
+            pageNum,
+            totalPages,
+            metadata,
+            model
+          );
+
+          if (pageResult) {
+            const txnCount = pageResult.transactions?.length || 0;
+
+            // Keep track of the best result (most transactions)
+            if (txnCount > bestTransactionCount) {
+              bestResult = pageResult;
+              bestTransactionCount = txnCount;
+            }
+
+            // Store metadata and balance info from first page for context
+            if (pageNum === 1 && pageResult.bankInfo && !metadata) {
+              metadata = {
+                bankName: pageResult.bankInfo?.bankName,
+                accountNumber: pageResult.bankInfo?.accountNumber,
+                statementPeriod: pageResult.bankInfo?.statementPeriod,
+                beginningBalance: pageResult.balanceInfo?.beginningBalance || pageResult.bankInfo?.beginningBalance,
+                endingBalance: pageResult.balanceInfo?.endingBalance || pageResult.bankInfo?.endingBalance
+              };
+              console.log(`[AI Processor]   📋 Got metadata from page 1:`, metadata);
+              if (metadata.beginningBalance || metadata.endingBalance) {
+                console.log(`[AI Processor]   💰 Balance info: Beginning=$${metadata.beginningBalance}, Ending=$${metadata.endingBalance}`);
+              }
+            }
+
+            // Check if we got enough transactions
+            if (txnCount >= minExpected) {
+              console.log(`[AI Processor]   ✅ Page ${pageNum}: Found ${txnCount} transactions (meets minimum: ${minExpected})`);
+              break; // Good enough, move to next page
+            } else if (retryCount < maxLowCountRetries) {
+              // Low transaction count - retry to get more
+              console.log(`[AI Processor]   ⚠️ Page ${pageNum}: Only ${txnCount} transactions (expected min: ${minExpected}) - retrying...`);
+              retryCount++;
+              continue;
+            } else {
+              // We've retried enough, use best result
+              console.log(`[AI Processor]   ⚠️ Page ${pageNum}: Using best result with ${bestTransactionCount} transactions after ${retryCount + 1} attempts`);
+              break;
+            }
+          } else {
+            retryCount++;
+          }
+        } catch (error: any) {
+          console.error(`[AI Processor]   ❌ Page ${pageNum} attempt ${retryCount + 1} failed: ${error.message}`);
+          retryCount++;
+        }
+      }
+
+      // Add best result to all transactions
+      if (bestResult) {
+        const pageTransactions = bestResult.transactions || [];
+        console.log(`[AI Processor]   ✅ Page ${pageNum}: Final count ${pageTransactions.length} transactions`);
+        allTransactions.push(...pageTransactions);
+        pageTransactionCounts.push(pageTransactions.length);
+      } else {
+        console.log(`[AI Processor]   🚨 Page ${pageNum} FAILED after ${maxRetries} retries`);
+        failedPages.push(pageNum);
+        pageTransactionCounts.push(0);
+      }
+
+      // Small delay between pages to avoid rate limiting
+      if (pageNum < totalPages) {
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
+    }
+
+    // Report results with per-page breakdown
+    console.log(`[AI Processor] ✅ PAGE-BY-PAGE COMPLETE`);
+    console.log(`[AI Processor] 📊 Total transactions: ${allTransactions.length} from ${totalPages - failedPages.length}/${totalPages} pages`);
+    console.log(`[AI Processor] 📊 Per-page breakdown: ${pageTransactionCounts.map((c, i) => `P${i+1}:${c}`).join(', ')}`);
+
+    // Warn about potentially low-count pages
+    const lowCountPages = pageTransactionCounts
+      .map((count, idx) => ({ page: idx + 1, count }))
+      .filter(p => {
+        const isFirst = p.page === 1;
+        const isLast = p.page === totalPages;
+        const minExpected = isFirst ? MIN_EXPECTED_TRANSACTIONS_FIRST_PAGE :
+                           isLast ? MIN_EXPECTED_TRANSACTIONS_LAST_PAGE :
+                           MIN_EXPECTED_TRANSACTIONS_MIDDLE_PAGE;
+        return p.count < minExpected && p.count > 0;
+      });
+
+    if (lowCountPages.length > 0) {
+      console.log(`[AI Processor] ⚠️ Potentially incomplete pages: ${lowCountPages.map(p => `Page ${p.page} (${p.count} txns)`).join(', ')}`);
+    }
+
+    if (failedPages.length > 0) {
+      console.log(`[AI Processor] ⚠️ Failed pages: ${failedPages.join(', ')}`);
+    }
+
+    return {
+      bankInfo: metadata || { bankName: 'Unknown', accountNumber: 'Unknown' },
+      transactions: allTransactions,
+      transactionCount: allTransactions.length,
+      processingMethod: 'page-by-page-vision',
+      pagesProcessed: totalPages - failedPages.length,
+      totalPages,
+      failedPages,
+      pageTransactionCounts, // Include per-page counts for diagnostics
+      lowCountPages: lowCountPages.map(p => p.page) // Flag potentially incomplete pages
+    };
+  }
+
+  // Process a single PDF page using Vision API
+  async extractSinglePageVision(
+    pageBuffer: Buffer,
+    fileName: string,
+    pageNum: number,
+    totalPages: number,
+    existingMetadata: any,
+    model: string = 'gpt-4o'
+  ): Promise<any> {
+    // Convert PDF page to base64
+    const base64String = pageBuffer.toString('base64');
+    const base64DataUri = `data:application/pdf;base64,${base64String}`;
+
+    // Build context for this page
+    const metadataContext = existingMetadata
+      ? `\nKNOWN STATEMENT INFO (from previous pages):\n- Bank: ${existingMetadata.bankName}\n- Account: ${existingMetadata.accountNumber}\n- Period: ${existingMetadata.statementPeriod}`
+      : '';
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout per page
+
     try {
-      // Convert PDF to Base64 for LLM
-      const base64String = pdfBuffer.toString('base64');
-      const base64DataUri = `data:application/pdf;base64,${base64String}`;
-      
-      console.log(`[AI Processor] 📤 Sending to LLM...`);
-      
-      // Send PDF directly to LLM with simple prompt
       const response = await fetch('https://apps.abacus.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${this.apiKey}`
         },
+        signal: controller.signal,
         body: JSON.stringify({
-          model: model, // Use selected model
+          model: model,
+          max_tokens: 16000,
+          temperature: 0.1,
+          messages: [{
+            role: "user",
+            content: [
+              {
+                type: "file",
+                file: {
+                  filename: `${fileName}_page${pageNum}.pdf`,
+                  file_data: base64DataUri
+                }
+              },
+              {
+                type: "text",
+                text: `EXTRACT ALL TRANSACTIONS from this bank statement page (Page ${pageNum} of ${totalPages}).
+${metadataContext}
+
+CRITICAL INSTRUCTIONS:
+1. FIRST, count exactly how many ACTUAL transaction rows you see on this page
+2. THEN, extract EVERY SINGLE transaction - do NOT skip any
+3. Number your transactions as you extract them (Transaction 1, Transaction 2, etc.)
+4. Include ALL types: deposits, withdrawals, ACH, debit card, checks, transfers, fees
+
+⚠️ DO NOT INCLUDE THESE AS TRANSACTIONS - These are balance summary entries, NOT transactions:
+- "Beginning Balance" / "Opening Balance" / "Starting Balance"
+- "Ending Balance" / "Closing Balance" / "Final Balance"
+- Balance summary rows or totals
+- Daily balance entries (unless they represent actual transactions)
+
+${pageNum === 1 ? `EXTRACT BALANCE INFORMATION SEPARATELY:
+- beginningBalance: The starting balance shown on the statement (as a number)
+- endingBalance: The ending/closing balance shown on the statement (as a number)` : ''}
+
+For EACH actual transaction, extract:
+- date: The transaction date in YYYY-MM-DD format
+- description: The FULL description text
+- amount: Positive for deposits/credits, negative for withdrawals/debits
+- type: "credit" for deposits, "debit" for withdrawals
+- category: Best guess at category
+- profileType: "BUSINESS" or "PERSONAL"
+
+${pageNum === 1 ? `Also extract bank info:
+- bankName: Bank name
+- accountNumber: Last 4 digits if visible
+- statementPeriod: Date range of statement` : ''}
+
+RESPOND WITH JSON ONLY:
+{
+  ${pageNum === 1 ? `"bankInfo": { "bankName": "", "accountNumber": "", "statementPeriod": "" },
+  "balanceInfo": { "beginningBalance": number, "endingBalance": number },` : ''}
+  "pageNumber": ${pageNum},
+  "transactionCountOnPage": <exact number of ACTUAL transactions you found>,
+  "transactions": [
+    {
+      "date": "YYYY-MM-DD",
+      "description": "full description",
+      "amount": number,
+      "type": "debit|credit",
+      "category": "category",
+      "profileType": "BUSINESS|PERSONAL"
+    }
+  ]
+}
+
+REMEMBER: Extract EVERY actual transaction. Do not consolidate or summarize. Balance entries are NOT transactions.`
+              }
+            ]
+          }],
+          response_format: { type: "json_object" }
+        })
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const content = data.choices[0].message.content;
+      return JSON.parse(content);
+
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      throw error;
+    }
+  }
+
+  // Extract text from PDF using unpdf (serverless-compatible)
+  async extractTextFromPDF(pdfBuffer: Buffer): Promise<{ text: string; totalPages: number }> {
+    console.log(`[AI Processor] 📖 Extracting text from PDF using unpdf...`);
+    const uint8Array = new Uint8Array(pdfBuffer);
+    const pdf = await getDocumentProxy(uint8Array);
+    const { text, totalPages } = await extractText(pdf, { mergePages: true });
+    return { text, totalPages };
+  }
+
+  // IMPROVED: Text extraction with better prompting
+  async extractDataFromTextImproved(text: string, fileName: string, model: string = 'gpt-4o'): Promise<any> {
+    console.log(`[AI Processor] 📤 Sending extracted text to LLM with IMPROVED prompt (${(text.length / 1024).toFixed(1)} KB)`);
+
+    const response = await fetch('https://apps.abacus.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.apiKey}`
+      },
+      body: JSON.stringify({
+        model: model,
+        max_tokens: 100000,
+        temperature: 0.1,
+        messages: [{
+          role: "user",
+          content: `You are a precise bank statement parser. Your job is to extract EVERY SINGLE transaction from this statement.
+
+BANK STATEMENT TEXT:
+${text}
+
+CRITICAL INSTRUCTIONS:
+1. FIRST: Count every transaction line in the document. A transaction is any line with a date + description + amount.
+2. SECOND: Extract each transaction ONE BY ONE. Number them as you go.
+3. DO NOT skip ANY transactions - even if they look similar or repetitive
+4. DO NOT consolidate multiple transactions into one
+5. Include EVERY type: deposits, withdrawals, ACH credits, ACH debits, debit card purchases, checks, fees, transfers
+
+For each transaction:
+- date: Convert to YYYY-MM-DD format
+- description: Copy the FULL description exactly as shown
+- amount: Positive number for credits/deposits, negative for debits/withdrawals
+- type: "credit" or "debit"
+- category: Your best categorization
+- profileType: "BUSINESS" or "PERSONAL"
+
+BUSINESS indicators: payroll, AWS, software, SaaS, client, vendor, office, business insurance, professional services
+PERSONAL indicators: groceries, restaurants, entertainment, personal shopping, healthcare, personal insurance
+
+RETURN JSON:
+{
+  "totalTransactionsFound": <your count of ALL transaction lines in the text>,
+  "transactionCount": <number of transactions in the array below - must equal totalTransactionsFound>,
+  "transactions": [
+    {
+      "date": "YYYY-MM-DD",
+      "description": "exact full description",
+      "amount": number,
+      "type": "debit|credit",
+      "category": "category name",
+      "profileType": "BUSINESS|PERSONAL"
+    }
+  ]
+}
+
+VERIFICATION: Your transactionCount MUST equal totalTransactionsFound. If they don't match, you missed some transactions - go back and find them.
+
+Raw JSON only - no markdown.`
+        }],
+        response_format: { type: "json_object" }
+      })
+    });
+
+    console.log(`[AI Processor] ✅ Text extraction response: ${response.status}`);
+
+    if (!response.ok) {
+      throw new Error(`LLM API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0].message.content;
+    const extractedData = JSON.parse(content);
+
+    const count = extractedData.transactions?.length || 0;
+    const expected = extractedData.totalTransactionsFound || count;
+    console.log(`[AI Processor] ✅ Extracted ${count} transactions (expected ${expected}) from text`);
+
+    if (count < expected) {
+      console.log(`[AI Processor] ⚠️ WARNING: Missing ${expected - count} transactions!`);
+    }
+
+    return extractedData;
+  }
+
+  // Legacy method - redirects to improved version
+  async extractDataFromText(text: string, fileName: string, model: string = 'gpt-4o'): Promise<any> {
+    return this.extractDataFromTextImproved(text, fileName, model);
+  }
+
+  // Send PDF directly to LLM with retry logic for timeouts
+  async extractDataFromPDFDirect(pdfBuffer: Buffer, fileName: string, model: string = 'gpt-4o', retryCount: number = 0): Promise<any> {
+    const MAX_RETRIES = 2;
+    console.log(`[AI Processor] 🚀 DIRECT PDF MODE - Sending PDF file to LLM`);
+    console.log(`[AI Processor] PDF: ${fileName}, size: ${(pdfBuffer.length / 1024).toFixed(1)} KB`);
+    if (retryCount > 0) {
+      console.log(`[AI Processor] 🔄 Retry attempt ${retryCount}/${MAX_RETRIES}`);
+    }
+
+    // Convert PDF to Base64 for LLM
+    const base64String = pdfBuffer.toString('base64');
+    const base64DataUri = `data:application/pdf;base64,${base64String}`;
+
+    console.log(`[AI Processor] 📤 Sending PDF directly to LLM...`);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minute timeout
+
+    try {
+      const response = await fetch('https://apps.abacus.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: model,
           max_tokens: 100000,
           temperature: 0.1,
           messages: [{
-            role: "user", 
+            role: "user",
             content: [
               {
                 type: "file",
@@ -47,37 +484,55 @@ export class AIBankStatementProcessor {
               },
               {
                 type: "text",
-                text: `Extract ALL transactions from this bank statement. For EACH transaction, you MUST classify it as either BUSINESS or PERSONAL.
+                text: `You are a precise bank statement parser. Extract EVERY SINGLE transaction from this document.
+
+CRITICAL INSTRUCTIONS:
+1. FIRST: Count every ACTUAL transaction row in the document (any line with date + description + amount)
+2. THEN: Extract each transaction ONE BY ONE - number them as you go
+3. DO NOT skip ANY transactions - even if they look similar or repetitive
+4. DO NOT consolidate multiple transactions into one
+5. Include ALL types: deposits, ACH credits, ACH debits, debit card purchases, checks, fees, transfers
+
+⚠️ DO NOT INCLUDE THESE AS TRANSACTIONS - These are balance summary entries, NOT transactions:
+- "Beginning Balance" / "Opening Balance" / "Starting Balance"
+- "Ending Balance" / "Closing Balance" / "Final Balance"
+- Balance summary rows or totals
+- Daily balance entries (unless they represent actual transactions)
+
+EXTRACT BALANCE INFORMATION SEPARATELY in bankInfo:
+- beginningBalance: The starting balance shown on the statement (as a positive number)
+- endingBalance: The ending/closing balance shown on the statement (as a positive number)
 
 CLASSIFICATION RULES:
-- BUSINESS: Payroll, AWS, software subscriptions, client payments, vendor payments, office supplies, business travel, professional services, advertising, business insurance, business utilities
-- PERSONAL: Groceries (Walmart, Target, Whole Foods), restaurants, entertainment, personal shopping, healthcare, personal insurance, household utilities, personal vehicle, personal travel
+- BUSINESS: Payroll, AWS, software, SaaS, client payments, vendor payments, office supplies, business travel, professional services, advertising, business insurance
+- PERSONAL: Groceries, restaurants, entertainment, personal shopping, healthcare, personal insurance, household utilities, personal travel
 
-SPECIAL MERCHANT RULES:
-- Any transaction with amount $8275.00 (or 8275) as an EXPENSE should be categorized as "Facility Rental" and classified as BUSINESS
-
-Return JSON in this exact format:
+Return JSON:
 {
-  "transactionCount": number,
+  "bankInfo": {
+    "bankName": "detected bank name",
+    "accountNumber": "last 4 digits if visible",
+    "statementPeriod": "YYYY-MM-DD to YYYY-MM-DD",
+    "beginningBalance": number,
+    "endingBalance": number
+  },
+  "totalTransactionsFound": <your count of ALL ACTUAL transaction lines>,
+  "transactionCount": <number in transactions array - MUST equal totalTransactionsFound>,
   "transactions": [
     {
       "date": "YYYY-MM-DD",
-      "description": "full transaction description",
-      "amount": number (positive for income, negative for expenses),
+      "description": "FULL description exactly as shown",
+      "amount": number (positive for deposits/credits, negative for withdrawals/debits),
       "type": "debit|credit",
       "category": "category name",
-      "profileType": "BUSINESS" or "PERSONAL" (you MUST choose one based on the rules above)
+      "profileType": "BUSINESS|PERSONAL"
     }
   ]
 }
 
-IMPORTANT: 
-- Extract ALL transactions, no matter how many
-- EVERY transaction MUST have a profileType of either "BUSINESS" or "PERSONAL"
-- Use the description to intelligently determine if it's business or personal
-- When in doubt, classify as PERSONAL
+VERIFICATION: transactionCount MUST equal totalTransactionsFound. Balance entries are NOT transactions.
 
-Respond with raw JSON only.`
+Raw JSON only.`
               }
             ]
           }],
@@ -85,7 +540,15 @@ Respond with raw JSON only.`
         })
       });
 
+      clearTimeout(timeoutId);
       console.log(`[AI Processor] ✅ Response received: ${response.status}`);
+
+      // Handle timeout errors (524) with retry
+      if (response.status === 524 && retryCount < MAX_RETRIES) {
+        console.log(`[AI Processor] ⚠️ Cloudflare timeout (524), retrying in 5s...`);
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        return this.extractDataFromPDFDirect(pdfBuffer, fileName, model, retryCount + 1);
+      }
 
       if (!response.ok) {
         throw new Error(`LLM API error: ${response.status}`);
@@ -95,15 +558,20 @@ Respond with raw JSON only.`
       const data = await response.json();
       const content = data.choices[0].message.content;
       const extractedData = JSON.parse(content);
-      
+
       const count = extractedData.transactions?.length || 0;
-      console.log(`[AI Processor] ✅ Extracted ${count} transactions from PDF`);
-      console.log(`[AI Processor] Transaction count reported by LLM: ${extractedData.transactionCount || count}`);
-      
+      console.log(`[AI Processor] ✅ Extracted ${count} transactions from PDF (direct mode)`);
+
       return extractedData;
-        
-    } catch (error) {
-      console.error('[AI Processor] Error:', error);
+
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+
+      if (error.name === 'AbortError' && retryCount < MAX_RETRIES) {
+        console.log(`[AI Processor] ⚠️ Request timeout, retrying in 5s...`);
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        return this.extractDataFromPDFDirect(pdfBuffer, fileName, model, retryCount + 1);
+      }
       throw error;
     }
   }
@@ -326,26 +794,46 @@ NOTE:
   }
 
   async categorizeTransactions(transactions: any[], userContext?: { industry?: string | null; businessType?: string; companyName?: string | null }): Promise<any[]> {
-    console.log(`[AI Processor] 🚀 CATEGORIZING ALL ${transactions.length} TRANSACTIONS AT ONCE (NOT ONE-BY-ONE)`);
-    
+    console.log(`[AI Processor] 🚀 CATEGORIZING ${transactions.length} TRANSACTIONS`);
+
     // Import expanded categories
     const { getAllCategories, getIndustryAwarePrompt } = await import('@/lib/accuracy-enhancer');
     const allCategories = getAllCategories();
     const industryContext = userContext ? getIndustryAwarePrompt(userContext.industry, userContext.businessType, userContext.companyName) : '';
-    
-    // Process ALL transactions at once (no batching)
-    console.log(`[AI Processor] Processing all ${transactions.length} transactions in ONE batch`);
-      
+
+    // Process in smaller batches of 10 to avoid API timeouts (524 errors)
+    // Smaller batches = faster responses, less chance of Cloudflare timeout
+    const BATCH_SIZE = 10;
+    const batches: any[][] = [];
+    for (let i = 0; i < transactions.length; i += BATCH_SIZE) {
+      batches.push(transactions.slice(i, i + BATCH_SIZE));
+    }
+
+    console.log(`[AI Processor] Processing ${transactions.length} transactions in ${batches.length} batches of up to ${BATCH_SIZE}`);
+
+    const allCategorized: any[] = [];
+
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      const batchTransactions = batches[batchIndex];
+      console.log(`[AI Processor] Processing batch ${batchIndex + 1}/${batches.length} (${batchTransactions.length} transactions)`);
+
+      // Add unique IDs to track transactions
+      const indexedTransactions = batchTransactions.map((txn: any, idx: number) => ({
+        ...txn,
+        _batchIndex: idx + 1,
+        _batchTotal: batchTransactions.length
+      }));
+
       let retryCount = 0;
       const maxRetries = 2;
       let success = false;
-      
+
       while (retryCount <= maxRetries && !success) {
         try {
           if (retryCount > 0) {
             console.log(`[AI Processor] Retry ${retryCount}/${maxRetries} for categorization`);
           }
-          
+
           const response = await fetch('https://apps.abacus.ai/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -356,69 +844,49 @@ NOTE:
               model: 'gpt-4o',
               messages: [{
                 role: "user",
-                content: `You are an expert financial analyst. Categorize ALL these ${transactions.length} transactions with MAXIMUM accuracy.
+                content: `You are an expert financial analyst. You MUST categorize ALL ${batchTransactions.length} transactions below.
 
-${JSON.stringify(transactions, null, 2)}
+CRITICAL INSTRUCTIONS:
+1. There are EXACTLY ${batchTransactions.length} transactions numbered 1 to ${batchTransactions.length}
+2. You MUST return EXACTLY ${batchTransactions.length} categorized transactions
+3. DO NOT skip, merge, or consolidate ANY transactions - each one is unique
+4. Process them ONE BY ONE in order
+
+TRANSACTIONS TO CATEGORIZE (${batchTransactions.length} total):
+${indexedTransactions.map((txn: any, i: number) => `[${i + 1}/${batchTransactions.length}] ${JSON.stringify(txn)}`).join('\n')}
 
 ${industryContext}
 
-AVAILABLE CATEGORIES (choose the MOST SPECIFIC one):
+CATEGORIES:
+BUSINESS: Office Supplies, Software & SaaS, Marketing, Professional Services, Business Travel, Client Entertainment, Contractor Payments, Business Utilities, Rent & Lease, Shipping, Website & Hosting, Bank Fees, Inventory & Supplies, Telecommunications, Business Insurance, Equipment, Training, Business Revenue
+PERSONAL: Groceries, Dining, Entertainment, Personal Shopping, Healthcare, Home Utilities, Rent/Mortgage, Personal Care, Fitness, Hobbies, Personal Travel, Subscriptions, Gas & Fuel, Transportation
+INCOME: Salary, Business Revenue, Investment Income, Dividends, Interest, Refunds
+FINANCIAL: Loan Payment, Savings Transfer, Investment, Taxes
 
-BUSINESS CATEGORIES:
-- Office Supplies, Software & SaaS, Marketing & Advertising, Professional Services
-- Legal & Accounting, Business Insurance, Equipment & Machinery, Business Travel
-- Client Entertainment, Employee Benefits, Contractor Payments, Business Utilities
-- Rent & Lease, Shipping & Logistics, Research & Development, Training & Education
-- Telecommunications, Website & Hosting, Bank Fees, Business Licenses
-- Inventory & Supplies, Vehicle Expenses
+PROFILE CLASSIFICATION:
+- BUSINESS: Office items, professional services, client meetings, equipment, marketing
+- PERSONAL: Personal meals, entertainment, healthcare, home expenses, hobbies
 
-PERSONAL CATEGORIES:
-- Groceries, Dining & Restaurants, Entertainment, Personal Shopping
-- Healthcare, Home Utilities, Rent/Mortgage, Personal Insurance
-- Personal Care, Fitness & Wellness, Hobbies, Personal Travel
-- Gifts, Subscriptions, Phone & Internet, Transportation
-- Gas & Fuel, Vehicle Maintenance, Education, Childcare
-
-INCOME CATEGORIES:
-- Salary, Freelance Income, Business Revenue, Investment Income
-- Dividends, Interest, Refunds, Rental Income, Side Business, Commissions
-
-FINANCIAL CATEGORIES:
-- Credit Card Payment, Loan Payment, Savings Transfer, Investment, Taxes
-
-CRITICAL: Classify each transaction as "BUSINESS" or "PERSONAL":
-- BUSINESS: Any expense that is clearly business-related (office items, professional services, business software, client meetings, business travel, equipment, business insurance, marketing, etc.)
-- PERSONAL: Any expense that is clearly personal/household (personal groceries, personal meals, entertainment, personal healthcare, home utilities, personal shopping, hobbies, personal travel, etc.)
-
-For ambiguous merchants (Amazon, Walmart, Target, Costco, etc.), consider:
-1. Amount (larger = more likely business)
-2. Description details (any business keywords?)
-3. Context from other transactions${industryContext ? '\n4. Industry context provided' : ''}
-
-Return JSON:
+Return EXACTLY this JSON structure with ${batchTransactions.length} items:
 {
+  "totalCount": ${batchTransactions.length},
   "categorizedTransactions": [
     {
-      "originalTransaction": original_transaction_object,
-      "suggestedCategory": "EXACT category from list above",
-      "confidence": 0.XX (be honest about uncertainty),
-      "reasoning": "why this category and profile",
-      "merchant": "cleaned merchant name",
-      "isRecurring": true/false,
+      "transactionNumber": 1,
+      "originalTransaction": {first transaction object},
+      "suggestedCategory": "category",
+      "confidence": 0.XX,
+      "reasoning": "brief reason",
+      "merchant": "merchant name",
+      "isRecurring": false,
       "profileType": "BUSINESS" or "PERSONAL",
-      "profileConfidence": 0.XX (separate confidence for profile classification)
-    }
+      "profileConfidence": 0.XX
+    },
+    ... repeat for ALL ${batchTransactions.length} transactions
   ]
 }
 
-Be CONSERVATIVE with confidence scores. Use:
-- 0.95-1.0: Absolutely certain
-- 0.85-0.94: Very confident
-- 0.70-0.84: Confident
-- 0.50-0.69: Uncertain (these will be flagged for review)
-- Below 0.50: Very uncertain
-
-Raw JSON only.`
+VERIFY: Your categorizedTransactions array MUST have exactly ${batchTransactions.length} items.`
               }],
               response_format: { type: "json_object" },
               max_tokens: 100000,
@@ -452,33 +920,107 @@ Raw JSON only.`
           }
           
           if (result.categorizedTransactions && Array.isArray(result.categorizedTransactions)) {
-            console.log(`[AI Processor] ✅ Categorization completed: ${result.categorizedTransactions.length} transactions`);
+            console.log(`[AI Processor] ✅ Batch ${batchIndex + 1} completed: ${result.categorizedTransactions.length} transactions`);
             success = true;
-            
-            // Verify we got all transactions
-            if (result.categorizedTransactions.length !== transactions.length) {
-              console.error(`[AI Processor] ⚠️ Expected ${transactions.length} transactions, got ${result.categorizedTransactions.length}`);
+
+            // CRITICAL FIX: Ensure originalTransaction is always set by mapping to batch transactions
+            // The AI may not properly echo back the original transaction, so we map by index or match
+            const processedCategorized = result.categorizedTransactions.map((catTxn: any, idx: number) => {
+              // If originalTransaction is missing or invalid, try to match by index
+              if (!catTxn.originalTransaction || !catTxn.originalTransaction.date) {
+                // Try to find matching transaction by transactionNumber or fall back to index
+                const txnNumber = catTxn.transactionNumber;
+                let matchedTxn = null;
+
+                if (txnNumber && txnNumber > 0 && txnNumber <= batchTransactions.length) {
+                  matchedTxn = batchTransactions[txnNumber - 1];
+                } else if (idx < batchTransactions.length) {
+                  matchedTxn = batchTransactions[idx];
+                }
+
+                if (matchedTxn) {
+                  return {
+                    ...catTxn,
+                    originalTransaction: matchedTxn
+                  };
+                }
+              }
+              return catTxn;
+            });
+
+            // Verify we got all transactions in this batch
+            if (processedCategorized.length !== batchTransactions.length) {
+              console.warn(`[AI Processor] ⚠️ Batch ${batchIndex + 1}: Expected ${batchTransactions.length} transactions, got ${processedCategorized.length}`);
+
+              // Fill in missing transactions with fallback categorization
+              const returnedCount = processedCategorized.length;
+              const missingCount = batchTransactions.length - returnedCount;
+
+              if (missingCount > 0) {
+                console.log(`[AI Processor] 🔧 Creating fallback for ${missingCount} missing transactions`);
+
+                // Create a set of returned transaction identifiers (using multiple fields for matching)
+                const returnedSet = new Set<string>();
+                processedCategorized.forEach((c: any) => {
+                  const orig = c.originalTransaction || {};
+                  // Create multiple possible identifiers
+                  if (orig.description) returnedSet.add(orig.description.toLowerCase().trim());
+                  if (orig.date && orig.amount) returnedSet.add(`${orig.date}|${orig.amount}`);
+                });
+
+                // Find missing transactions
+                const missingTransactions: any[] = [];
+                batchTransactions.forEach((txn: any) => {
+                  const descKey = (txn.description || '').toLowerCase().trim();
+                  const dateAmountKey = `${txn.date}|${txn.amount}`;
+
+                  // Check if this transaction was returned
+                  if (!returnedSet.has(descKey) && !returnedSet.has(dateAmountKey)) {
+                    missingTransactions.push(txn);
+                  }
+                });
+
+                // If we still can't find the missing ones, just take the last N from the batch
+                let transactionsToFallback = missingTransactions;
+                if (missingTransactions.length < missingCount) {
+                  console.log(`[AI Processor] 📊 Matching found ${missingTransactions.length} missing, expected ${missingCount}. Using index-based fallback.`);
+                  // Take the last N transactions that weren't categorized
+                  transactionsToFallback = batchTransactions.slice(returnedCount);
+                }
+
+                // Create fallback for missing ones
+                const fallbackForMissing = transactionsToFallback.map((txn: any) => ({
+                  originalTransaction: txn,
+                  suggestedCategory: txn.amount > 0 ? 'Business Revenue' : 'Uncategorized',
+                  confidence: 0.40,
+                  reasoning: 'Auto-categorized (missing from batch response)',
+                  merchant: txn.description || 'Unknown',
+                  isRecurring: false,
+                  profileType: 'BUSINESS',
+                  profileConfidence: 0.50
+                }));
+
+                processedCategorized.push(...fallbackForMissing);
+                console.log(`[AI Processor] ✅ Added ${fallbackForMissing.length} fallback categorizations, total now: ${processedCategorized.length}`);
+              }
             }
-            
-            console.log(`[AI Processor] ✅ CATEGORIZATION COMPLETE`);
-            console.log(`[AI Processor] 📊 Successfully categorized: ${result.categorizedTransactions.length} transactions`);
-            console.log(`[AI Processor] 🎯 Expected vs Actual: ${transactions.length} → ${result.categorizedTransactions.length}`);
-            
-            return result.categorizedTransactions;
+
+            // Add to all categorized results
+            allCategorized.push(...processedCategorized);
           } else {
             throw new Error('Invalid response structure');
           }
-          
+
         } catch (error) {
-          console.error(`[AI Processor] ❌ Error categorizing transactions (attempt ${retryCount + 1}):`, error);
+          console.error(`[AI Processor] ❌ Error categorizing batch ${batchIndex + 1} (attempt ${retryCount + 1}):`, error);
           retryCount++;
-          
-          // If all retries failed, create fallback categorized transactions
+
+          // If all retries failed, create fallback categorized transactions for this batch
           if (retryCount > maxRetries) {
-            console.error(`[AI Processor] 🚨 CATEGORIZATION FAILED AFTER ${maxRetries} RETRIES - Creating fallback categorizations`);
-            
-            // Create basic categorization for all transactions to prevent data loss
-            const fallbackCategorized = transactions.map((txn: any) => ({
+            console.error(`[AI Processor] 🚨 Batch ${batchIndex + 1} FAILED AFTER ${maxRetries} RETRIES - Creating fallback categorizations`);
+
+            // Create basic categorization for this batch to prevent data loss
+            const fallbackCategorized = batchTransactions.map((txn: any) => ({
               originalTransaction: txn,
               suggestedCategory: txn.amount > 0 ? 'Business Revenue' : 'Uncategorized Expense',
               confidence: 0.30,
@@ -488,16 +1030,21 @@ Raw JSON only.`
               profileType: 'BUSINESS',
               profileConfidence: 0.50
             }));
-            
-            console.log(`[AI Processor] ⚠️ Created ${fallbackCategorized.length} transactions with fallback categorization`);
-            return fallbackCategorized;
+
+            console.log(`[AI Processor] ⚠️ Created ${fallbackCategorized.length} fallback transactions for batch ${batchIndex + 1}`);
+            allCategorized.push(...fallbackCategorized);
+            success = true; // Mark as success to continue with next batch
           }
         }
       }
-    
-    // This should never be reached (we return in the while loop)
-    console.error(`[AI Processor] 🚨 Categorization failed completely - returning empty array`);
-    return [];
+    }
+
+    // Return all categorized transactions from all batches
+    console.log(`[AI Processor] ✅ CATEGORIZATION COMPLETE`);
+    console.log(`[AI Processor] 📊 Successfully categorized: ${allCategorized.length} transactions`);
+    console.log(`[AI Processor] 🎯 Expected vs Actual: ${transactions.length} → ${allCategorized.length}`);
+
+    return allCategorized;
   }
 
   async generateFinancialInsights(transactions: any[], userProfile: any): Promise<any> {
@@ -624,8 +1171,8 @@ Respond with raw JSON only.`
   async reValidateTransactions(transactions: any[]): Promise<any> {
     console.log(`[AI Processor] Re-validating ${transactions.length} transactions`);
     
-    // Process in smaller batches for validation
-    const batchSize = 15;
+    // Process in smaller batches for validation (10 to avoid API timeouts)
+    const batchSize = 10;
     const allValidations: any[] = [];
     
     for (let i = 0; i < transactions.length; i += batchSize) {

@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { startOfYear, endOfYear, addMonths, format } from 'date-fns'
 
+export const dynamic = 'force-dynamic';
+
 // Calculate tax optimization recommendations
 export async function POST(req: NextRequest) {
   try {

@@ -24,90 +24,325 @@ export interface ParsedStatement {
 }
 
 // Smart categorization based on merchant patterns
+// Enhanced with comprehensive merchant rules for PNC Business Checking Plus statements
 function categorizeMerchant(description: string): string {
   const desc = description.toLowerCase();
-  
-  // Income categories
-  if (desc.includes('stripe') || desc.includes('mobile deposit') || desc.includes('ach credit')) {
-    return 'Income';
+
+  // ========================================
+  // INCOME CATEGORIES (Credits/Deposits)
+  // ========================================
+
+  // Payment processors & business income
+  if (desc.includes('stripe') || desc.includes('corporate ach transfer stripe')) {
+    return 'Business Revenue';
   }
-  
-  // Expense categories
-  if (desc.includes('gas') || desc.includes('costco gas') || desc.includes('shell') || desc.includes('exxon')) {
-    return 'Fuel & Gas';
+  if (desc.includes('etsy') || desc.includes('ach payout etsy')) {
+    return 'Business Revenue';
   }
-  
-  if (desc.includes('walmart') || desc.includes('target') || desc.includes('acme') || desc.includes('aldi') || 
-      desc.includes('shoprite') || desc.includes('grocery')) {
-    return 'Groceries & Shopping';
+  if (desc.includes('paypal') || desc.includes('venmo') || desc.includes('square')) {
+    return 'Business Revenue';
   }
-  
-  if (desc.includes('mcdonald') || desc.includes('wendy') || desc.includes('restaurant') || 
-      desc.includes('napkins') || desc.includes('juice')) {
+  if (desc.includes('mobile deposit')) {
+    return 'Deposits';
+  }
+  if (desc.includes('ach credit') || desc.includes('ach addition') || desc.includes('corporate ach')) {
+    return 'Business Revenue';
+  }
+  if (desc.includes('pos return') || desc.includes('refund') || desc.includes('credit memo')) {
+    return 'Returns & Refunds';
+  }
+
+  // ========================================
+  // FOOD & DINING
+  // ========================================
+
+  // Quick service & fast food
+  if (desc.includes('jersey mike') || desc.includes('jersey mikes')) {
     return 'Food & Dining';
   }
-  
-  if (desc.includes('amazon') || desc.includes('amzn')) {
-    return 'Online Shopping';
+  if (desc.includes('chick-fil-a') || desc.includes('chick fil a') || desc.includes('chickfila')) {
+    return 'Food & Dining';
   }
-  
-  if (desc.includes('autozone') || desc.includes('mavis') || desc.includes('car') || desc.includes('auto')) {
-    return 'Auto & Transport';
+  if (desc.includes('johnny napkins') || desc.includes('tst* johnny')) {
+    return 'Food & Dining';
   }
-  
-  if (desc.includes('petsmart') || desc.includes('pet')) {
-    return 'Pets';
+  if (desc.includes('manhattan bagel')) {
+    return 'Food & Dining';
   }
-  
-  if (desc.includes('mortgage') || desc.includes('rent') || desc.includes('pnc pymt')) {
-    return 'Housing';
+  if (desc.includes('dunkin') || desc.includes('starbucks') || desc.includes('coffee')) {
+    return 'Food & Dining';
   }
-  
-  if (desc.includes('american water') || desc.includes('elizabethtown ga') || desc.includes('pseg') || 
-      desc.includes('firstenergy') || desc.includes('electric') || desc.includes('water') || desc.includes('utility')) {
-    return 'Utilities';
+  if (desc.includes('mcdonald') || desc.includes('wendy') || desc.includes('burger king') ||
+      desc.includes('taco bell') || desc.includes('chipotle') || desc.includes('panera')) {
+    return 'Food & Dining';
   }
-  
-  if (desc.includes('tmobile') || desc.includes('verizon') || desc.includes('at&t') || desc.includes('phone')) {
-    return 'Phone & Internet';
+  if (desc.includes('restaurant') || desc.includes('cafe') || desc.includes('diner') ||
+      desc.includes('pizza') || desc.includes('sushi') || desc.includes('grill')) {
+    return 'Food & Dining';
   }
-  
-  if (desc.includes('optimum') || desc.includes('cable') || desc.includes('internet')) {
-    return 'Cable & Internet';
+  if (desc.includes('mazzella') || desc.includes('gourmet')) {
+    return 'Food & Dining';
   }
-  
-  if (desc.includes('disney') || desc.includes('netflix') || desc.includes('hulu') || desc.includes('spotify')) {
-    return 'Entertainment';
+  if (desc.includes('perrotts quality meat') || desc.includes('quality meat')) {
+    return 'Groceries';
   }
-  
-  if (desc.includes('apple.com') || desc.includes('google one') || desc.includes('software') || desc.includes('subscription')) {
-    return 'Subscriptions';
-  }
-  
-  if (desc.includes('sba loan') || desc.includes('loan payment') || desc.includes('chrysler capital')) {
-    return 'Loan Payment';
-  }
-  
-  if (desc.includes('irs') || desc.includes('tax') || desc.includes('treasury')) {
-    return 'Taxes';
-  }
-  
-  if (desc.includes('credit card pmt') || desc.includes('online credit card')) {
-    return 'Credit Card Payment';
-  }
-  
-  if (desc.includes('service charge') || desc.includes('fee') || desc.includes('maintenance')) {
-    return 'Bank Fees';
-  }
-  
-  if (desc.includes('school') || desc.includes('education')) {
-    return 'Education';
-  }
-  
-  if (desc.includes('homegoods') || desc.includes('cvs') || desc.includes('dollartree')) {
+
+  // ========================================
+  // RETAIL & SHOPPING
+  // ========================================
+
+  // Warehouse & big box stores
+  if (desc.includes('costco') && !desc.includes('gas')) {
     return 'Shopping';
   }
-  
+  if (desc.includes('target') && !desc.includes('gas')) {
+    return 'Shopping';
+  }
+  if (desc.includes('walmart') || desc.includes('wal-mart')) {
+    return 'Shopping';
+  }
+  if (desc.includes('home depot')) {
+    return 'Home Improvement';
+  }
+  if (desc.includes('homegoods') || desc.includes('home goods')) {
+    return 'Shopping';
+  }
+  if (desc.includes('hobby lobby') || desc.includes('hobby-lobby')) {
+    return 'Shopping';
+  }
+  if (desc.includes('dicks sporting') || desc.includes('dick\'s sporting')) {
+    return 'Sporting Goods';
+  }
+
+  // Grocery stores
+  if (desc.includes('acme') || desc.includes('shoprite') || desc.includes('stop & shop') ||
+      desc.includes('aldi') || desc.includes('wegmans') || desc.includes('whole foods') ||
+      desc.includes('trader joe') || desc.includes('publix') || desc.includes('kroger')) {
+    return 'Groceries';
+  }
+  if (desc.includes('petsmart') || desc.includes('petco') || desc.includes('pet supplies')) {
+    return 'Pets';
+  }
+
+  // Discount & dollar stores
+  if (desc.includes('dollartree') || desc.includes('dollar tree') || desc.includes('dollar general') ||
+      desc.includes('five below') || desc.includes('99 cent')) {
+    return 'Shopping';
+  }
+
+  // Beverages & liquor
+  if (desc.includes('total wine') || desc.includes('wine depot') || desc.includes('liquor')) {
+    return 'Shopping';
+  }
+
+  // ========================================
+  // ONLINE SHOPPING
+  // ========================================
+
+  if (desc.includes('amazon') || desc.includes('amzn') || desc.includes('amazon prime')) {
+    return 'Online Shopping';
+  }
+  if (desc.includes('ebay') || desc.includes('wish.com') || desc.includes('aliexpress')) {
+    return 'Online Shopping';
+  }
+
+  // ========================================
+  // APPAREL & CLOTHING
+  // ========================================
+
+  if (desc.includes('suspenders') || desc.includes('ludus.com') || desc.includes('ludus ')) {
+    return 'Apparel & Clothing';
+  }
+  if (desc.includes('pose cuts') || desc.includes('pose cuts llp')) {
+    return 'Personal Care';
+  }
+  if (desc.includes('clothing') || desc.includes('apparel') || desc.includes('fashion')) {
+    return 'Apparel & Clothing';
+  }
+
+  // ========================================
+  // FUEL & GAS
+  // ========================================
+
+  if (desc.includes('us gas') || desc.includes('us gas union')) {
+    return 'Fuel & Gas';
+  }
+  if (desc.includes('shell') || desc.includes('exxon') || desc.includes('mobil') ||
+      desc.includes('bp ') || desc.includes('chevron') || desc.includes('sunoco') ||
+      desc.includes('wawa') || desc.includes('speedway') || desc.includes('gas station')) {
+    return 'Fuel & Gas';
+  }
+  if (desc.includes('costco gas')) {
+    return 'Fuel & Gas';
+  }
+
+  // ========================================
+  // AUTO & TRANSPORT
+  // ========================================
+
+  if (desc.includes('kenilworth car wash') || desc.includes('car wash')) {
+    return 'Auto & Transport';
+  }
+  if (desc.includes('lyft') || desc.includes('uber') && !desc.includes('uber eats')) {
+    return 'Auto & Transport';
+  }
+  if (desc.includes('autozone') || desc.includes('advance auto') || desc.includes('napa auto') ||
+      desc.includes('jiffy lube') || desc.includes('mavis') || desc.includes('tire')) {
+    return 'Auto & Transport';
+  }
+  if (desc.includes('parking') || desc.includes('toll') || desc.includes('ez pass')) {
+    return 'Auto & Transport';
+  }
+
+  // ========================================
+  // SPORTS & RECREATION
+  // ========================================
+
+  if (desc.includes('union little league') || desc.includes('little league') ||
+      desc.includes('ymca') || desc.includes('sports') || desc.includes('gym') ||
+      desc.includes('fitness') || desc.includes('planet fitness')) {
+    return 'Sports & Recreation';
+  }
+
+  // ========================================
+  // BUSINESS EXPENSES
+  // ========================================
+
+  if (desc.includes('unioncountyfc') || desc.includes('union county')) {
+    return 'Business Expenses';
+  }
+  if (desc.includes('sba loan') || desc.includes('loan payment')) {
+    return 'Loan Payment';
+  }
+  if (desc.includes('office') || desc.includes('staples') || desc.includes('office depot')) {
+    return 'Office Supplies';
+  }
+
+  // ========================================
+  // UTILITIES & BILLS
+  // ========================================
+
+  if (desc.includes('american water') || desc.includes('elizabethtown ga') || desc.includes('pseg') ||
+      desc.includes('firstenergy') || desc.includes('electric') || desc.includes('water') ||
+      desc.includes('utility') || desc.includes('gas bill') || desc.includes('internet service')) {
+    return 'Utilities';
+  }
+  if (desc.includes('town of westfield') || desc.includes('town of ') || desc.includes('township')) {
+    return 'Taxes & Fees';
+  }
+
+  // ========================================
+  // PHONE & COMMUNICATIONS
+  // ========================================
+
+  if (desc.includes('tmobile') || desc.includes('t-mobile') || desc.includes('verizon') ||
+      desc.includes('at&t') || desc.includes('att ') || desc.includes('sprint') ||
+      desc.includes('phone') || desc.includes('wireless')) {
+    return 'Phone & Internet';
+  }
+  if (desc.includes('optimum') || desc.includes('comcast') || desc.includes('xfinity') ||
+      desc.includes('cable') || desc.includes('spectrum') || desc.includes('fios')) {
+    return 'Cable & Internet';
+  }
+
+  // ========================================
+  // ENTERTAINMENT & SUBSCRIPTIONS
+  // ========================================
+
+  if (desc.includes('disney') || desc.includes('netflix') || desc.includes('hulu') ||
+      desc.includes('spotify') || desc.includes('youtube') || desc.includes('hbo') ||
+      desc.includes('paramount') || desc.includes('apple tv') || desc.includes('peacock')) {
+    return 'Entertainment';
+  }
+  if (desc.includes('apple.com') || desc.includes('google one') || desc.includes('software') ||
+      desc.includes('subscription') || desc.includes('membership')) {
+    return 'Subscriptions';
+  }
+
+  // ========================================
+  // HOUSING & MORTGAGE
+  // ========================================
+
+  if (desc.includes('mortgage') || desc.includes('rent') || desc.includes('pnc pymt') ||
+      desc.includes('housing') || desc.includes('hoa') || desc.includes('condo')) {
+    return 'Housing';
+  }
+
+  // ========================================
+  // HEALTHCARE
+  // ========================================
+
+  if (desc.includes('cvs') || desc.includes('walgreens') || desc.includes('pharmacy') ||
+      desc.includes('doctor') || desc.includes('medical') || desc.includes('health') ||
+      desc.includes('dental') || desc.includes('vision') || desc.includes('hospital')) {
+    return 'Healthcare';
+  }
+
+  // ========================================
+  // TAXES & GOVERNMENT
+  // ========================================
+
+  if (desc.includes('irs') || desc.includes('tax') || desc.includes('treasury') ||
+      desc.includes('dmv') || desc.includes('license') || desc.includes('state of')) {
+    return 'Taxes';
+  }
+
+  // ========================================
+  // BANK FEES & CHARGES
+  // ========================================
+
+  if (desc.includes('service charge') || desc.includes('fee') || desc.includes('maintenance') ||
+      desc.includes('overdraft') || desc.includes('nsf') || desc.includes('wire fee')) {
+    return 'Bank Fees';
+  }
+
+  // ========================================
+  // TRANSFERS & PAYMENTS
+  // ========================================
+
+  if (desc.includes('credit card pmt') || desc.includes('online credit card') ||
+      desc.includes('card payment') || desc.includes('bill pay')) {
+    return 'Credit Card Payment';
+  }
+  if (desc.includes('zelle') || desc.includes('wire transfer') || desc.includes('ach deduction')) {
+    return 'Transfers';
+  }
+  if (desc.includes('check #') || desc.includes('check number') || /check\s*\d+/.test(desc)) {
+    return 'Checks';
+  }
+
+  // ========================================
+  // EDUCATION
+  // ========================================
+
+  if (desc.includes('school') || desc.includes('education') || desc.includes('university') ||
+      desc.includes('college') || desc.includes('tuition')) {
+    return 'Education';
+  }
+
+  // ========================================
+  // INSURANCE
+  // ========================================
+
+  if (desc.includes('insurance') || desc.includes('geico') || desc.includes('progressive') ||
+      desc.includes('state farm') || desc.includes('allstate')) {
+    return 'Insurance';
+  }
+
+  // ========================================
+  // DEBIT CARD PURCHASES (Generic)
+  // ========================================
+
+  if (desc.includes('7526 debit card') || desc.includes('debit card purchase')) {
+    return 'Debit Card Purchase';
+  }
+  if (desc.includes('pos purchase')) {
+    return 'POS Purchase';
+  }
+  if (desc.includes('atm withdrawal') || desc.includes('atm ')) {
+    return 'ATM Withdrawal';
+  }
+
   // Default
   return 'Uncategorized';
 }
@@ -118,11 +353,64 @@ function parseStatementDate(dateStr: string, year: number): string {
   return `${year}-${month}-${day}`;
 }
 
-// Extract account number from statement
+// Extract account number from statement (supports multiple formats)
 function extractAccountNumber(text: string): string {
-  const match = text.match(/Account Number:\s*XX-XXXX-(\d{4})/i) || 
-                text.match(/account number:\s*XX-XXXX-(\d{4})/i);
-  return match ? `****${match[1]}` : 'Unknown';
+  // Try to extract FULL account number format: 80-6434-4474
+  const fullMatch = text.match(/(?:Primary\s+)?Account\s+Number:\s*(\d{2}-\d{4}-\d{4})/i);
+  if (fullMatch) {
+    return fullMatch[1];
+  }
+
+  // Try alternate full format without dashes: 8064344474
+  const noHyphensMatch = text.match(/(?:Primary\s+)?Account\s+Number:\s*(\d{10})/i);
+  if (noHyphensMatch) {
+    const num = noHyphensMatch[1];
+    return `${num.slice(0, 2)}-${num.slice(2, 6)}-${num.slice(6)}`;
+  }
+
+  // Try masked format with last 4 digits: XX-XXXX-4474
+  const maskedMatch = text.match(/Account\s+Number:\s*XX-XXXX-(\d{4})/i);
+  if (maskedMatch) {
+    return `****${maskedMatch[1]}`;
+  }
+
+  // Try to find any account number pattern in the text
+  const anyMatch = text.match(/\b(\d{2}-\d{4}-\d{4})\b/);
+  if (anyMatch) {
+    return anyMatch[1];
+  }
+
+  return 'Unknown';
+}
+
+// Extract business name from PNC Business statement
+function extractBusinessName(text: string): string {
+  // Try to find business name after account number line
+  // Format: "THE HOUSE OF SPORTS CORP" appears after account info
+  const businessNamePatterns = [
+    // Pattern 1: Business name on its own line after account info
+    /Account\s+Number:.*?\n([A-Z][A-Z\s&,.']+(?:LLC|INC|CORP|CO|LTD|LP|LLP)?)\s*\n/i,
+    // Pattern 2: Business name before address
+    /([A-Z][A-Z\s&,.']+(?:LLC|INC|CORP|CO|LTD|LP|LLP)?)\s*\n\s*\d+\s+[A-Z]/i,
+    // Pattern 3: Look for common business suffixes
+    /\b([A-Z][A-Z\s&,.']+(?:LLC|INC|CORP|CORPORATION|COMPANY|CO|LTD|LP|LLP))\b/i,
+    // Pattern 4: "THE HOUSE OF SPORTS CORP" specific pattern
+    /\b(THE\s+HOUSE\s+OF\s+SPORTS\s+CORP)\b/i,
+  ];
+
+  for (const pattern of businessNamePatterns) {
+    const match = text.match(pattern);
+    if (match && match[1]) {
+      // Clean up the business name
+      const name = match[1].trim().replace(/\s+/g, ' ');
+      // Skip if it's just a generic word
+      if (name.length > 5 && !['BUSINESS', 'CHECKING', 'ACCOUNT', 'STATEMENT'].includes(name.toUpperCase())) {
+        return name;
+      }
+    }
+  }
+
+  return 'Unknown Business';
 }
 
 // Parse PNC Personal Statement

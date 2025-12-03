@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { createDefaultCategoriesForProfile } from '@/lib/default-categories';
 
+export const dynamic = 'force-dynamic';
+
 // GET all business profiles for the current user
 export async function GET() {
   try {

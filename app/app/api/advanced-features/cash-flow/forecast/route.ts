@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { addDays, addMonths, addQuarters, addYears, startOfMonth, endOfMonth } from 'date-fns'
 
+export const dynamic = 'force-dynamic';
+
 // Generate cash flow forecasts based on historical data and AI predictions
 export async function POST(req: NextRequest) {
   try {

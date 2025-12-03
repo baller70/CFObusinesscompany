@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic';
+
 const createCustomReportSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),

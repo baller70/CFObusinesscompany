@@ -6,6 +6,8 @@ import { prisma } from '@/lib/db'
 import { uploadFile } from '@/lib/s3'
 import { getBucketConfig } from '@/lib/aws-config'
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)

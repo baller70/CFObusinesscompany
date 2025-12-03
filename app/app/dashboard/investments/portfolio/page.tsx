@@ -6,17 +6,25 @@ import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { BackButton } from '@/components/ui/back-button';
-import { 
-  PieChart, 
-  TrendingUp, 
-  TrendingDown, 
+import { BackButton } from '@/components/ui/back-button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { toast } from 'sonner'
+import { useBusinessProfile } from '@/lib/business-profile-context'
+import {
+  PieChart,
+  TrendingUp,
+  TrendingDown,
   Plus,
   Activity,
   BarChart3,
   Target,
   Coins,
-  AlertTriangle
+  AlertTriangle,
+  Loader2
 } from 'lucide-react'
 
 interface Portfolio {
@@ -46,6 +54,7 @@ interface PortfolioSummary {
 
 export default function InvestmentPortfolioPage() {
   const { data: session } = useSession() || {}
+  const { currentBusinessProfileId } = useBusinessProfile()
   const [portfolios, setPortfolios] = useState<Portfolio[]>([])
   const [summary, setSummary] = useState<PortfolioSummary>({
     totalPortfolios: 0,
@@ -55,6 +64,14 @@ export default function InvestmentPortfolioPage() {
   })
   const [isLoading, setIsLoading] = useState(true)
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [isCreating, setIsCreating] = useState(false)
+  const [newPortfolio, setNewPortfolio] = useState({
+    name: '',
+    description: '',
+    type: 'TAXABLE',
+    totalValue: '0',
+    totalCost: '0'
+  })
 
   useEffect(() => {
     if (session?.user?.id) {
@@ -79,6 +96,56 @@ export default function InvestmentPortfolioPage() {
       console.error('Error fetching portfolios:', error)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const createPortfolio = async () => {
+    if (!newPortfolio.name.trim()) {
+      toast.error('Portfolio name is required')
+      return
+    }
+
+    setIsCreating(true)
+    try {
+      const response = await fetch('/api/premium-features/investments/portfolio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newPortfolio.name,
+          description: newPortfolio.description || null,
+          type: newPortfolio.type,
+          totalValue: parseFloat(newPortfolio.totalValue) || 0,
+          totalCost: parseFloat(newPortfolio.totalCost) || 0,
+          totalReturn: (parseFloat(newPortfolio.totalValue) || 0) - (parseFloat(newPortfolio.totalCost) || 0),
+          totalReturnPct: parseFloat(newPortfolio.totalCost) > 0
+            ? ((parseFloat(newPortfolio.totalValue) - parseFloat(newPortfolio.totalCost)) / parseFloat(newPortfolio.totalCost)) * 100
+            : 0,
+          businessProfileId: currentBusinessProfileId,
+          currency: 'USD',
+          isActive: true
+        })
+      })
+
+      if (response.ok) {
+        toast.success('Portfolio created successfully!')
+        setShowCreateForm(false)
+        setNewPortfolio({
+          name: '',
+          description: '',
+          type: 'TAXABLE',
+          totalValue: '0',
+          totalCost: '0'
+        })
+        fetchPortfolios()
+      } else {
+        const data = await response.json()
+        toast.error(data.error || 'Failed to create portfolio')
+      }
+    } catch (error) {
+      console.error('Error creating portfolio:', error)
+      toast.error('Failed to create portfolio')
+    } finally {
+      setIsCreating(false)
     }
   }
 
@@ -339,6 +406,95 @@ export default function InvestmentPortfolioPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Create Portfolio Dialog */}
+      <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Create New Portfolio</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Portfolio Name *</Label>
+              <Input
+                id="name"
+                placeholder="e.g., Retirement 401k"
+                value={newPortfolio.name}
+                onChange={(e) => setNewPortfolio({ ...newPortfolio, name: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="type">Portfolio Type</Label>
+              <Select
+                value={newPortfolio.type}
+                onValueChange={(value) => setNewPortfolio({ ...newPortfolio, type: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="RETIREMENT">Retirement</SelectItem>
+                  <SelectItem value="TAXABLE">Taxable</SelectItem>
+                  <SelectItem value="TAX_DEFERRED">Tax Deferred</SelectItem>
+                  <SelectItem value="EMERGENCY_FUND">Emergency Fund</SelectItem>
+                  <SelectItem value="EDUCATION">Education</SelectItem>
+                  <SelectItem value="OTHER">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="totalCost">Initial Cost ($)</Label>
+                <Input
+                  id="totalCost"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={newPortfolio.totalCost}
+                  onChange={(e) => setNewPortfolio({ ...newPortfolio, totalCost: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="totalValue">Current Value ($)</Label>
+                <Input
+                  id="totalValue"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={newPortfolio.totalValue}
+                  onChange={(e) => setNewPortfolio({ ...newPortfolio, totalValue: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="description">Description (Optional)</Label>
+              <Textarea
+                id="description"
+                placeholder="Describe this portfolio..."
+                value={newPortfolio.description}
+                onChange={(e) => setNewPortfolio({ ...newPortfolio, description: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateForm(false)}>
+              Cancel
+            </Button>
+            <Button onClick={createPortfolio} disabled={isCreating}>
+              {isCreating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                'Create Portfolio'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

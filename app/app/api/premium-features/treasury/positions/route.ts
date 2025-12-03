@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic';
+
 const createCashPositionSchema = z.object({
   accountName: z.string().min(1),
   accountType: z.enum(['CHECKING', 'SAVINGS', 'MONEY_MARKET', 'CD', 'TREASURY', 'SWEEP', 'ESCROW', 'OPERATING', 'INVESTMENT']),

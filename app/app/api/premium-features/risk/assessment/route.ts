@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic';
+
 const createRiskAssessmentSchema = z.object({
   name: z.string().min(1),
   type: z.enum(['FINANCIAL', 'OPERATIONAL', 'STRATEGIC', 'COMPLIANCE', 'REPUTATIONAL', 'TECHNOLOGY', 'MARKET', 'CREDIT', 'LIQUIDITY', 'INTEREST_RATE', 'CURRENCY', 'CYBERSECURITY']),

@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { startOfMonth, subMonths, format } from 'date-fns'
 
+export const dynamic = 'force-dynamic';
+
 // Generate AI-powered business recommendations
 export async function POST(req: NextRequest) {
   try {

@@ -1,7 +1,6 @@
 generator client {
     provider = "prisma-client-js"
     binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
-    output = "/home/ubuntu/cfo_budgeting_app/app/node_modules/.prisma/client"
 }
 
 datasource db {
@@ -144,6 +143,7 @@ model User {
   transactionReviews        TransactionReview[]
   userCorrections           UserCorrection[]
   recurringPatterns         RecurringPattern[]
+  stagedTransactions        StagedTransaction[]
 }
 
 model VerificationToken {
@@ -363,6 +363,7 @@ model BankStatement {
   user                  User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   businessProfile       BusinessProfile?    @relation(fields: [businessProfileId], references: [id], onDelete: Cascade)
   transactions          Transaction[]
+  stagedTransactions    StagedTransaction[]
 
   @@index([userId, status])
   @@index([businessProfileId])
@@ -3619,4 +3620,48 @@ model RecurringPattern {
 
   @@unique([userId, merchantName, businessProfileId])
   @@index([userId, isActive])
+}
+
+// Staged transactions for hybrid capture (PDF + Manual entry)
+// Holds transactions temporarily before final commit
+model StagedTransaction {
+  id                String           @id @default(cuid())
+  userId            String
+  bankStatementId   String?
+  sessionId         String           // Groups transactions from same import session
+
+  // Core transaction data
+  date              DateTime
+  amount            Float
+  description       String
+  merchant          String?
+  category          String?
+  type              String           // INCOME or EXPENSE
+
+  // Source tracking
+  source            String           // PDF, MANUAL, CSV
+  confidence        Float            @default(0.5)
+  rawText           String?          // Original text from manual entry
+
+  // Deduplication
+  dedupHash         String           // Hash of normalized date+amount+description
+  matchGroupId      String?          // Groups potential duplicates together
+  matchScore        Float?           // How confident this matches another transaction
+  matchedWithId     String?          // ID of matched staged transaction
+
+  // Status
+  status            String           @default("PENDING") // PENDING, MATCHED, UNIQUE, DISCARDED, COMMITTED
+  userDecision      String?          // KEEP, MERGE, DISCARD
+
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bankStatement     BankStatement?   @relation(fields: [bankStatementId], references: [id])
+
+  @@index([sessionId])
+  @@index([dedupHash])
+  @@index([matchGroupId])
+  @@index([userId, status])
+  @@index([bankStatementId])
 }

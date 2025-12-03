@@ -77,17 +77,17 @@ export function QuickActions() {
             <Link key={action.href} href={action.href}>
               <Button
                 variant="ghost"
-                className="h-auto p-5 flex flex-col items-start w-full group hover:bg-primary/5 hover:shadow-md transition-all duration-300 border border-border/50 rounded-xl animate-slide-in-up"
+                className="h-auto p-5 flex flex-col items-start w-full group hover:bg-primary/5 hover:shadow-md transition-all duration-300 border border-border/50 rounded-xl animate-slide-in-up whitespace-normal text-left"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
                 <div className={`w-12 h-12 ${action.color} rounded-xl flex items-center justify-center mb-3 shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-200`}>
                   <action.icon className="h-5 w-5 text-white" />
                 </div>
-                <div className="text-left w-full">
+                <div className="text-left w-full min-w-0">
                   <p className="text-body font-semibold text-foreground group-hover:text-primary transition-colors mb-1">
                     {action.title}
                   </p>
-                  <p className="text-small text-muted-foreground leading-relaxed">
+                  <p className="text-small text-muted-foreground leading-relaxed whitespace-normal break-words">
                     {action.description}
                   </p>
                 </div>

@@ -164,8 +164,9 @@ export default function StatementUploader({ onUploadComplete }: StatementUploade
           else if (processingStage === 'PROCESSING') progress = 20;
           else if (processingStage === 'EXTRACTING_DATA') progress = 40;
           else if (processingStage === 'CATEGORIZING_TRANSACTIONS') progress = 60;
-          else if (processingStage === 'ANALYZING_PATTERNS') progress = 80;
-          else if (processingStage === 'DISTRIBUTING_DATA') progress = 90;
+          else if (processingStage === 'ANALYZING_PATTERNS') progress = 70;
+          else if (processingStage === 'DISTRIBUTING_DATA') progress = 80;
+          else if (processingStage === 'VALIDATING') progress = 90;
           else if (processingStage === 'COMPLETED') progress = 100;
           else if (processingStage === 'FAILED') progress = 0;
 
