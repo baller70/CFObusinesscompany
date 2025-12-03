@@ -14,8 +14,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { analysisType } = await request.json()
-    
+    // Safely parse JSON body - handle empty or invalid JSON
+    let body: { analysisType?: string } = {}
+    try {
+      const text = await request.text()
+      if (text && text.trim()) {
+        body = JSON.parse(text)
+      }
+    } catch (parseError) {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
+
+    const { analysisType } = body
+
     if (!analysisType) {
       return NextResponse.json({ error: 'Analysis type is required' }, { status: 400 })
     }
